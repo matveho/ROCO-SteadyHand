@@ -17,6 +17,7 @@ from steadyhand.adapters.mock import MockAdapter
 from steadyhand.cameras.vega import intrinsics_from_camera_info
 from steadyhand.config import load_bundle, missing_setup, validate_bundle
 from steadyhand.executor import ExecutionError, execute_part, object_pose_to_tcp
+from steadyhand.grippers.vega import VegaCanGripper
 from steadyhand.geometry import (
     compose,
     invert_rigid,
@@ -218,6 +219,84 @@ class OnsiteTests(unittest.TestCase):
         }
         tcp = object_pose_to_tcp(object_pose, skill)
         self.assertEqual(tcp.position_m, (1.1, 1.8, 3.3))
+
+    def test_official_vega_gripper_per_side_contract(self):
+        module_source = r'''
+class Motor:
+    def __init__(self, name):
+        self.name = name
+        self.homed = False
+        self.opened = False
+        self.halted = False
+    def home(self):
+        self.homed = True
+    def open(self):
+        self.opened = True
+        return "opened"
+    def close(self):
+        return "closed"
+    def grip(self, current=0.6):
+        return {"gripped": True, "peak_current": current, "position": 0.42}
+    def move_to(self, fraction, speed=500):
+        return fraction
+    def position(self):
+        return 0.42
+    def angle(self):
+        return 1.0
+    def current(self):
+        return 0.2
+    def temperature(self):
+        return 30
+    def voltage(self):
+        return 24.0
+    def enabled(self):
+        return True
+    def halt(self):
+        self.halted = True
+    def release(self):
+        pass
+
+class Grippers:
+    def __init__(self):
+        self.left = Motor("left")
+        self.right = Motor("right")
+        self.closed = False
+    def home(self, require_all=False):
+        self.left.home(); self.right.home()
+    def both_open(self):
+        self.left.open(); self.right.open()
+    def both_close(self):
+        return "both_closed"
+    def both_move_to(self, fraction, speed=500):
+        return {"left": fraction, "right": fraction}
+    def status(self):
+        return {}
+    def halt(self):
+        self.left.halt(); self.right.halt()
+    def release(self):
+        pass
+    def close_bus(self):
+        self.closed = True
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "gripper.py"
+            path.write_text(module_source)
+            g = VegaCanGripper({
+                "driver_path": str(path),
+                "scope": "left",
+                "home_on_connect": True,
+                "grip_current_a": 0.6,
+            })
+            g.connect()
+            self.assertTrue(g._driver.left.homed)
+            self.assertFalse(g._driver.right.homed)
+            result = g.grip()
+            self.assertTrue(result["gripped"])
+            self.assertEqual(g.last_grip_result(), result)
+            self.assertAlmostEqual(g.position(), 0.42)
+            g.open()
+            self.assertTrue(g._driver.left.opened)
+            g.close()
 
     def test_rejects_wrong_robot_calibration(self):
         bundle = load_bundle("vega")
