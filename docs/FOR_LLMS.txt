@@ -1943,3 +1943,15 @@ Current competition-network workflow:
   then build the shortest viable board/part localization path. Added
   tools/copy_from_vega.ps1 so Windows can retrieve robot-side fixtures using the
   same SSH_ASKPASS workaround as deployment.
+
+
+2026-09-27 COMPETITION HEAD CONTROL API:
+  On competition robot dexcontrol 0.5.0, Head exposes set_joint_pos() and
+  set_joint_pos_vel(), but NOT set_joint_target(). Live joint names/order are:
+    ['head_j1', 'head_j2', 'head_j3']
+  Live near-neutral readback observed:
+    [-0.00055851, 0.00017453, 0.02764601]
+  Do not give onsite commands using set_joint_target(); use set_joint_pos() for
+  this installed version. Vendor/source example describes a negative first head
+  joint value as a downward-looking initial pose, so use a moderate negative
+  head_j1 test and verify framing visually before larger motion.
