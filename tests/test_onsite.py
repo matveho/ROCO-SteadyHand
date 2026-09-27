@@ -224,6 +224,74 @@ class OnsiteTests(unittest.TestCase):
         tcp = object_pose_to_tcp(object_pose, skill)
         self.assertEqual(tcp.position_m, (1.1, 1.8, 3.3))
 
+
+    def test_vega_joint_motion_uses_robot_server_motion_plugin(self):
+        class FakeHandle:
+            def __init__(self, arm, target):
+                self.arm = arm
+                self.target = list(target)
+                self.state = "accepted"
+                self.message = ""
+                self.is_done = False
+                self.cancelled = False
+
+            def wait(self, timeout=None):
+                self.arm.q = self.target[:]
+                self.arm.timestamp += 1
+                self.state = "finished"
+                self.is_done = True
+                return self.state
+
+            def cancel(self):
+                self.cancelled = True
+                self.state = "cancelled"
+                self.is_done = True
+
+        class FakeArm:
+            def __init__(self):
+                self.q = [0.0] * 7
+                self.timestamp = 1
+                self.calls = []
+
+            def get_joint_pos(self):
+                return self.q[:]
+
+            def get_timestamp_ns(self):
+                return self.timestamp
+
+            def move_to_joint_pos(self, target, *, relative=False, velocity_scale=None):
+                self.calls.append(
+                    {
+                        "target": [float(x) for x in target],
+                        "relative": relative,
+                        "velocity_scale": velocity_scale,
+                    }
+                )
+                return FakeHandle(self, target)
+
+        cfg = copy.deepcopy(load_bundle("vega")["robot"])
+        cfg["working_arm"] = "left"
+        cfg["motion"]["max_step_rad"] = 0.12
+        cfg["motion"]["max_total_delta_rad"] = 2.5
+        cfg["motion"]["joint_reached_tolerance_rad"] = 0.001
+        cfg["motion"]["joint_timeout_s"] = 1.0
+
+        adapter = vega.VegaAdapter(cfg)
+        adapter._robot = object()
+        adapter._arm = FakeArm()
+        adapter._kinematics = object()
+        adapter._joint_limits = tuple(
+            tuple(x) for x in cfg["arm_joint_limits_rad"]["left"]
+        )
+
+        target = [0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        adapter._move_joints(target, speed_scale=0.05)
+
+        self.assertEqual(adapter._arm.calls[-1]["relative"], False)
+        self.assertEqual(adapter._arm.calls[-1]["velocity_scale"], 0.05)
+        self.assertAlmostEqual(adapter._arm.get_joint_pos()[0], 0.01)
+        self.assertIsNone(adapter._active_motion_handle)
+
     def test_official_vega_gripper_per_side_contract(self):
         module_source = r'''
 class Motor:
