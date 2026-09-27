@@ -1395,3 +1395,18 @@ Additional URDF facts verified onsite 2026-09-27:
   R_ee and R_gripper_base parent joint = R_arm_j7
 These are model facts only; neutral values are not yet promoted to verified physical
 competition-unit fixed values.
+
+
+2026-09-27 LIVE COMPETITION VEGA MOTION-PLUGIN VERIFICATION:
+- Installed dexcontrol source confirms Arm.set_joint_pos(wait_time=0) is a one-shot
+  setpoint intended for repeated high-frequency streaming (e.g. 100 Hz, max 500 Hz).
+- set_joint_pos(wait_time>0) performs client-side interpolation; this path is
+  deprecated and dexcontrol recommends move_to_joint_pos().
+- Arm.move_to_joint_pos() sends the target to the robot-server motion plugin,
+  which performs trajectory generation/smoothing/gravity compensation and
+  returns a MotionHandle.
+- On the competition Vega, commanding the LEFT ARM to its CURRENT measured pose
+  with velocity_scale=0.05 produced a MotionHandle that reached state "finished"
+  within 5 s. This verifies the robot-side motion plugin is running and the
+  client can receive completion status.
+- No intentional arm displacement was requested in that verification.
