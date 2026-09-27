@@ -31,11 +31,12 @@ def main(argv=None):
         if args.command == "doctor":
             print(f"Python {platform.python_version()} on {platform.system()}")
             print(f"Workspace: {WORKSPACE}")
-            print("Dependencies: standard library only")
+            print("Offline doctor dependencies: standard library only")
             for robot in ROBOTS:
                 bundle = load_bundle(robot)
                 print(f"{robot}: templates valid; {len(missing_setup(bundle))} setup fields missing")
-            print("Hardware adapters: not implemented; no connection attempted")
+            print("Vega: live joint/camera/gripper/IK path is implemented but configuration-gated; no connection attempted")
+            print("Sharpa: full-body live adapter still awaits the onsite North interface")
             return 0
         bundle = load_bundle(args.robot)
         if args.command == "check-config":
