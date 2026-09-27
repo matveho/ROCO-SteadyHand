@@ -256,3 +256,17 @@ Do not begin with the insertion parts.
 - wrist camera physical A/B mapping remains unresolved
 
 A completed trajectory is not evidence of successful assembly.
+
+
+### First intentional displacement result
+
+A left-arm J7 target of current position +0.005 rad at velocity_scale=0.05
+returned MotionHandle state `finished`, but measured J7 changed by only about
+-2.27e-05 rad. Therefore **no physical arm displacement is yet verified**.
+
+Also, constructing `Robot()` visibly pivoted the head upward slightly on this
+competition unit, confirming that the head-motion warning is real.
+
+Do not increase the arm target blindly. First inspect the installed
+motion-plugin/client completion/deadband/tolerance logic and determine why a
+`finished` handle did not correspond to the requested small joint change.
