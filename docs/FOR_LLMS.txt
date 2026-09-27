@@ -1069,8 +1069,9 @@ Already completed onsite:
   - e-stop state readable and clear
   - installed gripper-URDF candidate located
   - wait_time semantics resolved from installed source
-  - robot-server motion plugin verified with a current-pose command
-  - VegaAdapter migrated to move_to_joint_pos()
+  - robot-server motion plugin communication verified with a current-pose command
+  - first +0.005 rad J7 target returned "finished" but produced no measurable arm displacement
+  - VegaAdapter migrated to move_to_joint_pos(); physical displacement still unverified
 
 Highest-value sequence NOW:
   1. Tiny safe joint displacement + return using the motion plugin.
@@ -1513,3 +1514,23 @@ Current competition-network workflow:
   reflects the verified competition unit and the robot-server motion-plugin
   implementation. Current canonical Vega docs are FOR_LLMS.txt, VEGA_LIVE.md,
   and MATVEY_DEXMATE_TODAY.md.
+
+
+2026-09-27 FIRST INTENTIONAL JOINT-DISPLACEMENT TEST — IMPORTANT:
+  Command:
+    left_arm.move_to_joint_pos(current_q with J7 += 0.005 rad,
+                               velocity_scale=0.05)
+  MotionHandle result:
+    finished
+  Measured J7 delta after completion:
+    approximately -2.27e-05 rad
+  Interpretation:
+    the requested +0.005 rad displacement was NOT reflected in measured joint
+    state. Treat this as NO VERIFIED ARM DISPLACEMENT. Do not claim the motion
+    plugin path has physically moved an arm yet.
+  Additional observation:
+    constructing Robot() caused the head to pivot upward slightly on this unit,
+    confirming the head-motion warning is real.
+  Next diagnostic:
+    inspect installed motion-plugin/client completion/deadband/tolerance logic
+    before increasing the commanded arm displacement.
