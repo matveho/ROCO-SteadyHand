@@ -1374,3 +1374,15 @@ Repository coordination note at this observation:
   installed gripper-URDF path, interpreter split, vendor 250 Hz safe-initializer
   behavior, and the current main/onsite branch divergence. These observations
   supersede older assumed file paths where they conflict.
+
+
+2026-09-27 onsite Vega live verification:
+- ROBOT_NAME verified: dm/vgfcb66075ea-1u
+- dexcontrol 0.5.0; robot reports vega_1u and firmware/system 0.5.1
+- live components: left_arm, right_arm, head, estop, heartbeat
+- torso and chassis report absent
+- live left/right arm joint names and limits match configs/robots/vega.json
+- software/physical e-stop state was readable and clear during probe
+- installed gripper URDF contains base_link, L_ee, R_ee, L/R gripper frames
+- movable model joints include Lift and torso_flip before both arm chains despite live torso/chassis being absent
+- standard installed gripper URDF does not expose tip_l/tip_r frames in the inspected frame list
