@@ -331,7 +331,7 @@ class Status:
 class Motor:
     def __init__(self, side, calls): self.side, self.calls = side, calls
     def home(self): self.calls.append((self.side, "home"))
-    def open(self): self.calls.append((self.side, "open"))
+    def open(self, speed=150): self.calls.append((self.side, "open", speed))
     def close(self): self.calls.append((self.side, "close"))
     def grip(self, *, current):
         self.calls.append((self.side, "grip", current)); return {"gripped": True}
@@ -348,7 +348,7 @@ class Grippers:
     def __init__(self):
         self.calls = []; self.left = Motor("left", self.calls); self.right = Motor("right", self.calls)
     def home(self, require_all=False): self.calls.append(("home", require_all))
-    def both_open(self): self.calls.append(("both_open",))
+    def both_open(self, speed=500): self.calls.append(("both_open", speed))
     def both_close(self): self.calls.append(("both_close",))
     def both_move_to(self, fraction, *, speed): self.calls.append(("both_move_to", fraction, speed))
     def status(self): return Status()
@@ -378,7 +378,7 @@ class GripperContractTests(unittest.TestCase):
         self.assertTrue(gripper.status()["enabled"])
         gripper.close()
         self.assertEqual(driver.calls, [
-            ("left", "home"), ("left", "open"), ("left", "grip", 0.3),
+            ("left", "home"), ("left", "open", 500.0), ("left", "grip", 0.3),
             ("left", "close"), ("left", "move_to", 0.2, 10.0),
             ("left", "halt"), ("close_bus",),
         ])
