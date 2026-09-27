@@ -1589,3 +1589,15 @@ Current competition-network workflow:
   from the earlier -0.309625 rad value and is consistent with the prior +0.06
   rad J7 target having executed even though the user did not visually notice
   wrist rotation.
+
+
+2026-09-27 VERIFIED RETURN MOTION:
+  J6 before return: 0.30006048 rad
+  J6 return target: 0.20035158 rad
+  command: move_to_joint_pos(..., velocity_scale=0.10)
+  MotionHandle: finished
+  immediate measured J6: 0.20262924 rad
+  measured delta from pre-return: -0.09743124 rad
+  physical observation: arm/hand visibly returned upward.
+  Conclusion: bidirectional intentional joint motion through dexcontrol
+  move_to_joint_pos() is physically verified on the competition Vega.
