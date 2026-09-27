@@ -1648,3 +1648,18 @@ Current competition-network workflow:
   (earlier sessions used dm_internal_061826.dzcfg). Robot initialization still
   succeeded and live arm state was read. Record this environment change; do not
   assume the two configs are equivalent without need.
+
+
+2026-09-27 FIRST VERIFIED CARTESIAN TCP MOTION:
+  From organizer brickbench_home/ready pose, custom competition URDF plus
+  PinocchioArmKinematics was used with:
+    ee_frame=tip_l
+    base_frame=vega_1u_base_link
+    fixed_joint_values: Lift=0.0, torso_flip=0.22689280275926285
+  A target preserving TCP orientation and reducing base-frame Z by exactly
+  0.020 m was solved and sent through left_arm.move_to_joint_pos().
+  User physically observed the left hand move downward by about 20 mm.
+  This is the first physically verified Cartesian-direction motion through the
+  SteadyHand IK layer. Exact TCP calibration/floor height still requires onsite
+  contact/reference measurement; organizer calibration numbers are from another
+  Vega unit.
