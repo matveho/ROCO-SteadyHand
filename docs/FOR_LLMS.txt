@@ -1573,3 +1573,19 @@ Current competition-network workflow:
   The script exited through finally and Robot shutdown completed.
   Exact final J6 position was not printed because the timeout interrupted before
   the post-motion readback; read current q before issuing another motion.
+
+
+2026-09-27 J6 READBACK AFTER FIRST VISIBLE MOTION:
+  Pre-command J6 = 0.20035158 rad.
+  Requested J6 = pre +0.100 rad = 0.30035159 rad.
+  Subsequent fresh Robot() readback:
+    J6 = 0.300132066 rad.
+  Endpoint error ≈ -0.0002195 rad.
+  Therefore the +0.100 rad J6 motion physically and numerically reached the
+  requested target to ~2.2e-4 rad even though MotionHandle.wait(timeout=10s)
+  timed out at velocity_scale=0.03. A fixed 10 s timeout is too short for some
+  deliberately slow moves and should not be interpreted as motion failure.
+  Also note: the pre-J6 state showed J7 ≈ -0.249919 rad, which is ~+0.0597 rad
+  from the earlier -0.309625 rad value and is consistent with the prior +0.06
+  rad J7 target having executed even though the user did not visually notice
+  wrist rotation.
