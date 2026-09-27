@@ -85,23 +85,23 @@ class VegaHeadCamera:
         self._require_connected()
         return self._head.get_camera_info()
 
-    def read(self) -> HeadCameraFrame:
+    def read(self, *, include_depth: bool = True) -> HeadCameraFrame:
         self._require_connected()
-        obs = self._head.get_obs(
-            obs_keys=["left_rgb", "right_rgb", "depth"],
-            include_timestamp=True,
-        )
-        required = ("left_rgb", "right_rgb", "depth")
-        if any(obs.get(key) is None for key in required):
+        keys = ["left_rgb", "right_rgb"]
+        if include_depth:
+            keys.append("depth")
+        obs = self._head.get_obs(obs_keys=keys, include_timestamp=True)
+        if any(obs.get(key) is None for key in keys):
             raise RuntimeError("One or more Vega head streams are not ready")
 
+        depth = obs.get("depth")
         return HeadCameraFrame(
             left_rgb=obs["left_rgb"]["data"],
             right_rgb=obs["right_rgb"]["data"],
-            depth_m=obs["depth"]["data"],
+            depth_m=None if depth is None else depth["data"],
             left_timestamp_ns=obs["left_rgb"].get("timestamp_ns"),
             right_timestamp_ns=obs["right_rgb"].get("timestamp_ns"),
-            depth_timestamp_ns=obs["depth"].get("timestamp_ns"),
+            depth_timestamp_ns=None if depth is None else depth.get("timestamp_ns"),
             camera_info=self._head.get_camera_info(),
         )
 
