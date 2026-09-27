@@ -10,5 +10,28 @@
   "joint_limits_rad": null,
   "max_joint_speed_rad_s": null,
   "gripper_driver_path": null,
-  "notes": "Fill from the actual competition robot. The current toolkit does not connect to hardware."
+  "cameras": {
+    "head": {
+      "model": "ZED X Mini",
+      "mount": "head",
+      "connection": "ZED Link Duo",
+      "streams": ["left_rgb_rectified", "right_rgb_rectified", "depth_m"],
+      "width": 1920,
+      "height": 1200,
+      "configured_fps": 30,
+      "observed_publish_hz_approx": 24,
+      "native_point_cloud": false,
+      "intrinsics_source": "runtime_get_camera_info"
+    },
+    "wrists": {
+      "model": "Sony ISX031",
+      "mounts": ["left_wrist", "right_wrist"],
+      "api_labels": ["wrist_a", "wrist_b"],
+      "api_label_to_physical_mount": null,
+      "rgb_width": 1920,
+      "rgb_height": 1536,
+      "notes": "Both wrist cameras are enabled onsite. Verify wrist_a/wrist_b physical left-right mapping on the actual robot."
+    }
+  },
+  "notes": "Fill remaining values from the actual competition robot. Camera acquisition is implemented sensor-only; arm/gripper hardware control remains disabled until validated onsite."
 }
