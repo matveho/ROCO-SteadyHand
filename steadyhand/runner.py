@@ -1,13 +1,7 @@
 """Exercise sequencing and failure logs only. No physics or robot control."""
 
 from .sessions import append_event, write_json
-
-
-PHASES = (
-    "open_gripper", "approach_pick", "descend_pick", "grasp", "lift",
-    "verify_grasp", "transfer", "approach_place", "place", "release",
-    "retreat", "verify_place",
-)
+from .skills import PHASES
 
 
 def dry_run(folder, robot, part, fail_at=None):
