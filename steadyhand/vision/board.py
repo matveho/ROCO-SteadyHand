@@ -93,7 +93,7 @@ def detect_white_board_corners(
         raise RuntimeError(
             f"White component is too small for the task board ({len(xs)} px)"
         )
-    if xs.ptp() < 80 or ys.ptp() < 80:
+    if np.ptp(xs) < 80 or np.ptp(ys) < 80:
         raise RuntimeError("Detected white component does not span a plausible board")
 
     sums = xs + ys
