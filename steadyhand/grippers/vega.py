@@ -83,7 +83,10 @@ class VegaCanGripper:
 
     def open(self):
         self._require()
-        speed = _positive(self.config.get("open_speed_dps", 500), "gripper.open_speed_dps")
+        speed = int(round(_positive(
+            self.config.get("open_speed_dps", 500),
+            "gripper.open_speed_dps",
+        )))
         if self.scope == "both":
             return self._driver.both_open(speed=speed)
         return self._motor().open(speed=speed)
@@ -117,7 +120,7 @@ class VegaCanGripper:
         fraction = float(fraction)
         if not 0.0 <= fraction <= 1.0:
             raise ValueError("gripper fraction must be in [0, 1]")
-        speed = _positive(speed, "gripper speed")
+        speed = int(round(_positive(speed, "gripper speed")))
         if self.scope == "both":
             if not callable(getattr(self._driver, "both_move_to", None)):
                 raise TypeError("Onsite Grippers driver has no both_move_to()")
