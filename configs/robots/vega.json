@@ -138,8 +138,9 @@
     "scope": "left",
     "home_on_connect": true,
     "skip_home_verified": false,
-    "grip_current_a": 0.6,
-    "open_speed_dps": 500
+    "grip_current_a": 1,
+    "open_speed_dps": 500,
+    "grip_speed_dps": 240
   },
   "cameras": {
     "head": {
@@ -174,7 +175,7 @@
       "notes": "Both wrist cameras are enabled onsite. Verify wrist_a/wrist_b physical left-right mapping on the actual robot."
     }
   },
-  "notes": "Competition Vega dm/vgfcb66075ea-1u. Sep 27 physical verification: dexcontrol 0.5.0 move_to_joint_pos() moves joints bidirectionally; Pinocchio tip_l Cartesian -20 mm Z command moved physically down 20 mm. Working arm is left. Tracked compact FK/IK URDF reproduces the organizer competition arm/base/tip kinematics from dexmate-setup pinned commit 4be4d16140b25f730673d664b49c58280b07ef46; it intentionally contains no collision meshes. Fixed Lift=0 and torso_flip=0.22689280275926285 are organizer source-robot assumptions and must be rechecked if geometry changes. Gripper driver is vendored from the same organizer commit; 0.6 A is the organizer-documented object-grip default. Table TCP floor is recorded in configs/skills/vega.json. No general collision checking is implemented.",
+  "notes": "Competition Vega dm/vgfcb66075ea-1u. Sep 27 physical verification: dexcontrol 0.5.0 move_to_joint_pos() moves joints bidirectionally; Pinocchio tip_l Cartesian -20 mm Z command moved physically down 20 mm. Working arm is left. Tracked compact FK/IK URDF reproduces the organizer competition arm/base/tip kinematics from dexmate-setup pinned commit 4be4d16140b25f730673d664b49c58280b07ef46; it intentionally contains no collision meshes. Fixed Lift=0 and torso_flip=0.22689280275926285 are organizer source-robot assumptions and must be rechecked if geometry changes. Gripper driver is vendored from the same organizer commit; Organizer object-grip default is 0.6 A at 60 deg/s; onsite battery bring-up raised grip to 1.0 A at 240 deg/s after 0.6 A produced a loose grasp. Table TCP floor is recorded in configs/skills/vega.json. No general collision checking is implemented.",
   "allow_sdk_version_mismatch": false,
   "arm_joint_limits_rad": {
     "left": [
