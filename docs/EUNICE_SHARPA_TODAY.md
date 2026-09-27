@@ -1,5 +1,7 @@
 # EUNICE — Sharpa North Must-Do Today
 
+**Venue:** Exhibit Hall, COMP7. **Sharpa training: 2:00–3:00 PM.** Sponsor technicians are available throughout the afternoon, so continue asking them concrete interface questions after the formal session if needed.
+
 **Owner: Eunice**  
 **Robot: Sharpa North only**  
 **Goal for tonight:** remove the mystery around North and leave us with a minimal, real, tested hardware adapter.
