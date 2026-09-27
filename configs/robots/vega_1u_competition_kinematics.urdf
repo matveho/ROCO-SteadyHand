@@ -1,0 +1,67 @@
+<?xml version="1.0"?>
+<!--
+Kinematics-only Vega 1U competition model.
+Joint geometry and tip frames transcribed from intelligent-control-lab/dexmate-setup
+commit 4be4d16140b25f730673d664b49c58280b07ef46.
+No visual/collision meshes are included; this file is for FK/IK only.
+-->
+<robot name="vega_1u_competition_kinematics">
+  <link name="vega_1u"/>
+  <link name="vega_1u_base_link"/>
+  <joint name="root_joint" type="fixed"><parent link="vega_1u"/><child link="vega_1u_base_link"/><origin xyz="0 0 0" rpy="0 0 0"/></joint>
+
+  <link name="vega_1u_lift_link"/>
+  <joint name="Lift" type="prismatic"><parent link="vega_1u_base_link"/><child link="vega_1u_lift_link"/><origin xyz="0 0 0.01" rpy="0 0 1.57079"/><axis xyz="0 0 1"/><limit lower="0" upper="0.4" effort="1e9" velocity="0.05"/></joint>
+
+  <link name="torso_flip_link"/>
+  <joint name="torso_flip" type="revolute"><parent link="vega_1u_lift_link"/><child link="torso_flip_link"/><origin xyz="0 -0.06187 0.786" rpy="0 0 0"/><axis xyz="1 0 0"/><limit lower="0" upper="0.9999999" effort="1e9" velocity="0.1"/></joint>
+
+  <link name="arm_center"/>
+  <joint name="arm_center_j0" type="fixed"><parent link="torso_flip_link"/><child link="arm_center"/><origin xyz="0 0.03852 0.25982" rpy="0 0 -1.57079"/></joint>
+
+  <link name="vega_1u_L_arm_l1"/>
+  <joint name="L_arm_j1" type="revolute"><parent link="arm_center"/><child link="vega_1u_L_arm_l1"/><origin xyz="0 0.16946 0" rpy="0 0 0"/><axis xyz="0 1 0"/><limit lower="-3.071" upper="3.071" effort="150" velocity="2.4"/></joint>
+  <link name="L_arm_l2"/>
+  <joint name="L_arm_j2" type="revolute"><parent link="vega_1u_L_arm_l1"/><child link="L_arm_l2"/><origin xyz="0.04 0.06 0.0454" rpy="0 0 0"/><axis xyz="0 0 1"/><limit lower="-0.453" upper="1.5529999" effort="150" velocity="2.4"/></joint>
+  <link name="L_arm_l3"/>
+  <joint name="L_arm_j3" type="revolute"><parent link="L_arm_l2"/><child link="L_arm_l3"/><origin xyz="0.1644 0 -0.043" rpy="0 0 0"/><axis xyz="1 0 0"/><limit lower="-3.071" upper="3.071" effort="80" velocity="2.7"/></joint>
+  <link name="L_arm_l4"/>
+  <joint name="L_arm_j4" type="revolute"><parent link="L_arm_l3"/><child link="L_arm_l4"/><origin xyz="0.113 0.0433 0.06" rpy="0 0 0"/><axis xyz="0 1 0"/><limit lower="-3.071" upper="0.244" effort="80" velocity="2.7"/></joint>
+  <link name="L_arm_l5"/>
+  <joint name="L_arm_j5" type="revolute"><parent link="L_arm_l4"/><child link="L_arm_l5"/><origin xyz="0.1938 -0.0434 -0.0400001" rpy="0 0 0"/><axis xyz="1 0 0"/><limit lower="-3.071" upper="3.071" effort="25" velocity="2.7"/></joint>
+  <link name="vega_1u_L_arm_l6"/>
+  <joint name="L_arm_j6" type="revolute"><parent link="L_arm_l5"/><child link="vega_1u_L_arm_l6"/><origin xyz="0.0762 0.0319 0" rpy="0 0 0"/><axis xyz="0 1 0"/><limit lower="-1.396" upper="1.396" effort="25" velocity="2.7"/></joint>
+  <link name="L_arm_l7"/>
+  <joint name="L_arm_j7" type="revolute"><parent link="vega_1u_L_arm_l6"/><child link="L_arm_l7"/><origin xyz="0.065 -0.032 0.0319" rpy="0 0 0"/><axis xyz="0 0 1"/><limit lower="-1.378" upper="1.1169999" effort="25" velocity="2.7"/></joint>
+  <link name="L_arm_l8"/>
+  <joint name="L_arm_j8" type="fixed"><parent link="L_arm_l7"/><child link="L_arm_l8"/><origin xyz="0.11597 0 -0.032" rpy="0 1.57079 0"/></joint>
+  <link name="L_ee"/>
+  <joint name="L_ee_j0" type="fixed"><parent link="L_arm_l8"/><child link="L_ee"/><origin xyz="-0.0000001 0 0" rpy="0 0 -1.57079"/></joint>
+  <link name="L_ee_link_gripper_link"/>
+  <joint name="L_ee_fixed" type="fixed"><parent link="L_ee"/><child link="L_ee_link_gripper_link"/><origin xyz="-0.0000001 0.0000001 -0.0000001" rpy="0.0000062 0 3.1415863"/></joint>
+  <link name="tip_l"/>
+  <joint name="L_gripper_joint_tip" type="fixed"><parent link="L_ee_link_gripper_link"/><child link="tip_l"/><origin xyz="0 -0.015 0.198" rpy="3.1415927 0 1.57079"/></joint>
+
+  <link name="vega_1u_R_arm_l1"/>
+  <joint name="R_arm_j1" type="revolute"><parent link="arm_center"/><child link="vega_1u_R_arm_l1"/><origin xyz="0 -0.16946 0" rpy="3.1415927 0 0"/><axis xyz="0 1 0"/><limit lower="-3.071" upper="3.071" effort="150" velocity="2.4"/></joint>
+  <link name="R_arm_l2"/>
+  <joint name="R_arm_j2" type="revolute"><parent link="vega_1u_R_arm_l1"/><child link="R_arm_l2"/><origin xyz="0.04 0.06 -0.0454" rpy="3.1415927 0 0"/><axis xyz="0 0 1"/><limit lower="-1.5529999" upper="0.453" effort="150" velocity="2.4"/></joint>
+  <link name="R_arm_l3"/>
+  <joint name="R_arm_j3" type="revolute"><parent link="R_arm_l2"/><child link="R_arm_l3"/><origin xyz="0.1644 0 -0.043" rpy="0 0 0"/><axis xyz="1 0 0"/><limit lower="-3.071" upper="3.071" effort="80" velocity="2.7"/></joint>
+  <link name="R_arm_l4"/>
+  <joint name="R_arm_j4" type="revolute"><parent link="R_arm_l3"/><child link="R_arm_l4"/><origin xyz="0.113 0.0433 0.06" rpy="0 0 0"/><axis xyz="0 1 0"/><limit lower="-3.071" upper="0.244" effort="80" velocity="2.7"/></joint>
+  <link name="R_arm_l5"/>
+  <joint name="R_arm_j5" type="revolute"><parent link="R_arm_l4"/><child link="R_arm_l5"/><origin xyz="0.1938 -0.0434 -0.0400001" rpy="0 0 0"/><axis xyz="1 0 0"/><limit lower="-3.071" upper="3.071" effort="25" velocity="2.7"/></joint>
+  <link name="vega_1u_R_arm_l6"/>
+  <joint name="R_arm_j6" type="revolute"><parent link="R_arm_l5"/><child link="vega_1u_R_arm_l6"/><origin xyz="0.0762 -0.0319 0" rpy="3.1415927 0 0"/><axis xyz="0 1 0"/><limit lower="-1.396" upper="1.396" effort="25" velocity="2.7"/></joint>
+  <link name="R_arm_l7"/>
+  <joint name="R_arm_j7" type="revolute"><parent link="vega_1u_R_arm_l6"/><child link="R_arm_l7"/><origin xyz="0.065 -0.032 -0.0319" rpy="3.1415927 0 0"/><axis xyz="0 0 1"/><limit lower="-1.1169999" upper="1.378" effort="25" velocity="2.7"/></joint>
+  <link name="R_arm_l8"/>
+  <joint name="R_arm_j8" type="fixed"><parent link="R_arm_l7"/><child link="R_arm_l8"/><origin xyz="0.11597 0 -0.032" rpy="0 1.57079 0"/></joint>
+  <link name="R_ee"/>
+  <joint name="R_ee_j0" type="fixed"><parent link="R_arm_l8"/><child link="R_ee"/><origin xyz="-0.0000001 0 0" rpy="0 0 1.57079"/></joint>
+  <link name="R_ee_link_gripper_link"/>
+  <joint name="R_ee_fixed" type="fixed"><parent link="R_ee"/><child link="R_ee_link_gripper_link"/><origin xyz="0.0000001 -0.0000001 -0.0000001" rpy="0.0000062 0 0.0000062"/></joint>
+  <link name="tip_r"/>
+  <joint name="R_gripper_joint_tip" type="fixed"><parent link="R_ee_link_gripper_link"/><child link="tip_r"/><origin xyz="0 -0.015 0.198" rpy="3.1415927 0 1.57079"/></joint>
+</robot>
