@@ -1555,3 +1555,21 @@ Current competition-network workflow:
   the motion plugin runs as a normally named local Jetson process; it may be
   managed under another service/process name or run elsewhere in the robot
   control stack.
+
+
+2026-09-27 FIRST VERIFIED INTENTIONAL ARM MOTION:
+  Test:
+    left_arm J6 target = current +0.100 rad
+    move_to_joint_pos(..., velocity_scale=0.03)
+  Observed physically:
+    left hand/wrist moved slowly downward.
+  MotionHandle behavior:
+    wait(timeout=10s) raised TimeoutError after plugin had begun emitting status.
+    Therefore this was NOT a missing-plugin condition.
+  Consequence:
+    intentional arm motion via move_to_joint_pos() is now physically verified.
+    The 3% velocity scale can make a 0.10 rad move exceed a 10 s wait budget on
+    this competition unit. Do not equate this timeout with "no motion".
+  The script exited through finally and Robot shutdown completed.
+  Exact final J6 position was not printed because the timeout interrupted before
+  the post-motion readback; read current q before issuing another motion.
