@@ -73,8 +73,15 @@ def validate_skill(skill, *, require_calibrated=True):
         if key in skill and type(skill[key]) is not bool:
             raise ValueError(f"skill.{key}: must be a boolean")
 
+    runtime_pose_type = skill.get("runtime_pose_type", "object")
+    if runtime_pose_type not in ("object", "tcp"):
+        raise ValueError("skill.runtime_pose_type must be 'object' or 'tcp'")
+
     transform = skill.get("T_part_tcp")
-    if transform is not None:
+    if runtime_pose_type == "tcp":
+        # Explicitly measured TCP targets need no object->TCP transform.
+        pass
+    elif transform is not None:
         check_transform(transform, "skill.T_part_tcp")
     else:
         check_pose(
