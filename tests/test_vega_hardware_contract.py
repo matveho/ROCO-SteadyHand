@@ -1,7 +1,7 @@
 """SDK boundary tests: no dexcontrol, Pinocchio or CAN installation required.
 
-The arm fake uses the public dexcontrol 0.5.0 signatures, including the
-*component* blocking wait kwargs. It proves our calls/guards, not hardware
+The arm fake uses the public dexcontrol 0.5.0 move_to_joint_pos() contract and
+MotionHandle-style completion. It proves our calls/guards, not hardware
 tracking, force units, collision clearance, CAN timing or grasp success.
 """
 
@@ -79,14 +79,36 @@ class FakeArm:
             self.stamp += 1
         return self.stamp
 
-    # Exact 0.5.0 Arm signature, deliberately no **kwargs escape hatch.
-    def set_joint_pos(self, joint_pos, relative=False, wait_time=0.0,
-                      wait_kwargs=None, exit_on_reach=False, exit_on_reach_kwargs=None):
-        self.events.append(("set_joint_pos", tuple(joint_pos), relative, wait_time, wait_kwargs, exit_on_reach))
-        if self.error is not None:
-            raise self.error
-        if self.track:
-            self.q = list(joint_pos)
+    class _Handle:
+        def __init__(self, arm, target):
+            self.arm = arm
+            self.target = list(target)
+            self.state = "accepted"
+            self.message = ""
+            self.is_done = False
+            self.cancelled = False
+
+        def wait(self, timeout=None):
+            if self.arm.error is not None:
+                raise self.arm.error
+            if self.arm.track:
+                self.arm.q = self.target[:]
+            self.state = "finished"
+            self.is_done = True
+            return self.state
+
+        def cancel(self):
+            self.cancelled = True
+            self.state = "cancelled"
+            self.is_done = True
+            self.arm.events.append(("cancel",))
+
+    # Exact shape used by dexcontrol 0.5.0 ManagedJointComponent.
+    def move_to_joint_pos(self, joint_pos, *, relative=False, velocity_scale=None):
+        self.events.append(
+            ("move_to_joint_pos", tuple(joint_pos), relative, velocity_scale)
+        )
+        return self._Handle(self, joint_pos)
 
 
 class FakeRobot:
@@ -171,15 +193,13 @@ class AdapterContractTests(unittest.TestCase):
         self.assertEqual(adapter.observe().joint_positions, (0.0,) * 7)
         self.assertEqual(adapter.read_wrench(), (1, 2, 3, 4, 5, 6))
         adapter.move_tcp(Pose((0.25, 0.0, 0.0), (1, 0, 0, 0)), speed_scale=0.5)
-        calls = [event for event in self.events if event[0] == "set_joint_pos"]
+        calls = [event for event in self.events if event[0] == "move_to_joint_pos"]
         self.assertEqual(len(calls), 3)
         previous = 0.0
-        for _, q, relative, wait_time, wait_kwargs, early_exit in calls:
+        for _, q, relative, velocity_scale in calls:
             self.assertFalse(relative)
-            self.assertFalse(early_exit)
             self.assertLessEqual(abs(q[0] - previous), 0.12)
-            self.assertEqual(wait_kwargs, {"max_vel": 0.1, "control_hz": 100.0})
-            self.assertAlmostEqual(wait_time, abs(q[0] - previous) / 0.1 + 0.2)
+            self.assertEqual(velocity_scale, 0.5)
             previous = q[0]
         self.assertEqual(adapter.get_tcp_pose().position_m, (0.25, 0, 0))
         adapter.close()
@@ -187,9 +207,10 @@ class AdapterContractTests(unittest.TestCase):
         self.assertIsNone(adapter._robot)
 
     def test_malformed_local_config_fails_before_robot(self):
-        for key, value in (("step_wait_time_s", 0), ("step_wait_time_s", -1),
-                           ("control_hz", 99), ("max_step_rad", math.nan),
-                           ("joint_timeout_s", math.inf), ("joint_reached_tolerance_rad", None)):
+        for key, value in (("max_step_rad", math.nan),
+                           ("max_total_delta_rad", 0),
+                           ("joint_timeout_s", math.inf),
+                           ("joint_reached_tolerance_rad", None)):
             with self.subTest(key=key, value=value):
                 cfg = config()
                 cfg["motion"][key] = value
@@ -239,7 +260,7 @@ class AdapterContractTests(unittest.TestCase):
         target[1] = -0.41
         with self.assertRaisesRegex(ValueError, "Joint 2"):
             adapter.move_joints(target)
-        self.assertFalse(any(item[0] == "set_joint_pos" for item in self.events))
+        self.assertFalse(any(item[0] == "move_to_joint_pos" for item in self.events))
 
     def test_invalid_state_after_connect_never_commands(self):
         adapter = self.connect()
@@ -247,7 +268,7 @@ class AdapterContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "finite"):
             adapter.move_joints([0.1] * 7)
         self.assertTrue(self.robot.stopped)
-        self.assertFalse(any(item[0] == "set_joint_pos" for item in self.events))
+        self.assertFalse(any(item[0] == "move_to_joint_pos" for item in self.events))
 
     def test_motion_failure_and_systemexit_activate_estop(self):
         for error in (RuntimeError("vendor failed"), SystemExit(0), KeyboardInterrupt()):
@@ -264,7 +285,7 @@ class AdapterContractTests(unittest.TestCase):
         self.robot.left_arm.track = False
         with self.assertRaisesRegex(RuntimeError, "timeout"):
             adapter.move_joints([0.3, 0, 0, 0, 0, 0, 0])
-        self.assertEqual(sum(event[0] == "set_joint_pos" for event in self.events), 1)
+        self.assertEqual(sum(event[0] == "move_to_joint_pos" for event in self.events), 1)
         self.assertTrue(self.robot.stopped)
 
     def test_frozen_state_stops_before_second_segment(self):
@@ -272,7 +293,7 @@ class AdapterContractTests(unittest.TestCase):
         self.robot.left_arm.frozen = True
         with self.assertRaisesRegex(RuntimeError, "timestamp"):
             adapter.move_joints([0.3, 0, 0, 0, 0, 0, 0])
-        self.assertEqual(sum(event[0] == "set_joint_pos" for event in self.events), 1)
+        self.assertEqual(sum(event[0] == "move_to_joint_pos" for event in self.events), 1)
 
     def test_gripper_halt_failure_does_not_suppress_estop(self):
         adapter = self.connect()
