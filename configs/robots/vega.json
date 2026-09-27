@@ -136,7 +136,8 @@
     "scope": "left",
     "home_on_connect": true,
     "skip_home_verified": false,
-    "grip_current_a": 0.6
+    "grip_current_a": 0.6,
+    "open_speed_dps": 500
   },
   "cameras": {
     "head": {
