@@ -99,3 +99,23 @@ The submitted policy receives exact PartTarget information and simulator snap
 logic. Real hardware must replace those conveniences with perception/board
 registration, measured transforms, real grasp/insertion behavior, explicit
 success verification and recovery.
+
+
+## Vega camera layer
+
+steadyhand/cameras/vega.py is intentionally usable without the motion-control
+adapter. It implements:
+
+- head ZED X Mini rectified left/right RGB and depth acquisition;
+- both Sony ISX031 wrist RGB streams through WristCameras;
+- runtime intrinsic extraction from get_camera_info();
+- depth-to-XYZ reconstruction when a point cloud is needed.
+
+The head is configured for 1920x1200 at 30 fps; competition guidance reports
+approximately 24 Hz observed publication. The point cloud is reconstructed from
+depth and runtime intrinsics rather than relying on a native point-cloud stream.
+
+The wrist API exposes wrist_a and wrist_b. Do not map those labels to physical
+left/right until verified on the competition unit.
+
+Head and wrist timestamps are not assumed to share a clock or exposure trigger.
