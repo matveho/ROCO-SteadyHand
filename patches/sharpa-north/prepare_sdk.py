@@ -50,20 +50,25 @@ def check_paths(sdk, workspace):
 
 
 def ignored(directory, names):
-    return set(names) & SKIP
+    return {name for name in names if skip_name(name)}
+
+
+def skip_name(name):
+    return (name in SKIP or name.endswith('.log') or '.log.' in name or
+            (name.startswith('motor_mem_dump_') and name.endswith('.json')))
 
 
 def check_links(sdk):
     """Reject links that could send writes outside the copied SDK."""
     for directory, folders, files in os.walk(sdk, followlinks=False):
-        folders[:] = [name for name in folders if name not in SKIP]
-        for name in folders + [name for name in files if name not in SKIP]:
+        folders[:] = [name for name in folders if not skip_name(name)]
+        for name in folders + [name for name in files if not skip_name(name)]:
             path = Path(directory) / name
             if path.is_symlink():
                 target = path.resolve(strict=True)
                 if target != sdk and sdk not in target.parents:
                     raise ValueError("External SDK symlink needs review: " + str(path.relative_to(sdk)))
-                if any(part in SKIP for part in target.relative_to(sdk).parts):
+                if any(skip_name(part) for part in target.relative_to(sdk).parts):
                     raise ValueError("SDK symlink points into an excluded directory")
 
 

@@ -48,8 +48,9 @@ runs the 271 offline cases and compiles a candidate plugin. It:
    SDK symlinks that escape the source tree. It does not resolve external links by
    guessing; review those dependencies separately.
 3. Copies the SDK using independent files, excluding `.git`, `.backups`, logs,
-   recordings and Python caches. Internal absolute symlinks are relocated into
-   the copy. No hardlinks connect the copy to the original.
+   recordings, loose log files, motor memory dumps and Python caches. Internal
+   absolute symlinks are relocated into the copy. No hardlinks connect the copy
+   to the original.
 4. Applies the patch without fuzzy matching and verifies the resulting source
    hashes. Compiler/linker paths referring to the original SDK are remapped to
    the copy in memory. Original build files remain unchanged.

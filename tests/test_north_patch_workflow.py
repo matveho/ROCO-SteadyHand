@@ -129,6 +129,18 @@ class NorthWorkspaceTests(unittest.TestCase):
             self.assertFalse((self.workspace / "sdk" / name).exists())
             self.assertTrue((self.sdk / name / "unrelated.txt").exists())
 
+    def test_loose_logs_and_motor_dumps_stay_out_of_copy(self):
+        excluded = ('motor_debug.log', 'north.log.INFO.20260101',
+                    'motor_mem_dump_20260101_120000.json')
+        for name in excluded:
+            (self.sdk / name).write_text('runtime data')
+        (self.sdk / 'settings.json').write_text('{}')
+        self.prepare()
+        for name in excluded:
+            self.assertFalse((self.workspace / 'sdk' / name).exists())
+            self.assertTrue((self.sdk / name).exists())
+        self.assertTrue((self.workspace / 'sdk/settings.json').is_file())
+
     def test_bad_patch_never_changes_original_or_marks_success(self):
         (self.package / "0001-fix-arm-index-and-validation.patch").write_text(
             "--- a/" + self.relative + "\n+++ b/" + self.relative + "\n"
