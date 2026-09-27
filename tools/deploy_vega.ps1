@@ -42,7 +42,7 @@ function Invoke-Checked {
     }
 }
 
-$Password = $env:DEXMATE_PASSWORD
+$Password = "hello-dex"
 $AskPassPath = $null
 $OldAskPass = $env:SSH_ASKPASS
 $OldAskPassRequire = $env:SSH_ASKPASS_REQUIRE
