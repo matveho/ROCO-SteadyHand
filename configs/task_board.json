@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "position_units": "m",
+  "quaternion_order": "wxyz",
+  "pose_frame": null,
+  "notes": "Part order and release labels describe the released simulation. Confirm onsite order and physical success criteria. Poses are per-session inputs; leave unknown values null.",
+  "part_order": ["gear_20teeth", "gear_60teeth", "rod_16mm", "bolt_8mm", "usb_a", "hdmi", "pin", "battery_size1", "battery_size5"],
+  "parts": {
+    "gear_20teeth": {"simulation_release_mode": "open", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "gear_60teeth": {"simulation_release_mode": "open", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "rod_16mm": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "bolt_8mm": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "usb_a": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "hdmi": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "pin": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "battery_size1": {"simulation_release_mode": "open", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "battery_size5": {"simulation_release_mode": "open", "pick_pose": null, "place_pose": null, "verification_method": null}
+  }
+}

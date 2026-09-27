@@ -1,0 +1,7 @@
+/llm/
+/runs/
+/data/*
+!/data/README.md
+__pycache__/
+*.py[cod]
+/.venv/

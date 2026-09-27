@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "robot_id": "vega",
+  "robot_name": null,
+  "working_arm": null,
+  "host": null,
+  "sdk_version": null,
+  "urdf_path": null,
+  "joint_names": [],
+  "joint_limits_rad": null,
+  "max_joint_speed_rad_s": null,
+  "gripper_driver_path": null,
+  "notes": "Fill from the actual competition robot. The current toolkit does not connect to hardware."
+}

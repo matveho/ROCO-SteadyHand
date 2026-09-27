@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "robot_id": "sharpa",
+  "measured_at": null,
+  "base_frame": null,
+  "camera_frame": null,
+  "wrist_frame": null,
+  "tcp_frame": null,
+  "T_base_camera": null,
+  "T_base_board": null,
+  "T_wrist_tcp": null,
+  "notes": "4x4 transforms, translation in metres. Confirm the hand/tool frame with the actual robot model."
+}
