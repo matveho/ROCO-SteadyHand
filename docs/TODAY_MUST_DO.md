@@ -1,125 +1,92 @@
-# TODAY — Must-Do Checklist (Sep 27)
+# TODAY — Split Ownership (Sep 27)
 
-Goal: leave today with **both robots controllable from our code**, one repeatable Vega part working end-to-end, and the Sharpa control contract fully captured. Do not spend time on cleanup, refactors, or model training until these are true.
+Two people, two robots. **Do not both debug the same platform today.**
 
-Official onsite schedule today: prep 10:00–14:00, **Sharpa bootcamp 14:00–15:00**, prep 15:00–16:00, **DexMate bootcamp 16:00–17:00**, prep 17:00–20:00.
+## Matvey → DexMate Vega U
 
-## 1. Before bootcamps — repo + bring-up ready
+Primary checklist:
 
-- [ ] Pull latest `main`; run `python onsite.py doctor` and tests.
-- [ ] Run `/usr/bin/python3 tools/vega_preflight.py` on the Vega computer if accessible.
-- [ ] Have `docs/BOOTCAMP.md`, `docs/VEGA_LIVE.md`, and this checklist open.
-- [ ] Copy `configs/runtime_targets.template.json` to a working targets file.
-- [ ] Prepare one session folder and start recording every SDK version, path, frame name, command, failure, and successful setting.
-- [ ] Decide the first Vega success target: **one easy open-release part** (battery first unless hardware geometry says otherwise).
+**[MATVEY_DEXMATE_TODAY.md](./MATVEY_DEXMATE_TODAY.md)**
 
-## 2. Sharpa bootcamp 14:00–15:00 — do not leave without the control contract
+Mission:
 
-- [ ] Obtain/copy the **North SDK/control example, URDF/robot description, and competition runner/example**.
-- [ ] Record exact environment/setup: Python, packages, startup/homing, network/host, command process.
-- [ ] Record exact **joint/state/action ordering, units, limits, command rate, and control semantics**.
-- [ ] Record Wave hand command representation, joint ordering, limits, and tactile API.
-- [ ] Record camera APIs/streams and timestamps.
-- [ ] Physically identify **e-stop + software stop + recovery procedure**.
-- [ ] Run vendor example unmodified.
-- [ ] Read state only.
-- [ ] Execute **one small safe arm motion**.
-- [ ] Execute **one simple hand open/close or posture command**.
-- [ ] Immediately fill `steadyhand/adapters/sharpa.py` with the confirmed API; do not leave it as a guessed stub.
-- [ ] Save all organizer/vendor files locally before relying on venue internet.
+```text
+make the full Vega stack physically real
+→ sensors
+→ frames
+→ FK/IK
+→ joint control
+→ CAN gripper
+→ target generation
+→ one repeatable part
+→ then expand score
+```
 
-**Sharpa exit criterion today:** our code can at minimum connect, read state, stop, send one safe arm command, and send one hand command.
+End-of-day minimum: one open-release part runs end-to-end repeatedly, with the working calibration/config/targets saved.
 
-## 3. DexMate bootcamp 16:00–17:00 — resolve every remaining Vega unknown
+## Eunice → Sharpa North
 
-- [ ] Confirm exact `ROBOT_NAME`, installed `dexcontrol` version, and canonical vendor example.
-- [ ] Confirm working arm and healthy gripper(s).
-- [ ] Confirm gripper-equipped URDF path and **actual EE/TCP frame name**.
-- [ ] Run/inspect joint-dump tool; record current joint order, limits, and any live Lift/torso value needed by IK.
-- [ ] Confirm a safe nonzero `set_joint_pos(..., wait_time=...)` bring-up value.
-- [ ] Demonstrate e-stop/software stop and recovery.
-- [ ] Inspect `/home/dexmate/gripper.py`; implement the **per-side gripper API** if available.
-- [ ] Verify CAN setup and homing behavior.
-- [ ] Confirm wrench read works; determine or empirically calibrate frame/units enough to choose a conservative relative force threshold.
+Primary checklist:
 
-## 4. Vega no-motion validation — must pass before arm commands
+**[EUNICE_SHARPA_TODAY.md](./EUNICE_SHARPA_TODAY.md)**
 
-- [ ] Head camera probe works: left RGB, right RGB, depth, runtime intrinsics.
-- [ ] Wrist camera probe works; map `wrist_a` / `wrist_b` to physical wrists.
-- [ ] Capture a full RGB-D + wrist snapshot with `tools/vega_capture_snapshot.py`.
-- [ ] Run `tools/vega_ik_check.py` from the **actual current 7-joint state**.
-- [ ] Verify FK pose is physically plausible.
-- [ ] Verify a +1 cm IK target returns a nearby joint solution.
-- [ ] Resolve every non-arm joint the IK chain requires; never leave Pinocchio using an assumed neutral value.
+Mission:
 
-**Stop if FK/IK frame semantics are not clearly correct. Do not compensate with offsets by trial-and-error yet.**
+```text
+turn North from an unknown platform into a known control contract
+→ get SDK + full robot model
+→ map state/action
+→ prove stop
+→ prove one arm command
+→ prove one hand command
+→ implement real Sharpa adapter
+```
 
-## 5. Vega first physical motion — isolate layers
+End-of-day minimum: our code can connect/read state/stop/send one safe arm command/send one safe hand command, and every important interface fact is documented.
 
-- [ ] With engineer/e-stop ready, command **one tiny unobstructed joint change**.
-- [ ] Return to the known safe pose.
-- [ ] Validate gripper homing, open, current-limited grip, and release with arm stationary.
-- [ ] Implement/verify simple grasp detection from gripper position/status/current if the driver supports it.
-- [ ] Confirm `VegaAdapter` state → command → feedback path behaves as expected.
+## Coordination points only
 
-## 6. Calibration/perception — produce usable runtime targets
+Meet briefly after each bootcamp / major breakthrough and exchange only:
 
-- [ ] Establish/verify `T_base_camera` and the board frame.
-- [ ] Produce a current **robot-base pick pose and place pose** for the first easy part.
-- [ ] Replace legacy fixed-world EE offset with a calibrated `T_part_tcp` for that part as soon as practical.
-- [ ] Confirm the generated TCP pose visually/kinematically before descending to the object.
-- [ ] Save the working target/calibration snapshot in the session.
+1. working commit;
+2. what is now proven;
+3. current blocker;
+4. next experiment;
+5. any shared-code change needed.
 
-Do not attempt all nine objects before one target pipeline is trustworthy.
+Avoid editing the same shared files simultaneously. Robot-specific work should stay primarily in:
 
-## 7. Get one Vega part reliable today
+```text
+Matvey:
+  steadyhand/adapters/vega.py
+  steadyhand/cameras/vega.py
+  steadyhand/grippers/vega.py
+  steadyhand/kinematics/*
+  configs/robots/vega.json
+  configs/skills/vega.json
+  tools/vega_*
 
-- [ ] Run `tools/vega_run_part.py` on the easy open-release part.
-- [ ] Fix only the first failed layer: target pose → IK → trajectory → grasp → place.
-- [ ] Repeat until the same part succeeds **at least 5 consecutive times** without manual intervention.
-- [ ] Record failures and tune only measured parameters.
-- [ ] Add recovery: failed grasp → retract/retry once; persistent failure → skip rather than jam.
+Eunice:
+  steadyhand/adapters/sharpa.py
+  configs/robots/sharpa.json
+  tools/sharpa_*
+  Sharpa-specific docs/config added today
+```
 
-**Vega exit criterion #1:** one easy part is boringly repeatable.
+If either person needs to change shared modules such as:
 
-## 8. Expand score, not complexity
+```text
+steadyhand/adapters/base.py
+steadyhand/config.py
+steadyhand/models.py
+steadyhand/executor.py
+```
 
-After the first reliable part:
+tell the other person first to avoid conflicting edits.
 
-- [ ] Bring up the other easy/open-release parts first: batteries/gears.
-- [ ] Protect anything already reliable; do not destabilize good parts for marginal gains.
-- [ ] Validate a safe return-home joint pose and use it between parts to stabilize IK branches.
-- [ ] Run a short multi-part sequence and confirm failures do not destroy the rest of the run.
+## Tonight's shared finish line
 
-## 9. Physical insertion — only after open-release parts work
-
-- [ ] Verify/debias wrench signal and set a conservative **relative** force limit.
-- [ ] Pick one insertion part and validate pre-insert → small XY search → controlled Z descent → retract-on-contact.
-- [ ] Add a real success criterion; **TCP reaching commanded depth alone is not enough**.
-- [ ] Test repeated insertions before adding the remaining connector parts.
-- [ ] Never defeat the force guard just to make the sequence continue.
-
-## 10. Before leaving tonight
-
-- [ ] Vega: at least one repeatable physical part, plus saved working config/targets/calibration.
-- [ ] Sharpa: confirmed control API + state read + arm command + hand command implemented in adapter.
-- [ ] Commit all confirmed code/config changes.
-- [ ] Back up `runs/`, calibration, captured images, vendor examples/SDKs, URDFs, and notes to a second machine/location.
-- [ ] Write the **single current blocker** for each robot and the first experiment for tomorrow morning.
-- [ ] Re-run CI/tests after final commit.
-
-## Do NOT spend today on
-
-- broad refactoring or code prettification;
-- training a new model before hardware control is proven;
-- full automatic perception before one manual/semiautomatic target path works;
-- speed optimization before reliability;
-- tuning all nine parts in parallel;
-- guessing missing SDK/frame/control values;
-- making Sharpa a tomorrow problem — **both platforms count 1:1**.
-
-## End-of-day definition of success
-
-1. **Vega:** sensors + FK/IK + joint control + gripper + one repeatable part are real and logged.
-2. **Sharpa:** full control contract is known and a minimal live adapter has performed a safe arm and hand command.
-3. **Tomorrow starts with tuning/scaling**, not figuring out how either robot is controlled.
+- [ ] Vega: full lower stack proven + one repeatable physical part.
+- [ ] Sharpa: full control contract known + minimal live adapter proven.
+- [ ] Both: vendor files, robot descriptions, configs, logs, and working commits backed up.
+- [ ] Both: one clearly written blocker + first experiment for tomorrow.
