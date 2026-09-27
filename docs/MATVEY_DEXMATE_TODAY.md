@@ -36,6 +36,45 @@ The day is successful if this is no longer a diagram: **at least one easy part w
 
 ---
 
+
+## LIVE VERIFIED STATUS — Sep 27
+
+The following are no longer open questions:
+
+- [x] `ROBOT_NAME=dm/vgfcb66075ea-1u`
+- [x] hostname `vega-1u`, laptop-facing Ethernet address `192.168.50.20`
+- [x] Conda Python 3.13 contains `dexcontrol 0.5.0`
+- [x] robot reports model `vega_1u`, firmware/system `0.5.1`
+- [x] live components are left arm, right arm, head, e-stop, heartbeat
+- [x] torso/chassis are absent as live control components
+- [x] left/right 7-joint names, ordering, and limits match our config
+- [x] software/physical e-stop state can be read
+- [x] live arm config reports `default_control_hz=100`
+- [x] installed gripper URDF:
+  `/home/dexmate/miniconda3/lib/python3.13/site-packages/dexmate_urdf/robots/humanoid/vega_1u/vega_1u_gripper.urdf`
+- [x] `move_to_joint_pos(..., velocity_scale=...)` uses the robot-server motion
+  plugin; a left-arm current-pose command at `velocity_scale=0.05` returned
+  `finished`
+- [x] SteadyHand VegaAdapter has been migrated to this motion-plugin path
+
+Still unresolved and therefore still gated:
+
+- [ ] working arm
+- [ ] physical `Lift` and `torso_flip` model values
+- [ ] final base and EE/TCP frames
+- [ ] actual competition gripper driver path/CAN procedure
+- [ ] gripper current/homing state
+- [ ] joint readback tolerance and motion timeout
+- [ ] Cartesian FK/IK validation
+- [ ] cameras/calibration/runtime targets
+
+Operational notes:
+- run arm/control code with Conda `python3`
+- use `/usr/bin/python3` only where the wrist-camera/GStreamer stack requires it
+- direct `import dexmotion` segfaulted onsite; do not use it for inspection
+- Vega did not have GitHub connectivity on the robot Ethernet; successful
+  workflow is GitHub -> laptop Wi-Fi -> SCP -> Vega Ethernet/SSH
+
 ## 0. Rules for today
 
 1. **Fix the first broken layer only.** Do not tune grasping if FK is wrong.
@@ -84,25 +123,25 @@ Do this before serious motion.
 
 Write the answers directly into your notes/config.
 
-- [ ] Exact `ROBOT_NAME`
-- [ ] Confirm installed `dexcontrol` version is `0.5.0` or record the actual version
+- [x] Exact `ROBOT_NAME`: `dm/vgfcb66075ea-1u`
+- [x] Installed `dexcontrol` version: `0.5.0`
 - [ ] Canonical vendor Python example for arm state and joint-position motion
 - [ ] Which physical arm should we use?
 - [ ] Which gripper(s) are healthy?
-- [ ] Exact gripper-equipped URDF path
+- [x] Exact gripper-equipped URDF path recorded above
 - [ ] Exact EE/TCP frame name in that URDF
-- [ ] Exact 7 arm joint names/order
+- [x] Exact 7 arm joint names/order verified for both arms
 - [ ] Any non-arm movable joints in the EE kinematic chain, especially Lift/torso-like joints
 - [ ] Their **actual physical values**
-- [ ] Safe nonzero `set_joint_pos(..., wait_time=...)` value for bring-up
+- [x] Do not use wait-time interpolation. Use `move_to_joint_pos(..., velocity_scale=...)`; current-pose motion-plugin test passed at 0.05.
 - [ ] Physical e-stop
-- [ ] Software stop
+- [x] Software e-stop state/API identified; activation/recovery behavior still needs a deliberate supervised test
 - [ ] Recovery after e-stop
 - [ ] What happens if Python crashes mid-command?
 - [ ] Exact CAN interface/startup command for grippers
 - [x] Per-side gripper API exists in the organizer-linked driver (`g.left` / `g.right`); verify the same file/API is installed on the competition unit
 - [ ] Wrench units/reference frame if vendor knows them
-- [ ] Whether code should run directly on the Jetson or from a workstation
+- [x] Run physical control on the Jetson; operate it from the laptop over SSH
 
 ### Do not leave the bootcamp with vague answers
 
@@ -131,12 +170,11 @@ home required after power cycle: yes
 From the repo root:
 
 ```bash
-git pull
 git status
 git rev-parse HEAD
-python onsite.py doctor
-python onsite.py check-config --robot vega
-/usr/bin/python3 tools/vega_preflight.py
+python3 onsite.py doctor
+python3 onsite.py check-config --robot vega
+python3 tools/vega_sdk_probe.py --confirm-head-motion
 ```
 
 - [ ] Record the current Git commit.
@@ -146,8 +184,8 @@ python onsite.py check-config --robot vega
 ## Head camera
 
 ```bash
-export ROBOT_NAME=<actual-name>
-/usr/bin/python3 tools/vega_head_probe.py
+export ROBOT_NAME=dm/vgfcb66075ea-1u
+python3 tools/vega_head_probe.py
 ```
 
 Confirm:
@@ -199,7 +237,7 @@ Use the existing robot joint inspection tool/vendor example to read the actual q
 Then run **offline/no motion**:
 
 ```bash
-/usr/bin/python3 tools/vega_ik_check.py \
+python3 tools/vega_ik_check.py \
   --urdf <actual-gripper-urdf> \
   --ee-frame <verified-frame> \
   --arm <left-or-right> \
@@ -245,7 +283,7 @@ current q
 → current q + tiny safe change in ONE unobstructed joint
 ```
 
-- [ ] Low speed / conservative wait time.
+- [ ] Use the robot-server motion plugin at low `velocity_scale` (first intentional motion: 0.05).
 - [ ] Observe physical direction.
 - [ ] Confirm reported joint state follows command.
 - [ ] Return to the original safe q.
@@ -423,10 +461,11 @@ Run:
   --part battery_size1 \
   --operator Matvey \
   --working-arm <left-or-right> \
-  --robot-name '<actual-name>' \
+  --robot-name 'dm/vgfcb66075ea-1u' \
   --urdf <actual-gripper-urdf> \
   --ee-frame <actual-frame> \
-  --step-wait <verified-value> \
+  --joint-tolerance <verified-software-tolerance> \
+  --joint-timeout <verified-timeout> \
   --gripper-scope <left-or-right> \
   --confirm-head-motion \
   --confirm-physical-motion
@@ -627,7 +666,8 @@ DEXCONTROL VERSION:
 URDF:
 EE FRAME:
 FIXED CHAIN JOINT VALUES:
-STEP WAIT:
+MOTION API: move_to_joint_pos / velocity_scale
+JOINT TOLERANCE + TIMEOUT:
 GRIPPER API:
 SAFE HOME Q:
 CAMERA MAPPING:
