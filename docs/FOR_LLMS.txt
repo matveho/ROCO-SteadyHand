@@ -1859,3 +1859,15 @@ Current competition-network workflow:
   camera-service/daemon state problem rather than assuming a cable failure.
   Next diagnostic: inspect nvargus-daemon and ZEDX_Daemon state/logs before
   restarting services. Do not revert the depth=true change yet.
+
+
+2026-09-27 ARGUS CRASH ROOT-CAUSE DETAIL:
+  journalctl showed the pre-restart nvargus-daemon had an outstanding dexsensor
+  client/session, reported Device 0 already allocated, then the dexsensor client
+  terminated abnormally. nvargus-daemon subsequently logged cleanup of outstanding
+  requests/queues/sessions/streams/buffers and itself exited with SIGSEGV.
+  systemd immediately restarted nvargus-daemon successfully at 02:24:21 and it is
+  now listening normally. Therefore the dexsensor attempt that began during the
+  Argus crash/restart window can legitimately see CAMERA NOT DETECTED. Before
+  escalating to cable/hardware diagnosis, retry head_camera once against the now
+  stable fresh nvargus-daemon without restarting Argus again.
