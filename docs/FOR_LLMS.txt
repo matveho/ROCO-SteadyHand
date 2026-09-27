@@ -1883,3 +1883,30 @@ Current competition-network workflow:
   Immediate perception path is rectified left/right stereo RGB plus runtime
   camera_info; depth can be reconstructed in our process if necessary. Keep the
   system head_camera stream depth=false while using this fallback.
+
+
+2026-09-27 MANUAL B9 CAMERA SETUP CROSS-CHECK (SOURCE ROBOT REFERENCE):
+  User supplied manual section "B9 Head + wrist camera setup", recorded
+  2026-09-15 for source robot dm/vg3eb20f25bb-1u on the same kernel family
+  5.15.185-tegra. Treat these as SOURCE_ROBOT_REFERENCE until verified on our
+  competition serial dm/vgfcb66075ea-1u.
+  The manual says the tested source-robot camera stack used:
+    - Head ZED X Mini through ZED Link Duo / MAX96712 on Jetson CAM0.
+    - Two ISX031 wrist cameras through MAX9296A on CAM1.
+    - /etc/dexmate/dexsensor/default.toml with head enabled, HD1200, configured
+      30 fps, NEURAL depth, and left/right/depth streams enabled.
+    - dexsensor.service as the normal publisher for the head camera.
+    - wrist-camera-init.service for wrist initialization; restart that service
+      rather than unloading camera kernel modules.
+    - Do NOT hot-unload nvhost_isp5; the manual records a kernel panic on unload.
+  The source robot measured about 15.1 fps per head RGB stream and 15.05 fps
+  NEURAL depth at HD1200 despite a 30 fps configured rate.
+  Our competition robot currently differs materially:
+    - live default.toml observed SVGA, enabled=false, depth=false before edits;
+    - manual dexsensor launch with NEURAL depth fails because TensorRT is not
+      found and reports compiled ZED SDK 5.2.2 / runtime 5.2.3;
+    - therefore do not assume the source robot boot/initrd/software state was
+      reproduced on this serial.
+  Also: the RGB-only SteadyHand fallback was committed on main, but an onsite
+  "unrecognized arguments: --rgb-only" means the robot checkout had not yet
+  pulled/deployed that commit.
