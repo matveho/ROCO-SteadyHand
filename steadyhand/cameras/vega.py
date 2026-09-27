@@ -162,6 +162,16 @@ def intrinsics_from_camera_info(camera_info) -> tuple[float, float, float, float
         raise ValueError("camera_info is required")
 
     if isinstance(camera_info, Mapping):
+        # Live DexSensor ZED info nests rectified intrinsics under
+        # camera_info["intrinsics"]["left"].
+        nested = camera_info.get("intrinsics")
+        if isinstance(nested, Mapping):
+            left = nested.get("left")
+            if isinstance(left, Mapping) and all(
+                key in left for key in ("fx", "fy", "cx", "cy")
+            ):
+                return tuple(float(left[key]) for key in ("fx", "fy", "cx", "cy"))
+
         # NumPy arrays have no scalar truth value. Camera-info commonly uses
         # one, so never select K with boolean `or`.
         k = camera_info.get("K")
