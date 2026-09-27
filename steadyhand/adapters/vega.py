@@ -189,6 +189,20 @@ class VegaAdapter(RobotAdapter):
         if not (0 < float(speed_scale) <= 1.0):
             raise ValueError("speed_scale must be in (0, 1]")
 
+        limits = (self.config.get("arm_joint_limits_rad") or {}).get(
+            self.config["working_arm"]
+        )
+        if limits:
+            if len(limits) != 7:
+                raise ValueError("Configured arm joint limits must contain 7 pairs")
+            for index, (value, bound) in enumerate(zip(target, limits), 1):
+                lo, hi = (float(bound[0]), float(bound[1]))
+                if not lo <= value <= hi:
+                    raise ValueError(
+                        f"Joint {index} target {value:.4f} rad outside "
+                        f"[{lo:.4f}, {hi:.4f}]"
+                    )
+
         current = tuple(float(x) for x in self._arm.get_joint_pos())
         delta = [b - a for a, b in zip(current, target)]
         worst = max(abs(x) for x in delta)
