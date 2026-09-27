@@ -47,6 +47,13 @@ contacts hardware and never claims physical success.
 
 See docs/ONSITE.md and docs/ARRIVAL.md.
 
+## North SDK patches
+
+The optional [North arm-index fix](patches/sharpa-north/README.md) is stored as a
+reviewable patch with offline tests and a helper that builds in a separate SDK
+copy. The original organizer SDK remains unchanged. These tools do not start a
+controller or resolve physical joint-tracking errors.
+
 
 ## Vega live stack
 

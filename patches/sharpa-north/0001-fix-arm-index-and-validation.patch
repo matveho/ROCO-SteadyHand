@@ -1,0 +1,67 @@
+--- a/include/sharpa/plugins/north_controller.h
++++ b/include/sharpa/plugins/north_controller.h
+@@ -223,7 +223,7 @@
+     bool shouldPublishInferAction(OperationMode current_mode, ActionSwitch action_switch);
+     bool shouldPublishTeleopAction(OperationMode current_mode, ActionSwitch action_switch);
+     bool isDaggerTransition();
+-    void extractActions(const proto::UhrActionBundle& action_bundle, float action_leg[5], float action_left_arm[7],
++    bool extractActions(const proto::UhrActionBundle& action_bundle, float action_leg[5], float action_left_arm[7],
+                         float action_right_arm[7], float action_head[2]);
+     void updateActionsFromChecker(proto::UhrActionBundle& action_bundle);
+ 
+--- a/src/plugins/north_controller.cpp
++++ b/src/plugins/north_controller.cpp
+@@ -596,9 +596,22 @@
+     action_cache_time_ = std::chrono::steady_clock::now();
+ }
+ 
+-void NorthController::extractActions(const proto::UhrActionBundle& action_bundle, float action_leg[5],
++bool NorthController::extractActions(const proto::UhrActionBundle& action_bundle, float action_leg[5],
+                                      float action_left_arm[7], float action_right_arm[7], float action_head[2])
+ {
++    // A present arm must contain exactly seven finite joint positions.
++    // Validate both arms before writing any output or publishing any part of the bundle.
++    const auto valid_arm = [](const proto::Arm& arm) {
++        const auto& positions = arm.joint().position();
++        return positions.size() == 7 &&
++               std::all_of(positions.begin(), positions.end(), [](float value) { return std::isfinite(value); });
++    };
++    if ((action_bundle.has_left_arm() && !valid_arm(action_bundle.left_arm())) ||
++        (action_bundle.has_right_arm() && !valid_arm(action_bundle.right_arm())))
++    {
++        return false;
++    }
++
+     // 倒序读取当前的关节指令，倒序的原因是FK需要
+     auto motor_action_msg = action_bundle.motor();
+     int n = motor_action_msg.commands_size();
+@@ -616,12 +629,13 @@
+     }
+     for (int i = 0; i < action_bundle.left_arm().joint().position_size(); i++)
+     {
+-        action_left_arm[7 - i] = action_bundle.left_arm().joint().position(i);
++        action_left_arm[6 - i] = action_bundle.left_arm().joint().position(i);
+     }
+     for (int i = 0; i < action_bundle.right_arm().joint().position_size(); i++)
+     {
+-        action_right_arm[7 - i] = action_bundle.right_arm().joint().position(i);
+-    }
++        action_right_arm[6 - i] = action_bundle.right_arm().joint().position(i);
++    }
++    return true;
+ }
+ 
+ void NorthController::updateActionsFromChecker(proto::UhrActionBundle& action_bundle)
+@@ -674,7 +688,11 @@
+     float action_left_arm[7] = {0.0};
+     float action_right_arm[7] = {0.0};
+     float action_head[2] = {0.0};
+-    extractActions(action_bundle, action_leg, action_left_arm, action_right_arm, action_head);
++    if (!extractActions(action_bundle, action_leg, action_left_arm, action_right_arm, action_head))
++    {
++        LOG_ERROR("Rejected action bundle: each present arm requires seven finite joint positions");
++        return;
++    }
+     checker_->action_with_stable_com(false, action_leg, action_left_arm, action_right_arm, action_head);
+     updateActionsFromChecker(action_bundle);
+ 

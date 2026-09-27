@@ -6,3 +6,9 @@ __pycache__/
 *.py[cod]
 /.venv/
 roco-main.bundle
+
+# North vendor SDKs, compiled plugins and runtime data stay outside this repo.
+/vendor/sharpa-north-sdk*/
+/.north-sdk-workspaces/
+/north-sdk-workspaces/
+/patches/sharpa-north/__pycache__/

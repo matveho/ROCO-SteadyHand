@@ -1,0 +1,2 @@
+# A unified patch uses a space-only line to represent blank context.
+patches/sharpa-north/*.patch -whitespace

@@ -1,0 +1,12 @@
+{
+  "sdk_version_label": "1.6.3",
+  "original_sha256": {
+    "include/sharpa/plugins/north_controller.h": "6aa52dd62ebbf487578a8a766149f25cc2967e30685bd36501105233b38db25a",
+    "src/plugins/north_controller.cpp": "190672f7192a4cac6327df3ea079e8faf61bb9e41cf2a10eb9d885400a55142c",
+    "build/plugins/master_controller_plugin.so": "f2540028b7b2942f2f4baf63eade621657793c18a657047bdce103600069566b"
+  },
+  "patched_sha256": {
+    "include/sharpa/plugins/north_controller.h": "4a83e0a3fa78354f1184116cb927fbe2e69ddddd317354b607de3c465026a3b1",
+    "src/plugins/north_controller.cpp": "e48b8e554fb263d14844d08eb4b892516ce64eca63b71099a4685600edced8f1"
+  }
+}
