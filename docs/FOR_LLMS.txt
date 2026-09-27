@@ -1,0 +1,1305 @@
+FOR_LLMS.txt
+===============================================================================
+STEADYHAND / ROCO @ IROS 2026 — AGENT HANDOFF AND SOURCE OF CONTEXT
+===============================================================================
+
+PURPOSE
+-------
+This file is the first thing any LLM/agent working on this repository should
+read. It is intentionally redundant. The goal is that a new agent can enter
+the project without relying on hidden chat history, avoid repeating already
+completed work, understand what is verified vs assumed, and make safe,
+high-value changes during the competition.
+
+IMPORTANT MAINTENANCE RULE:
+If you make any meaningful change to this repository, learn a new hardware fact,
+invalidate an assumption, add/remove a blocker, or change the recommended
+bring-up path, UPDATE THIS FILE IN THE SAME WORK SESSION.
+
+At minimum update:
+  1. "Current repository snapshot" if branch state materially changes.
+  2. "Work completed to date" for new capabilities.
+  3. "Known issues / unverified assumptions" when facts change.
+  4. "Immediate priorities" if the next action changes.
+  5. "Change log" at the bottom with date/time, commit, what changed, and any
+     assumptions introduced/removed.
+
+Do NOT let this become a stale narrative. If code and this file disagree,
+investigate and update this file.
+
+LAST CONTEXT REFRESH
+--------------------
+Context assembled: 2026-09-27, onsite competition day 1.
+Repository state BEFORE adding this handoff:
+  main         = bbf36029d5f2d65945a698bc7eb3a8bcd675966b
+  onsite-2026  = bbf36029d5f2d65945a698bc7eb3a8bcd675966b
+  submission-baseline = 705e4e03ed8e3427cfc5f58a20de02afc3687e6b
+
+Always refresh live branches before acting. Multiple agents may be working
+concurrently.
+
+===============================================================================
+1. PROJECT / TEAM / COMPETITION CONTEXT
+===============================================================================
+
+Team:
+  SteadyHand
+
+Competition:
+  RoCo Challenge @ IROS 2026
+  Pittsburgh, PA
+  Track: Industrial Board Assembly
+
+Team working mode today:
+  - Matvey owns DexMate Vega U integration/performance.
+  - Eunice owns Sharpa North integration.
+  - Previous simulation programmer: Yifei Jiang. She wrote the simulation policy
+    and is not expected onsite. Contact her only for simulation-specific facts
+    that cannot be recovered from code/logs.
+
+Venue / Sep 27 direct organizer update:
+  - Exhibit Hall, COMP7.
+  - Late teams may check in at the booth before 5:00 PM.
+  - Sharpa North training: 2:00 PM–3:00 PM.
+  - DexMate Vega training: 4:00 PM–5:00 PM.
+  - Sponsor technicians are available throughout the afternoon.
+  - Organizers explicitly told teams the official DexMate Vega configuration
+    was modified and directed teams to:
+      https://github.com/intelligent-control-lab/dexmate-setup
+
+Public onsite schedule:
+  https://rocochallenge.github.io/RoCo-IROS2026/agenda.html
+
+Key final-day public schedule:
+  Sep 30:
+    09:00–09:30 final briefing
+    09:30–10:00 final testing
+    10:00–14:00 final competition
+    14:00–15:00 score counting
+    15:00–16:30 teardown
+    17:00–20:00 awards/networking
+
+Competition facts from organizer Q&A / team notes:
+  - Industrial teams are required to use BOTH Vega U and Sharpa North.
+  - Final standing combines the two hardware platforms 1:1.
+  - Onsite generalization is primarily board/part position and orientation,
+    not part size, shape, type, or quantity.
+  - Onsite data collection is permitted.
+  - Each team has a 2-hour attempt window; one round must finish within 15 min.
+  - Speed is a tie-breaker, not direct score.
+  - No human intervention during an active trial except terminating the run.
+    Between attempts, reset/tuning/recalibration are allowed.
+  - Internet exists but should not be treated as reliable. Keep offline copies.
+
+Organizer Q&A:
+  https://docs.google.com/document/d/1dYp-3dmC89N7HWRckPcNiuhEUxSLgmTkmIfu8nnVSfE/mobilebasic?pli=1&urp=gmail_link
+
+Competition FAQ:
+  https://rocochallenge.github.io/RoCo-IROS2026/faq.html
+
+Industrial overview / leaderboard:
+  https://rocochallenge.github.io/RoCo-IROS2026/industrial_assembly_overview.html
+
+===============================================================================
+2. SOURCE PRIORITY / HOW TO RESOLVE CONFLICTING INFORMATION
+===============================================================================
+
+Use this order when sources conflict:
+
+  1. Actual competition robot behavior observed onsite with technician present.
+  2. Direct current organizer/sponsor instruction for the competition unit.
+  3. Organizer-linked competition-specific repositories/materials.
+  4. Latest organizer Q&A.
+  5. Latest vendor/manual material.
+  6. This repository's docs/configs/code.
+  7. Older emails, old source-robot measurements, model inference.
+
+Do not "average" conflicting values. Record the conflict and verify it.
+
+Never silently copy a calibration measured on a source robot to the competition
+robot just because the files look official.
+
+Use status language explicitly:
+  VERIFIED_ON_COMP_ROBOT
+  VERIFIED_ORGANIZER_REPO
+  ORGANIZER_QA
+  SOURCE_ROBOT_REFERENCE
+  SIMULATION_ONLY
+  UNVERIFIED
+  STALE_DOC
+
+===============================================================================
+3. GIT / MULTI-AGENT SAFETY
+===============================================================================
+
+Branches:
+  submission-baseline
+    Exact original submission at:
+      705e4e03ed8e3427cfc5f58a20de02afc3687e6b
+    NEVER develop here.
+    NEVER force-update it.
+
+  onsite-2026
+    Competition integration branch.
+
+  main
+    Kept aligned/fast-forwarded to the current integration state for easy clone.
+
+Rules for every agent:
+  - Fetch/refresh branch heads immediately before modifying anything.
+  - Never force push.
+  - Never rewrite history.
+  - Never overwrite a file using an old SHA after another agent changed it.
+  - Prefer small focused commits.
+  - If multiple agents are active, prefer a short-lived topic branch from the
+    current onsite-2026 head, then integrate deliberately.
+  - If main and onsite-2026 diverge, STOP and inspect; do not blindly reset one.
+  - Do not modify policy.py unless Matvey explicitly requests altering the
+    preserved simulation submission. Current intent is to keep it unchanged.
+  - Run compile/tests after code changes.
+  - Update this FOR_LLMS.txt whenever your work changes project truth.
+
+Sensitive information:
+  - Do NOT commit passwords, private certificates, SSH secrets, tokens, or
+    robot credentials.
+  - Some vendor manuals may contain factory/default credentials. Never reproduce
+    them here.
+  - Environment snapshots must exclude secrets/certificate contents.
+
+===============================================================================
+4. ORIGINAL SIMULATION SUBMISSION — PRESERVE AND UNDERSTAND
+===============================================================================
+
+Canonical original:
+  branch: submission-baseline
+  commit: 705e4e03ed8e3427cfc5f58a20de02afc3687e6b
+  file: policy.py
+
+policy.py is still unchanged on main.
+
+What it is:
+  Deterministic skill executor, not a learned visual policy.
+
+Important dependencies/semantics:
+  - receives exact simulator PartTarget per trial
+  - requires env_info.L_controller
+  - uses Lula EEPathFollower
+  - uses build_pick_place_phases()
+  - uses target.extra
+  - uses target.ee_orientation
+  - uses target.pick_pos / place_pos
+  - adds target.extra["ee_offset"] in WORLD coordinates
+  - snap parts use target.extra["snap"]["search"]
+  - snap success is based on obs.snap_fired
+  - returns to env_info.L_arm_init_q between parts after the first
+
+Critical interpretation:
+  The simulator gives exact task geometry and a magic snap mechanism. Hardware
+  does not. The real stack must replace exact PartTarget + snap_fired with:
+    perception/registration
+    measured transforms
+    real IK/control
+    physical contact
+    success verification
+    recovery
+
+Do not try to run policy.py directly on hardware.
+
+Physical port mapping is documented in:
+  docs/POLICY_PORT.md
+
+Historical simulation result:
+  Last known public/published SteadyHand result before onsite:
+    ~7.41 / 9 average successful parts
+  Historical part-level approximate success:
+    gear20   ~0.42
+    gear60   ~0.95
+    rod16    ~0.89
+    bolt8    ~0.63
+    usb_a    ~0.99
+    hdmi     ~0.94
+    pin      ~0.81
+    battery1 ~0.92
+    battery5 ~0.86
+
+Treat these as historical simulation diagnostics, NOT hardware predictions.
+Largest sim deficits were gear20 then bolt8, then pin/rod. Easy high-confidence
+sim parts should not be destabilized casually.
+
+===============================================================================
+5. TASK BOARD / SIMULATION SOURCE OF TRUTH
+===============================================================================
+
+Organizer task repository:
+  https://github.com/rocochallenge/RoCo_TaskBoardAssembly
+
+Pinned repo commit used by this code:
+  45dd6ad6e0792faf3450bdd2f81bb143b11bc43f
+
+Canonical file:
+  task/param_config.py
+
+Important discrepancy:
+  PARTS.md and param_config.py disagree on the first two gear ordering.
+  Organizer docs say param_config.py is source of truth.
+  This repository follows param_config.py.
+
+Current code order:
+  1. gear_60teeth
+  2. gear_20teeth
+  3. rod_16mm
+  4. bolt_8mm
+  5. usb_a
+  6. hdmi
+  7. pin
+  8. battery_size1
+  9. battery_size5
+
+Simulation release modes:
+  open:
+    gear_60teeth
+    gear_20teeth
+    battery_size1
+    battery_size5
+
+  snap:
+    rod_16mm
+    bolt_8mm
+    usb_a
+    hdmi
+    pin
+
+IMPORTANT:
+"Snap" is simulator metadata. It does NOT mean the real robot gets an attachment
+or teleport. Hardware snap/insertion is contact-rich physical manipulation.
+
+Simulation generalization notes:
+  - XY randomization was roughly +/- 1 cm in the released sim.
+  - Board moves once; movable parts may move independently.
+  - Some supported/contacted parts share board offset behavior in sim.
+  - Onsite organizer Q&A broadens practical concern to board/part position and
+    orientation changes.
+
+Current local task config:
+  configs/task_board.json
+
+Physical pick/place poses remain null there by design. Per-attempt real poses
+belong in runtime target files.
+
+===============================================================================
+6. EXTERNAL RESOURCE INDEX
+===============================================================================
+
+A. RoCo / task
+---------------
+Challenge:
+  https://rocochallenge.github.io/RoCo-IROS2026/
+
+Agenda:
+  https://rocochallenge.github.io/RoCo-IROS2026/agenda.html
+
+FAQ:
+  https://rocochallenge.github.io/RoCo-IROS2026/faq.html
+
+Q&A:
+  https://docs.google.com/document/d/1dYp-3dmC89N7HWRckPcNiuhEUxSLgmTkmIfu8nnVSfE/mobilebasic?pli=1&urp=gmail_link
+
+Industrial overview/leaderboard:
+  https://rocochallenge.github.io/RoCo-IROS2026/industrial_assembly_overview.html
+
+Organizer task repo:
+  https://github.com/rocochallenge/RoCo_TaskBoardAssembly
+  pinned here: 45dd6ad6e0792faf3450bdd2f81bb143b11bc43f
+
+B. DexMate Vega — PRIMARY competition-specific source
+------------------------------------------------------
+Organizer-linked setup repo:
+  https://github.com/intelligent-control-lab/dexmate-setup
+  pinned snapshot reviewed:
+    4be4d16140b25f730673d664b49c58280b07ef46
+
+This is currently the most important public Vega resource because organizers
+explicitly said the competition Vega was modified and told teams to review it.
+
+Useful paths in that repository:
+  README.md
+  manual/vega1umanual.html
+  software/gripper/GRIPPER_README.md
+  software/gripper/gripper.py
+  software/gripper/gripper_selftest.py
+  software/poses/ARM_POSES_README.md
+  software/poses/goto_pose.py
+  software/poses/goto_ready.py
+  software/poses/goto_rest.py
+  software/poses/inspect_joints.py
+  software/poses/sensor_only.py
+  software/wrist_cameras/*
+  docs/files/urdf/vega_1u_gripper.urdf
+  docs/files/urdf/custom/vega_1u_gripper.urdf
+  docs/files/calibration/*
+  docs/files/reference-data.json
+  config/can1.service
+  config/dexsensor.reference.toml
+
+Do NOT run the repository's install/boot modification commands on a competition
+robot without sponsor/organizer approval. The competition unit may already be
+configured.
+
+Vega simulation dataset:
+  https://huggingface.co/datasets/rocochallenge2025/rocochallenge2026_Industrial_Assembly
+
+C. Sharpa
+---------
+Sharpa North:
+  https://www.sharpa.com/pages/north
+
+Downloads:
+  https://www.sharpa.com/pages/downloads
+
+Wave SDK:
+  https://github.com/sharpa-robotics/sharpa-wave-sdk
+  last known public release: v5.0.11 (2026-09-24)
+
+Wave URDF/USD/XML:
+  https://github.com/sharpa-robotics/sharpa-urdf-usd-xml
+  pinned reference:
+    0d19cac602f46456b819e4b6a2c09a74982c9a3e
+
+Sharpa RL Lab:
+  https://github.com/sharpa-robotics/sharpa-rl-lab
+  pinned reference:
+    95ccda3d948801bb5da4cb7ffea766e03067a63b
+
+T-Rex (useful architecture reference: Vega arms + Wave hands):
+  https://github.com/ZhuoyangLiu2005/T-Rex
+  pinned reference:
+    f88e10c61da123c68bf0927cf4860bc97a0381f3
+
+Sharpa real demonstration dataset:
+  https://huggingface.co/datasets/SharpaIT/RoCo_TaskBoardAssembly
+
+IMPORTANT:
+Public Wave resources define the hand ecosystem. They do NOT establish the full
+North arm/body competition control interface. The onsite North SDK/runner is
+authoritative.
+
+===============================================================================
+7. DEXMATE VEGA — HARDWARE FACTS AND SOURCE STATUS
+===============================================================================
+
+Robot concept:
+  Dual-arm Vega U / Vega-1U with parallel CAN grippers for this competition.
+
+Competition camera Q&A:
+  Head:
+    ZED X Mini stereo/binocular camera
+    connected through ZED Link Duo
+    rectified left RGB
+    rectified right RGB
+    depth
+
+  Wrists:
+    Sony ISX031 on left wrist
+    Sony ISX031 on right wrist
+
+  Point cloud:
+    not directly provided; reconstruct from depth + runtime intrinsics K
+
+Camera resolution:
+  Head configured: 1920x1200 @ 30 fps HD1200.
+
+Rate conflict:
+  Organizer Q&A says observed head RGB/depth publication approximately 24 Hz.
+  Later source-robot field-manual measurements report lower observed rates
+  (roughly ~15 Hz for head streams and ~9 Hz wrist raw; full combined capture
+  slower).
+  DO NOT depend on an exact camera rate until measured on the competition unit.
+
+State rates from organizer Q&A:
+  dual-arm joint states ~91–92 Hz
+  head joints ~48 Hz
+  head IMU ~186–190 Hz
+  RGB/depth ~24 Hz per Q&A
+
+Compute:
+  Jetson Orin Nano
+  JetPack 6.2.3
+  L4T 36.5.0
+  kernel 5.15.185
+  system Python 3.10 is important for wrist-camera stack
+
+Control:
+  organizer Q&A says dexcontrol 0.5.0
+  joint position control is public
+  no public Cartesian/velocity/current interface
+  third-party CAN gripper
+
+Robot() behavior:
+  VERIFIED_ORGANIZER_REPO / manual:
+  constructing dexcontrol.robot.Robot() moves the head to its home/default pose
+  unless software e-stop prevents it.
+  Camera-only code must avoid Robot() when no motion is intended.
+
+Live components:
+  Organizer source-robot notes state vega_1u exposes:
+    left_arm: 7 DoF
+    right_arm: 7 DoF
+    head: 3 DoF
+  and no commandable torso/chassis.
+
+Wrench:
+  get_wrench_state() -> [fx, fy, fz, tx, ty, tz]
+  organizer Q&A says ~91–92 Hz
+  units and reference frame remain UNVERIFIED and must be established/calibrated
+  before setting physical insertion thresholds.
+
+Software e-stop:
+  robot.estop.activate()
+  robot.estop.deactivate()
+  must still be physically validated on competition unit.
+
+Head camera:
+  use dexcontrol Sensors path for no-motion reads.
+  RGB is RGB, not BGR.
+  query intrinsics at runtime.
+
+Wrist camera:
+  use /usr/bin/python3 on robot.
+  WristCameras API lives in system Python setup.
+  A separate venv may not see wrist_cameras/GStreamer bindings.
+  wrist_a vs wrist_b physical side is UNVERIFIED.
+  Wrist timestamp_ns is GStreamer PTS, not Unix wall time.
+
+Timestamp nuance:
+  Organizer Q&A reports head image hardware timestamps and joint timestamps
+  synchronized to Thor via Chrony (~10–100 us).
+  Wrist GStreamer PTS is a different issue; do not assume head/wrist frames are
+  hardware synchronized or share a directly comparable timestamp base.
+
+===============================================================================
+8. DEXMATE COMPETITION SETUP REPO — IMPORTANT CONFIRMED DETAILS
+===============================================================================
+
+Pinned:
+  intelligent-control-lab/dexmate-setup
+  4be4d16140b25f730673d664b49c58280b07ef46
+
+Gripper CAN:
+  can1
+  1 Mbit/s
+  Motor ID 1 = LEFT
+  Motor ID 2 = RIGHT
+
+Official driver shape:
+  from gripper import Grippers
+  g = Grippers()
+  g.home()
+  g.left.open()
+  g.left.close()
+  g.left.grip(current=0.6)
+  g.right.grip(current=0.6)
+  g.left.position()
+  g.status()
+  g.halt()
+  g.release()
+  g.close_bus()
+
+Semantics:
+  - Motor.grip() is the object-aware current-limited close operation.
+  - grip() returns a dict including a boolean "gripped".
+  - close() is position close and can stall against an object; do not use it as
+    the normal object grasp primitive.
+  - halt() stops motion WITHOUT losing the multi-turn reference.
+  - release() sends motor-off and destroys the multi-turn position reference.
+    Re-home after release/power loss.
+  - home establishes closed reference; source docs say it may take ~1 minute.
+
+Our gripper wrapper was fixed on Sep 27 after reviewing this repo:
+  steadyhand/grippers/vega.py
+  now supports scope left/right/both and per-side Motor.grip().
+  VegaAdapter.verify_grasp() now consumes the returned "gripped" value.
+
+URDF/model:
+  organizer repo provides:
+    docs/files/urdf/vega_1u_gripper.urdf
+    docs/files/urdf/custom/vega_1u_gripper.urdf
+
+Both contain modeling joints such as Lift and torso_flip even though live Vega
+control exposes arms/head only. This creates an IMPORTANT modeling issue:
+  Pinocchio needs values for any non-active movable joints in the selected
+  kinematic chain.
+  Source reference-data.json contains source-robot reference values, including
+  Lift and torso_flip, but DO NOT blindly assume they match the competition unit.
+
+EE / tip frames:
+  provided URDFs contain L_ee / R_ee.
+  custom gripper URDF also contains tip_l / tip_r.
+  The actual control TCP to use for our pick/place policy must be chosen and
+  physically verified. Do not assume L_ee is the jaw-tip TCP.
+
+Source repo also includes calibrated/source reference transforms for:
+  camera
+  EE to gripper
+  custom tip
+  source-robot TCP
+These are excellent starting references but are SOURCE_ROBOT_REFERENCE until
+validated on the actual competition robot.
+
+Pose/safety history from organizer repo:
+  "rest"/pre_move and "brickbench_home" were used on the source robot.
+  "folded" / "folded_closed_hand" are explicitly banned in source tooling because
+  the third-party grippers can collide/cross; a cable was damaged historically.
+  Do NOT use folded as a generic safe pose.
+
+The source goto_pose.py includes a coarse wrist-separation safety guard and
+moves arms sequentially for some transitions because endpoint-safe does not
+imply path-safe.
+
+Do NOT automatically command the source robot's numeric rest/home poses on the
+competition unit before sponsor confirmation.
+
+===============================================================================
+9. IMPORTANT CONTROL-SEMANTICS CONFLICT TO RESOLVE ONSITE
+===============================================================================
+
+This is a high-priority audit item.
+
+Organizer Q&A/manual language:
+  wait_time=0 is associated with real-time/continuous command usage and a
+  100–500 Hz command loop.
+
+Organizer-linked known-good source pose utility:
+  software/poses/goto_pose.py
+  calls:
+    comp.set_joint_pos(..., wait_time=0.0)
+  then sleeps WAIT (default 0.6 s) between bounded 0.12 rad steps.
+
+Our current VegaAdapter:
+  uses a POSITIVE wait_time for each set_joint_pos call:
+    self._arm.set_joint_pos(waypoint, wait_time=wait)
+
+Therefore:
+  Do not assume our set_joint_pos timing semantics are correct merely because the
+  Python signature exists.
+  During DexMate training, ask the sponsor to explain:
+    - what wait_time actually means
+    - whether positive wait_time blocks/interpolates
+    - whether the organizer goto_pose.py pattern is the recommended safe pattern
+    - whether repeated step commands should use wait_time=0 + explicit sleep
+  Then align VegaAdapter with the confirmed behavior.
+
+This is currently one of the most important pre-motion code-review points.
+
+===============================================================================
+10. SHARPA NORTH — KNOWN FACTS / UNKNOWNS
+===============================================================================
+
+Owner today:
+  Eunice
+
+Current adapter:
+  steadyhand/adapters/sharpa.py
+  deliberately disabled / fails closed.
+
+Current config:
+  configs/robots/sharpa.json
+  deliberately mostly null.
+
+Do not "complete" Sharpa by guessing.
+
+Known public Wave-hand facts/resources:
+  - Wave is the dexterous hand subsystem, not proof of full North control.
+  - Public Wave hand materials describe ~22 active DoF per hand.
+  - Tactile data are rich and may be useful for contact/grasp.
+
+Released Sharpa RoCo dataset (last inspected):
+  roughly:
+    30 sessions
+    562 episodes
+    2,461,024 frames
+    30 FPS
+    LeRobot formats (v3 + v2.1)
+    six video streams:
+      head left/right
+      wrist left/right
+      tactile deformation/raw
+    state/action/torque vectors: 65D
+    tactile numeric: 60D
+    head/wrist video around 480x480
+  inferred dataset decomposition included arm + hand dimensions, but DO NOT send
+  a 65D dataset action to hardware until the live SDK mapping is explicitly
+  established.
+
+What MUST be learned onsite:
+  - full North SDK / canonical competition runner
+  - package/version/environment
+  - startup/homing
+  - physical + software stop and recovery
+  - state vector exact order
+  - action vector exact order
+  - units
+  - absolute vs relative semantics
+  - required command rate
+  - arm/body control API
+  - Wave hand representation
+  - tactile API / fingertip mapping
+  - camera API / frames / timestamps
+  - full North URDF/model
+  - joint limits
+  - whether dataset actions map directly to live API
+
+Eunice's working checklist:
+  docs/EUNICE_SHARPA_TODAY.md
+
+Target for end of Sep 27:
+  connect
+  read state
+  stop
+  one safe arm command
+  one safe hand command
+  tactile read
+  minimal real adapter using confirmed API
+  local copies of vendor examples/model
+
+===============================================================================
+11. CURRENT REPOSITORY ARCHITECTURE
+===============================================================================
+
+Core principle:
+  share task intent, not raw motor commands.
+
+Shared:
+  steadyhand/models.py
+    Pose(position_m, quaternion_wxyz)
+    PartGoal
+
+  steadyhand/skills.py
+    common phase vocabulary
+
+  steadyhand/adapters/base.py
+    RobotAdapter boundary
+    RobotObservation
+    capabilities
+    optional verify_grasp / verify_place / read_wrench / get_tcp_pose
+
+  steadyhand/geometry.py
+    dependency-free rigid transforms
+    convention:
+      T_destination_source maps source coordinates to destination
+    metres
+    quaternion wxyz
+    pose interpolation / quaternion interpolation
+
+  steadyhand/search.py
+    deterministic centered grid / square spiral
+
+  steadyhand/config.py
+    loads/validates config
+    validates rigid transforms/quaternions
+    separates motion readiness vs perception/calibration readiness
+
+  steadyhand/sessions.py
+    session snapshots/logging
+    UTC+UUID
+    config snapshot
+    policy SHA256
+    event logs / trials
+
+Vega:
+  steadyhand/adapters/vega.py
+  steadyhand/cameras/vega.py
+  steadyhand/grippers/vega.py
+  steadyhand/kinematics/pinocchio_arm.py
+  steadyhand/executor.py
+
+Sharpa:
+  steadyhand/adapters/sharpa.py
+  currently intentionally disabled
+
+Offline/mocks:
+  steadyhand/adapters/mock.py
+  steadyhand/runner.py
+
+Config:
+  configs/task_board.json
+  configs/robots/vega.json
+  configs/robots/sharpa.json
+  configs/skills/vega.json
+  configs/runtime_targets.template.json
+  calibration/vega.json
+  calibration/sharpa.json
+
+Tools:
+  tools/capture_environment.py
+  tools/vega_preflight.py
+  tools/vega_head_probe.py
+  tools/vega_wrists_probe.py
+  tools/vega_capture_snapshot.py
+  tools/vega_ik_check.py
+  tools/vega_run_part.py
+  tools/vega_run_sequence.py
+
+Docs:
+  docs/TODAY_MUST_DO.md
+  docs/MATVEY_DEXMATE_TODAY.md
+  docs/EUNICE_SHARPA_TODAY.md
+  docs/VEGA_LIVE.md
+  docs/POLICY_PORT.md
+  docs/BOOTCAMP.md
+  docs/ARRIVAL.md
+  docs/ONSITE.md
+  docs/UPSTREAMS.md
+  docs/ARCHITECTURE.md
+
+===============================================================================
+12. WORK COMPLETED TO DATE — VEGA
+===============================================================================
+
+A. Camera support
+-----------------
+steadyhand/cameras/vega.py implements:
+  - head rectified left RGB
+  - head rectified right RGB
+  - head depth
+  - runtime camera-info/intrinsics extraction
+  - wrist_a / wrist_b RGB
+  - depth -> XYZ point-cloud reconstruction
+
+Camera-only connection intentionally avoids Robot() so no head motion is
+introduced just to read pixels.
+
+No-motion probes:
+  tools/vega_head_probe.py
+  tools/vega_wrists_probe.py
+  tools/vega_capture_snapshot.py
+
+B. Kinematics
+-------------
+steadyhand/kinematics/pinocchio_arm.py:
+  - lazy imports Pinocchio/Numpy
+  - fixed-base FK
+  - iterative IK
+  - active arm joint mapping
+  - URDF joint-limit clamp
+  - seed-distance guard
+  - requires explicit values for non-active movable joints in EE chain
+
+IMPORTANT:
+Pinocchio math has not been validated against the physical competition robot.
+Standard CI does not provide a real Vega URDF + Pinocchio hardware validation
+oracle. Treat physical FK/IK verification as a gate.
+
+C. Physical motion adapter
+--------------------------
+steadyhand/adapters/vega.py:
+  - version gate for dexcontrol
+  - explicit Robot() head-motion opt-in
+  - arm selection
+  - state/velocity/current/wrench reads
+  - software e-stop
+  - joint limit enforcement
+  - segmented joint targets
+  - local IK-backed move_tcp
+  - camera path
+  - CAN gripper integration
+  - current-limited grasp
+  - grasp verification via official grip() result
+
+D. Physical executor
+--------------------
+steadyhand/executor.py:
+  - open
+  - approach pick
+  - descend
+  - grip
+  - grasp verification
+  - lift
+  - transfer
+  - place / insertion
+  - release
+  - retract
+  - placement verification hook
+
+Long TCP moves are segmented into short Cartesian waypoints and IK is reseeded
+from current live joint state.
+
+E. Physical insertion approximation
+-----------------------------------
+For simulation "snap" parts:
+  - pre-insert
+  - center-out XY search
+  - short descent
+  - optional relative wrench guard
+  - retract before next candidate
+  - TCP-target-reached check
+
+This is NOT yet sufficient as a robust physical insertion controller.
+
+F. Runtime target format
+------------------------
+Physical pick/place coordinates are per-run inputs, not static task config.
+See:
+  configs/runtime_targets.template.json
+  steadyhand/targets.py
+
+G. Physical runners
+-------------------
+tools/vega_run_part.py
+  gated one-part runner
+  requires explicit motion confirmations
+  logs config/targets/skill
+  e-stops on unexpected exception
+
+tools/vega_run_sequence.py
+  multi-part runner
+  optional validated return-home q
+
+H. Gripper fix from competition repo
+------------------------------------
+On Sep 27 we discovered our initial wrapper incorrectly assumed a top-level
+g.grip(). Official competition setup exposes per-motor grip:
+  g.left.grip(...)
+  g.right.grip(...)
+
+Fixed in:
+  steadyhand/grippers/vega.py
+  steadyhand/adapters/vega.py
+  physical runners
+
+Offline fake-driver test added.
+
+===============================================================================
+13. CURRENT VEGA CONFIG / UNVERIFIED VALUES
+===============================================================================
+
+configs/robots/vega.json contains known arm joint names and documented limits.
+
+Still intentionally null/unresolved:
+  robot_name
+  working_arm
+  host
+  urdf_path
+  max_joint_speed_rad_s
+  motion.step_wait_time_s
+  kinematics.ee_frame
+  kinematics.fixed_joint_values
+  gripper.scope (runner defaults to working arm)
+  wrist_a/wrist_b physical mapping
+
+sdk_version currently expected:
+  0.5.0
+
+allow_sdk_version_mismatch:
+  false
+
+This exact version gate may need adjustment if the actual installed package
+reports a patch/build variant. Do not disable it blindly; inspect the real
+installed version and API first.
+
+Skill config:
+  configs/skills/vega.json
+
+WARNING:
+Most current per-part TCP geometry comes from simulation-era:
+  legacy_ee_offset_m
+  legacy_ee_orientation_wxyz = [0, 1, 0, 0]
+These are bring-up starting points only.
+
+Preferred final representation:
+  T_part_tcp
+so the grasp transform rotates naturally with the part/board.
+
+Calibration:
+  calibration/vega.json
+is still intentionally null.
+
+===============================================================================
+14. CRITICAL KNOWN ISSUES / RISKS — PRIORITIZED
+===============================================================================
+
+P0 — MUST RESOLVE BEFORE SERIOUS MOTION
+---------------------------------------
+
+1. set_joint_pos / wait_time semantics are not fully reconciled.
+   See section 9. Our adapter's positive wait_time strategy differs from the
+   organizer source pose utility's wait_time=0 + explicit sleep.
+
+2. Actual URDF + EE/TCP frame must be selected and physically validated.
+   L_ee/R_ee are not necessarily the desired jaw-tip TCP.
+   custom tip_l/tip_r may be closer, but must be verified.
+
+3. Pinocchio fixed chain values.
+   Organizer gripper URDFs include Lift/torso_flip modeling joints despite live
+   vega_1u exposing no torso/chassis. Current IK intentionally refuses hidden
+   movable chain joints without explicit values. Determine the correct model
+   configuration for the competition unit.
+
+4. FK/IK math has not been physically validated.
+   A 1 cm requested free-space displacement must produce the expected physical
+   direction before using IK near the board.
+
+5. Collision checking is incomplete.
+   Current executor does not perform robust self/environment collision planning.
+   Valid IK != safe path.
+   Keep unused arm parked and use large clearances initially.
+
+P1 — REQUIRED FOR RELIABLE SCORING
+----------------------------------
+
+6. Automatic perception / board registration is missing.
+   Current physical run needs runtime_targets.json.
+   Biggest missing layer:
+     camera -> board/part pose -> robot_base target
+
+7. calibration/vega.json is null.
+   Need T_base_camera / board registration and actual frame names.
+
+8. Real T_part_tcp per part is not calibrated.
+   Legacy sim offsets are not orientation-general.
+
+9. Placement verification is not implemented.
+   VegaAdapter.verify_place() currently defaults to None.
+   Completed motion does not imply assembled part.
+
+10. Grasp verification is now wired to official Motor.grip()["gripped"], but has
+    not been physically validated on the competition parts.
+
+11. Sequence recovery is weak.
+    vega_run_sequence currently aborts/e-stops on a part exception rather than
+    robustly retracting, retrying once, skipping, and continuing to protect score.
+
+12. Insertion success logic is weak.
+    Reaching commanded TCP depth does not prove USB/HDMI/pin/bolt insertion.
+    Need a real success signal (vision, depth, force signature, geometry, etc.).
+
+13. Wrench units/frame are unknown.
+    force_delta_limit intentionally remains null.
+    Do not choose a number by intuition.
+
+14. Wrist camera A/B physical mapping is unknown.
+
+P2 — IMPORTANT CLEANUP / CONSISTENCY
+------------------------------------
+
+15. Some docs are stale relative to code:
+    - docs/VEGA_LIVE.md still describes the old dual-gripper-only assumption and
+      examples with --gripper-scope both.
+    - README.md / docs/ARCHITECTURE.md / docs/ONSITE.md contain wording implying
+      all hardware adapters are disabled, while Vega is now implemented but gated.
+    Code is newer than those statements.
+
+16. Standard CI cannot validate real dexcontrol, Pinocchio, GStreamer, CAN, or
+    physical robot behavior.
+    Passing CI means syntax/shared logic/mocks are okay, not hardware readiness.
+
+17. Source-robot calibration and safe-pose numbers in dexmate-setup are highly
+    useful but must not be promoted to VERIFIED_ON_COMP_ROBOT without testing.
+
+===============================================================================
+15. TESTING / CI STATUS
+===============================================================================
+
+Workflow:
+  .github/workflows/offline-tests.yml
+
+CI does:
+  python -m compileall -q steadyhand tools
+  python -m unittest discover -s tests -v
+
+Python in CI:
+  3.11
+
+Latest pre-handoff main workflow observed:
+  run id 36325635892
+  head bbf36029d5f2d65945a698bc7eb3a8bcd675966b
+  conclusion SUCCESS
+
+What tests cover:
+  config validation
+  transform conventions
+  search patterns
+  mock RobotAdapter
+  physical executor flow with mock
+  snap refusal without force guard
+  runtime/session behavior
+  camera intrinsics parser
+  official-style per-side Vega gripper fake contract
+
+What tests do NOT prove:
+  dexcontrol API behavior
+  actual Robot() lifecycle
+  actual e-stop behavior
+  actual set_joint_pos timing semantics
+  actual gripper CAN bus
+  actual camera/GStreamer stack
+  actual Pinocchio model alignment to robot
+  collision safety
+  real perception accuracy
+  successful physical assembly
+
+Do not write misleading tests that appear to prove physical safety without a
+physical or authoritative oracle.
+
+===============================================================================
+16. TODAY'S OWNERSHIP / IMMEDIATE PRIORITIES
+===============================================================================
+
+Matvey / Vega:
+  Use docs/MATVEY_DEXMATE_TODAY.md.
+
+Highest-value sequence:
+  1. Clone/save organizer dexmate-setup and record commit.
+  2. At/with sponsor: resolve wait_time semantics, robot identity, actual model,
+     EE/TCP frame, e-stop/recovery, safe arm usage.
+  3. No-motion camera tests.
+  4. Read actual joint state.
+  5. Offline FK/IK +1 cm sanity.
+  6. Tiny safe joint move.
+  7. Per-side gripper home/open/grip/release with arm parked.
+  8. Tiny free-space TCP move.
+  9. Produce one real target for an easy open-release part.
+ 10. Run one part.
+ 11. Repeat until 5 consecutive successes.
+ 12. Only then expand to other parts / insertion.
+
+Best first target:
+  battery_size1 or another physically obvious open-release part.
+  Actual hardware geometry can override this choice.
+
+Eunice / Sharpa:
+  Use docs/EUNICE_SHARPA_TODAY.md.
+
+Highest-value outcome today is not "finish all tasks"; it is to leave with the
+full North control contract and a minimal verified live adapter.
+
+Coordination:
+  Avoid both agents editing shared base/config/model/executor files at the same
+  time. Communicate before touching:
+    steadyhand/adapters/base.py
+    steadyhand/config.py
+    steadyhand/models.py
+    steadyhand/executor.py
+
+===============================================================================
+17. ROBOTICS CONVENTIONS — DO NOT BREAK THESE
+===============================================================================
+
+Pose:
+  position in metres
+  quaternion order wxyz
+
+Transform:
+  T_destination_source
+  p_destination = T_destination_source * p_source
+  Example:
+    T_base_camera maps camera-frame coordinates into base frame.
+
+Joint values:
+  radians unless authoritative API says otherwise.
+
+Do not mix:
+  simulator world coordinates
+  camera coordinates
+  robot base coordinates
+  object coordinates
+  TCP coordinates
+
+For physical grasp geometry prefer:
+  T_base_tcp = T_base_part * T_part_tcp
+
+Do not use:
+  "object xyz + hardcoded world offset"
+as the final general solution when orientation changes matter.
+
+IK:
+  q -> FK -> TCP pose
+  desired TCP pose -> IK -> q
+
+Always remember:
+  one Cartesian pose can have multiple IK branches.
+  Seed choice matters.
+  returning to a consistent home/ready q can improve repeatability.
+
+===============================================================================
+18. STRATEGY / PERFORMANCE PRINCIPLES
+===============================================================================
+
+Competition scoring rewards completed tasks, not elegant software.
+
+General principles:
+  - reliability > speed until reliability is high
+  - speed only matters as a tie-breaker according to Q&A
+  - protect already-working parts
+  - isolate layers during debugging
+  - do not debug perception + IK + gripper + insertion simultaneously
+  - log every trial
+  - keep known-good rollback commits/configs
+  - if a hard part repeatedly threatens the rest of the sequence, prefer safe
+    recovery/skip over jamming and losing easy points
+
+Desired failure behavior:
+  grasp failed
+    -> retract
+    -> retry once
+    -> if still failed, safe skip/continue if rules/sequence allow
+
+  insertion excessive contact
+    -> retract
+    -> recenter/search
+    -> do not push harder blindly
+
+Open-release parts should become boring/repeatable before spending large amounts
+of time on USB/HDMI/bolt/pin insertion.
+
+===============================================================================
+19. ENVIRONMENT / PYTHON NOTES
+===============================================================================
+
+Local development:
+  A venv is not required for purely standard-library offline utilities.
+  As NumPy/Pinocchio/OpenCV/ML dependencies are introduced locally, a local
+  .venv is reasonable.
+
+Vega Jetson:
+  Do NOT blindly create/use a venv for wrist-camera code.
+  The wrist camera module/GStreamer bindings are exposed to system Python 3.10.
+  Prefer /usr/bin/python3 for wrist camera tools.
+
+Sharpa:
+  Use the exact environment/vendor setup supplied onsite. Do not infer that the
+  Wave public package environment equals North competition environment.
+
+Do not perform system-level installs or alter robot boot configuration without
+organizer/sponsor approval.
+
+===============================================================================
+20. DOCUMENT STATUS / WHICH DOC TO USE
+===============================================================================
+
+Most current owner-specific execution docs:
+  docs/MATVEY_DEXMATE_TODAY.md
+  docs/EUNICE_SHARPA_TODAY.md
+  docs/TODAY_MUST_DO.md
+
+Architecture/background:
+  docs/POLICY_PORT.md
+  docs/UPSTREAMS.md
+
+Potentially stale:
+  docs/VEGA_LIVE.md
+    still contains old both-gripper assumptions in places
+  docs/ONSITE.md
+  docs/ARCHITECTURE.md
+  README.md
+    some wording predates the gated live Vega implementation
+
+When changing behavior:
+  update the relevant execution doc AND this file.
+
+===============================================================================
+21. HIGH-VALUE QUESTIONS FOR ANY STRONGER REVIEW AGENT
+===============================================================================
+
+If given extra LLM/review capacity, spend it on adversarial correctness, not
+prettification.
+
+Audit hardest:
+  1. Pinocchio IK sign/frame/reference math.
+  2. URDF joint/frame mapping, especially Lift/torso_flip and EE vs tip.
+  3. dexcontrol set_joint_pos wait_time semantics against organizer goto_pose.py.
+  4. exception -> stop behavior.
+  5. actual gripper API interaction and homing/calibration lifetime.
+  6. object pose -> TCP transform semantics vs original policy.
+  7. segmented Cartesian path safety / discontinuities.
+  8. joint-limit enforcement using live component limits vs static config.
+  9. collision risk with third-party grippers.
+ 10. recovery behavior so one failure does not kill the full scoring run.
+
+Do not spend scarce expert review time on:
+  generic style cleanup
+  README aesthetics
+  broad refactors
+  training a new policy before basic hardware paths work
+
+===============================================================================
+22. FACTS THAT SHOULD NEVER BE SILENTLY ASSUMED
+===============================================================================
+
+Until physically verified, do NOT assume:
+  - ROBOT_NAME
+  - competition robot IP/host
+  - working arm
+  - both grippers healthy
+  - exact dexcontrol package string
+  - exact URDF path
+  - exact TCP frame
+  - Lift / torso_flip model values
+  - source-robot camera extrinsics
+  - source-robot TCP calibration
+  - source-robot rest/ready pose safe on this unit
+  - source-robot gripper calibration angles
+  - wrist_a = left or right
+  - F/T units/frame
+  - head/wrist camera exact rates
+  - wrist/head timestamps share a timebase
+  - North 65D dataset action equals live 65D action
+  - Wave hand SDK controls full North
+  - a completed trajectory means a successful assembly
+
+===============================================================================
+23. FIRST COMMANDS / CHECKS FOR A FRESH AGENT
+===============================================================================
+
+Before coding:
+  git status
+  git branch --show-current
+  git rev-parse HEAD
+  git fetch
+  compare main / onsite-2026 / submission-baseline
+  read docs/FOR_LLMS.txt
+  read the owner-specific checklist relevant to your work
+
+Offline:
+  python onsite.py doctor
+  python -m unittest discover -s tests -v
+
+Before giving exact CLI examples for onsite.py:
+  inspect steadyhand/cli.py and onsite.py live.
+  Do not repeat commands from old chat/docs if syntax has changed.
+
+Before touching Vega hardware:
+  read organizer dexmate-setup current commit and compare to the pinned reference.
+  ask sponsor before system installation/boot modifications.
+  know physical e-stop.
+  know software stop.
+  no Robot() if you intend zero motion.
+
+===============================================================================
+24. CHANGE LOG FOR THIS HANDOFF
+===============================================================================
+
+2026-09-27 — Initial FOR_LLMS.txt created.
+Snapshot basis:
+  main/onsite-2026:
+    bbf36029d5f2d65945a698bc7eb3a8bcd675966b
+  submission-baseline:
+    705e4e03ed8e3427cfc5f58a20de02afc3687e6b
+
+Included:
+  competition logistics
+  resource index
+  branch/multi-agent rules
+  original simulation policy semantics
+  current Vega stack
+  organizer competition Vega setup findings
+  gripper API correction
+  Sharpa unknowns
+  code architecture
+  current P0/P1/P2 issues
+  CI limits
+  ownership/priorities
+  explicit update requirement for future agents
+
+FUTURE AGENTS:
+Append a concise entry here after meaningful work, and update the body sections
+rather than only appending history. This file must describe CURRENT truth.
