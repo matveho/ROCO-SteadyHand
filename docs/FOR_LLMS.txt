@@ -1955,3 +1955,52 @@ Current competition-network workflow:
   this installed version. Vendor/source example describes a negative first head
   joint value as a downward-looking initial pose, so use a moderate negative
   head_j1 test and verify framing visually before larger motion.
+
+
+2026-09-27 STRATEGY CHANGE — HEAD FOR BOARD, WRIST FOR PARTS, VERTICAL LEFT CLAW:
+  Onsite operator changed the Vega manipulation plan to reduce perception and IK
+  complexity:
+    1. Head stereo/RGB is the coarse global sensor. Use it to locate the four
+       outer corners of the large white task board and establish a board frame.
+    2. Left wrist camera becomes the fine local sensor for parts. With the tool
+       held in a fixed vertical-claw orientation, fine manipulation should be
+       visual-servo-like: move above the approximate part, center the wrist view,
+       descend to a per-part known grasp height, grip, then move to the board-local
+       destination and center/descend similarly.
+    3. Keep the left tool vertical for ordinary picks/placements, analogous to a
+       3D-printer nozzle. This removes most per-part orientation planning.
+    4. Per-part Z heights can be configured separately; XY comes primarily from
+       vision/board geometry.
+  This is now the preferred near-term architecture unless physical testing shows
+  a specific part needs another orientation.
+
+  Head sign correction VERIFIED_ON_COMP_ROBOT:
+    head_j1 NEGATIVE (-0.55 rad) looked toward the ceiling.
+    head_j1 POSITIVE (+0.55 rad) looked down toward the board.
+  Never repeat the earlier negative-down assumption.
+
+  Implemented:
+    steadyhand/vision/board.py
+      - connected-white-component board quadrilateral detector (NumPy only)
+      - organizer URDF head-chain FK
+      - source-camera-calibration normalization through LIVE head joint angles
+      - pixel-ray intersection with horizontal board/table plane
+      - board-center frame from TL/TR/BR/BL corners
+    tools/vega_board_benchmark.py
+      - aims head_j1 to +0.55 by default
+      - captures live rectified left RGB and live camera intrinsics
+      - detects board outer corners
+      - maps center + four corners into vega_1u_base_link
+      - writes calibration/vega_board_live.json
+      - optional physical benchmark at hover z=0.62 m
+      - vertical tool convention uses tip_l local -Z as the downward claw axis
+      - automatically tests tool yaw candidates 0/+90/-90/180 deg and selects
+        an IK-feasible low-motion yaw for center+all four corners
+      - moves center -> TL -> TR -> BR -> BL -> center
+      - benchmark default speed_scale=0.90; first move creates vertical clearance
+  IMPORTANT accuracy limitation:
+    absolute head-camera calibration is still from source robot
+    dm/vg3eb20f25bb-1u and is only normalized by live head kinematics. Use this
+    head path for COARSE board registration. Fine centering is explicitly assigned
+    to the wrist camera so cm-level head-extrinsic error does not have to become
+    part-placement error.
