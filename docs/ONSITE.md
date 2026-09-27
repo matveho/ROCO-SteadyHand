@@ -107,3 +107,34 @@ verify their physical left/right assignment onsite.
 
 See docs/BOOTCAMP.md for the first-access order and docs/UPSTREAMS.md for pinned
 public reference repositories.
+
+
+## Vega camera API from SteadyHand
+
+On the robot's system Python, camera-only access can now be used without
+enabling arm/gripper control:
+
+~~~python
+from steadyhand.adapters.vega import connect_cameras
+from steadyhand.cameras.vega import depth_to_point_cloud
+
+robot = connect_cameras({}, head=True, wrists=True)
+try:
+    frames = robot.read_cameras()
+    head = frames["head"]
+    wrists = frames["wrists"]
+
+    # Optional: sparse XYZ cloud in the rectified head-camera frame.
+    xyz = depth_to_point_cloud(
+        head.depth_m,
+        head.camera_info,
+        stride=4,
+        max_depth_m=2.0,
+    )
+finally:
+    robot.close()
+~~~
+
+Do not interpret this as synchronized four-camera capture: the head and wrist
+timestamps use different time bases. Also verify wrist_a/wrist_b against the
+physical left/right wrists before storing that mapping in config.
