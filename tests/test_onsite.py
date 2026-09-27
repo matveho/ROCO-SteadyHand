@@ -15,7 +15,7 @@ from steadyhand.adapters import sharpa, vega
 from steadyhand.adapters.base import HardwareUnavailableError, RobotAdapter
 from steadyhand.adapters.mock import MockAdapter
 from steadyhand.cameras.vega import intrinsics_from_camera_info
-from steadyhand.config import load_bundle, missing_setup, validate_bundle
+from steadyhand.config import load_bundle, missing_motion_setup, missing_setup, validate_bundle
 from steadyhand.executor import ExecutionError, execute_part, object_pose_to_tcp
 from steadyhand.grippers.vega import VegaCanGripper
 from steadyhand.geometry import (
@@ -43,6 +43,16 @@ class OnsiteTests(unittest.TestCase):
     def test_templates_are_valid_but_incomplete(self):
         for robot in ("vega", "sharpa"):
             self.assertTrue(missing_setup(load_bundle(robot)))
+
+
+    def test_vega_motion_plugin_does_not_require_legacy_interpolation_fields(self):
+        bundle = load_bundle("vega")
+        missing = missing_motion_setup(bundle)
+        self.assertNotIn("robot.motion.step_wait_time_s", missing)
+        self.assertNotIn("robot.motion.control_hz", missing)
+        self.assertNotIn("robot.max_joint_speed_rad_s", missing)
+        self.assertIn("robot.motion.joint_reached_tolerance_rad", missing)
+        self.assertIn("robot.motion.joint_timeout_s", missing)
 
     def test_task_config_is_pinned_to_organizer_code(self):
         tasks = load_bundle("vega")["tasks"]
