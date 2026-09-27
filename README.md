@@ -46,3 +46,37 @@ installed control path and stop behavior have been verified. A dry run never
 contacts hardware and never claims physical success.
 
 See docs/ONSITE.md and docs/ARRIVAL.md.
+
+
+## Vega live stack
+
+The Vega path is now implemented below perception/target generation:
+
+~~~text
+runtime object/target poses
+        |
+Vega skill config
+        |
+physical executor
+        |
+segmented Cartesian targets
+        |
+Pinocchio IK
+        |
+stepped 7-DoF joint targets
+        |
+dexcontrol 0.5.0
+        |
+physical Vega arm
+
+separate paths:
+  Sensors/WristCameras -> RGB-D + wrist RGB
+  gripper.py/SocketCAN -> third-party parallel grippers
+~~~
+
+Start with docs/VEGA_LIVE.md. The single-part runner is
+tools/vega_run_part.py; tools/vega_run_sequence.py is for later multi-part use.
+
+The remaining major Vega gap is automatic perception/target generation. A
+physical run therefore requires a current runtime_targets.json file until that
+layer is implemented onsite.
