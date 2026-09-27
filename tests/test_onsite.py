@@ -10,16 +10,43 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from steadyhand.adapters import sharpa, vega
+from steadyhand.adapters.base import HardwareUnavailableError, RobotAdapter
 from steadyhand.config import load_bundle, missing_setup, validate_bundle
 from steadyhand.runner import dry_run
 from steadyhand.sessions import create_session
-from steadyhand.adapters import sharpa, vega
+from steadyhand.skills import PHASES, goal_from_spec
+
+
+EXPECTED_PART_ORDER = [
+    "gear_60teeth", "gear_20teeth", "rod_16mm", "bolt_8mm", "usb_a",
+    "hdmi", "pin", "battery_size1", "battery_size5",
+]
+ORGANIZER_COMMIT = "45dd6ad6e0792faf3450bdd2f81bb143b11bc43f"
 
 
 class OnsiteTests(unittest.TestCase):
     def test_templates_are_valid_but_incomplete(self):
         for robot in ("vega", "sharpa"):
             self.assertTrue(missing_setup(load_bundle(robot)))
+
+    def test_task_config_is_pinned_to_organizer_code(self):
+        tasks = load_bundle("vega")["tasks"]
+        self.assertEqual(tasks["part_order"], EXPECTED_PART_ORDER)
+        self.assertEqual(tasks["source"]["commit"], ORGANIZER_COMMIT)
+        self.assertEqual(tasks["source"]["source_file"], "task/param_config.py")
+
+    def test_goal_conversion_does_not_invent_unknown_poses(self):
+        spec = load_bundle("vega")["tasks"]["parts"]["usb_a"]
+        goal = goal_from_spec("usb_a", spec)
+        self.assertEqual(goal.name, "usb_a")
+        self.assertEqual(goal.release_mode, "snap")
+        self.assertIsNone(goal.pick_pose)
+        self.assertIsNone(goal.place_pose)
+
+    def test_shared_phase_vocabulary_has_verification_before_transfer(self):
+        self.assertLess(PHASES.index("verify_grasp"), PHASES.index("transfer"))
+        self.assertEqual(PHASES[-1], "verify_place")
 
     def test_rejects_wrong_robot_calibration(self):
         bundle = load_bundle("vega")
@@ -31,7 +58,8 @@ class OnsiteTests(unittest.TestCase):
         bundle = load_bundle("vega")
         bad = copy.deepcopy(bundle)
         bad["tasks"]["parts"]["pin"]["pick_pose"] = {
-            "position_m": [0, 0, float("nan")], "quaternion_wxyz": [1, 0, 0, 0],
+            "position_m": [0, 0, float("nan")],
+            "quaternion_wxyz": [1, 0, 0, 0],
         }
         with self.assertRaisesRegex(ValueError, "finite"):
             validate_bundle(bad)
@@ -46,7 +74,10 @@ class OnsiteTests(unittest.TestCase):
             bundle = load_bundle("vega")
             folder = create_session("vega", "test", "dry_run", bundle, tmp)
             result = dry_run(folder, "vega", "pin", "verify_grasp")
-            events = [json.loads(line) for line in (folder / "events.jsonl").read_text().splitlines()]
+            events = [
+                json.loads(line)
+                for line in (folder / "events.jsonl").read_text().splitlines()
+            ]
             self.assertFalse(result["mock_sequence_completed"])
             self.assertIsNone(result["physical_success"])
             self.assertNotIn("transfer", [event["phase"] for event in events])
@@ -62,15 +93,20 @@ class OnsiteTests(unittest.TestCase):
             self.assertEqual(json.loads((a / "config_snapshot.json").read_text()), bundle)
             submission = Path(__file__).resolve().parents[1] / "policy.py"
             metadata = json.loads((a / "session.json").read_text())
-            self.assertEqual(metadata["submission_sha256"], hashlib.sha256(submission.read_bytes()).hexdigest())
+            self.assertEqual(
+                metadata["submission_sha256"],
+                hashlib.sha256(submission.read_bytes()).hexdigest(),
+            )
             result = dry_run(a, "sharpa", "battery_size1")
             self.assertTrue(result["mock_sequence_completed"])
             self.assertIsNone(result["physical_success"])
 
-    def test_hardware_adapters_are_disabled(self):
-        for adapter in (vega, sharpa):
-            with self.assertRaises(NotImplementedError):
-                adapter.connect({})
+    def test_adapters_share_contract_and_are_disabled(self):
+        self.assertTrue(issubclass(vega.VegaAdapter, RobotAdapter))
+        self.assertTrue(issubclass(sharpa.SharpaAdapter, RobotAdapter))
+        for module in (vega, sharpa):
+            with self.assertRaises(HardwareUnavailableError):
+                module.connect({})
 
 
 if __name__ == "__main__":
