@@ -1922,3 +1922,11 @@ Current competition-network workflow:
       checkout was still stale even after instructions to pull/deploy. Main DOES
       contain the option in tools/vega_capture_snapshot.py. Before diagnosing the
       RGB-only code itself, verify/deploy latest main to ~/ROCO-SteadyHand-live.
+
+
+2026-09-27 RGB-ONLY SNAPSHOT BUG FIX:
+  The first RGB-only capture reached frame acquisition successfully but crashed
+  while writing metadata because tools/vega_capture_snapshot.py still assumed
+  h.depth_m was non-null when computing depth_shape. This is a SteadyHand bug,
+  not a camera failure. Main now records depth_shape=null when --rgb-only is
+  used. Retry the same RGB-only capture after deploying latest.
