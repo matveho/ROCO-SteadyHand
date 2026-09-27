@@ -1534,3 +1534,15 @@ Current competition-network workflow:
   Next diagnostic:
     inspect installed motion-plugin/client completion/deadband/tolerance logic
     before increasing the commanded arm displacement.
+
+
+2026-09-27 motion-status client inspection:
+  dexcontrol component._on_motion_status() JSON-decodes plugin status messages
+  and directly updates the matching MotionHandle state. The client does not
+  independently decide that a move is "finished"; that terminal state comes
+  from the robot-server motion plugin. Therefore the observed J7 +0.005 rad
+  target that returned "finished" without measurable displacement is a
+  server/plugin-side behavior (or server-side tolerance/deadband), not a client
+  MotionHandle tolerance decision.
+  SteadyHand's independent measured-state check after handle completion remains
+  necessary and should not be removed.
