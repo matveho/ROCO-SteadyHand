@@ -1844,3 +1844,18 @@ Current competition-network workflow:
     - Conda python3 contains dexcontrol and is required for the SteadyHand head
       camera path. /usr/bin/python3 does NOT have dexcontrol on this unit. Wrist
       cameras remain a separate system-Python/GStreamer path.
+
+
+2026-09-27 HEAD CAMERA DEPTH-ENABLE RESTART FAILURE:
+  After changing /etc/dexmate/dexsensor/default.toml head_camera stream setting
+  from depth=false to depth=true and restarting dexsensor, the head camera no
+  longer opened at all. The failure is below SteadyHand/Zenoh:
+    Argus: Failed socket read: Connection reset by peer
+    Cannot create camera provider
+    ZED SDK: CAMERA NOT DETECTED
+    dexsensor removed head_camera after 3 retries
+  This occurred after the same physical camera had opened successfully moments
+  earlier once SN55089643.conf was installed, so treat it first as an Argus/GMSL
+  camera-service/daemon state problem rather than assuming a cable failure.
+  Next diagnostic: inspect nvargus-daemon and ZEDX_Daemon state/logs before
+  restarting services. Do not revert the depth=true change yet.
