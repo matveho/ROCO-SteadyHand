@@ -143,13 +143,16 @@
   },
   "safety": {
     "force_delta_limit": null,
-    "note": "Insertion requires measured force_delta_limit, wrench_units=N,Nm, wrench_frame and max_contact_step_m. Force is checked between blocking moves, not continuously. Overload stops without automatic retract.",
+    "note": "Hard TCP floor measured onsite Sep 27 from left tip_l light table contact: contact z=0.4460002716867571 m in vega_1u_base_link; task floor is contact+0.010 m = 0.4560002716867571 m. Normal task Cartesian targets/waypoints must not go below it. Insertion also remains gated by measured force_delta_limit, wrench_units=N,Nm, wrench_frame and max_contact_step_m. Force is checked between blocking moves, not continuously. Overload stops without automatic retract.",
     "force_axes": [
       0,
       1,
       2
     ],
     "wrench_units": null,
-    "wrench_frame": null
+    "wrench_frame": null,
+    "min_tcp_z_m": 0.4560002716867571,
+    "table_contact_tip_z_m": 0.4460002716867571,
+    "table_floor_margin_m": 0.01
   }
 }
