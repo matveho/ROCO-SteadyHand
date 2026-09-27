@@ -3,6 +3,7 @@
 import copy
 import hashlib
 import json
+import math
 import sys
 import tempfile
 import unittest
@@ -12,8 +13,18 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters import sharpa, vega
 from steadyhand.adapters.base import HardwareUnavailableError, RobotAdapter
+from steadyhand.adapters.mock import MockAdapter
 from steadyhand.config import load_bundle, missing_setup, validate_bundle
+from steadyhand.geometry import (
+    compose,
+    invert_rigid,
+    pose_to_matrix,
+    transform_point,
+    transform_pose,
+)
+from steadyhand.models import Pose
 from steadyhand.runner import dry_run
+from steadyhand.search import centered_grid, square_spiral
 from steadyhand.sessions import create_session
 from steadyhand.skills import PHASES, goal_from_spec
 
@@ -47,6 +58,65 @@ class OnsiteTests(unittest.TestCase):
     def test_shared_phase_vocabulary_has_verification_before_transfer(self):
         self.assertLess(PHASES.index("verify_grasp"), PHASES.index("transfer"))
         self.assertEqual(PHASES[-1], "verify_place")
+
+    def test_rigid_transform_round_trip(self):
+        pose = Pose(
+            position_m=(0.12, -0.08, 0.44),
+            quaternion_wxyz=(math.sqrt(0.5), 0.0, 0.0, math.sqrt(0.5)),
+        )
+        t = pose_to_matrix(pose)
+        identity = compose(t, invert_rigid(t))
+        for i in range(4):
+            for j in range(4):
+                self.assertAlmostEqual(identity[i][j], float(i == j), places=9)
+
+        p = (0.01, 0.02, 0.03)
+        transformed = transform_point(t, p)
+        recovered = transform_point(invert_rigid(t), transformed)
+        for a, b in zip(p, recovered):
+            self.assertAlmostEqual(a, b, places=9)
+
+    def test_transform_pose_respects_destination_source_convention(self):
+        t_base_camera = [
+            [1, 0, 0, 0.5],
+            [0, 1, 0, -0.2],
+            [0, 0, 1, 1.0],
+            [0, 0, 0, 1],
+        ]
+        camera_pose = Pose((0.1, 0.2, 0.3), (1, 0, 0, 0))
+        base_pose = transform_pose(t_base_camera, camera_pose)
+        self.assertEqual(base_pose.position_m, (0.6, 0.0, 1.3))
+
+    def test_search_patterns_start_at_nominal_pose(self):
+        grid = centered_grid(5, (0.002, 0.003))
+        self.assertEqual(grid[0], (0.0, 0.0))
+        self.assertEqual(len(grid), 25)
+        self.assertLessEqual(max(abs(x) for x, _ in grid), 0.002)
+        self.assertLessEqual(max(abs(y) for _, y in grid), 0.003)
+
+        spiral = square_spiral(step_m=0.001, rings=2)
+        self.assertEqual(spiral[0], (0.0, 0.0))
+        self.assertEqual(len(spiral), 25)
+        self.assertEqual(len(set(spiral)), len(spiral))
+
+    def test_mock_adapter_exercises_common_contract(self):
+        robot = MockAdapter()
+        self.assertIsInstance(robot, RobotAdapter)
+        robot.connect()
+        robot.open_gripper("pin")
+        robot.move_joints([0.1, 0.2], speed_scale=0.1)
+        robot.move_tcp(Pose((0, 0, 0.2), (1, 0, 0, 0)))
+        self.assertTrue(robot.verify_grasp("pin"))
+        robot.stop()
+        robot.close()
+        names = [command[0] for command in robot.commands]
+        self.assertEqual(
+            names,
+            [
+                "connect", "open_gripper", "move_joints", "move_tcp",
+                "verify_grasp", "stop", "close",
+            ],
+        )
 
     def test_rejects_wrong_robot_calibration(self):
         bundle = load_bundle("vega")
