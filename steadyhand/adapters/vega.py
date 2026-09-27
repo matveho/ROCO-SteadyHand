@@ -4,12 +4,13 @@ This is the real hardware boundary for Vega. It intentionally remains gated by
 configuration because constructing dexcontrol Robot() moves the head and motion
 must not start from guessed robot/URDF/frame settings.
 
-Verified/public control assumptions used here:
-- dexcontrol Robot() exposes left_arm/right_arm joint position state and
-  set_joint_pos();
+Verified competition-unit control assumptions used here:
+- dexcontrol Robot() exposes left_arm/right_arm joint position state;
 - public control is joint-position only;
-- wait_time=0 is NOT used here because it requires a continuous 100-500 Hz
-  command loop;
+- move_to_joint_pos() delegates trajectory generation/smoothing/gravity
+  compensation to the robot-server motion plugin and returns a MotionHandle;
+- set_joint_pos(wait_time=0) requires continuous high-frequency streaming and
+  set_joint_pos(wait_time>0) is deprecated, so neither path is used here;
 - software e-stop is available through robot.estop;
 - the competition gripper is a separate CAN device.
 """
@@ -44,6 +45,7 @@ class VegaAdapter(RobotAdapter):
         self._wrist_cameras = None
         self._joint_names = ()
         self._joint_limits = ()
+        self._active_motion_handle = None
 
     @property
     def capabilities(self) -> AdapterCapabilities:
@@ -101,6 +103,11 @@ class VegaAdapter(RobotAdapter):
         try:
             self._robot = Robot()
             self._arm = self._select_arm(self._robot)
+            if not callable(getattr(self._arm, "move_to_joint_pos", None)):
+                raise HardwareUnavailableError(
+                    "Installed dexcontrol arm has no move_to_joint_pos(); "
+                    "refusing to fall back to unverified streaming/interpolation"
+                )
             names = tuple(self._arm.get_joint_name())
             if names != self._joint_names:
                 raise ValueError(
@@ -183,12 +190,22 @@ class VegaAdapter(RobotAdapter):
                 self._robot = None
                 self._arm = None
                 self._kinematics = None
+                self._active_motion_handle = None
         if errors:
             raise RuntimeError("Vega shutdown failed: " + "; ".join(str(exc) for exc in errors)) from errors[0]
 
     def stop(self) -> None:
         """Software emergency stop plus CAN jaw halt when available."""
         errors = []
+        handle = self._active_motion_handle
+        if handle is not None:
+            try:
+                if not handle.is_done:
+                    handle.cancel()
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                self._active_motion_handle = None
         if self._robot is not None:
             try:
                 self._robot.estop.activate()
@@ -293,9 +310,7 @@ class VegaAdapter(RobotAdapter):
 
         max_step = float(motion["max_step_rad"])
         tolerance = float(motion["joint_reached_tolerance_rad"])
-        settle = float(motion["step_wait_time_s"]) / float(speed_scale)
-        max_vel = float(self.config["max_joint_speed_rad_s"]) * float(speed_scale)
-        control_hz = float(motion["control_hz"])
+        timeout = float(motion["joint_timeout_s"])
         # Reserve the tracking tolerance so measured-to-next-target steps also
         # remain bounded, not only consecutive planned targets.
         steps = max(1, int(math.ceil(worst / (max_step - tolerance))))
@@ -313,17 +328,24 @@ class VegaAdapter(RobotAdapter):
             if distance > max_step + 1e-12:
                 raise RuntimeError("Measured joint tracking would exceed motion.max_step_rad")
             stamp = self._state_timestamp()
-            # dexcontrol 0.5 Arm.wait_time is a streaming deadline, not speed.
-            # Explicit max_vel controls the vendor-generated linear trajectory.
-            # Allocate its duration PLUS the measured settle allowance, otherwise
-            # the SDK can truncate the trajectory before sending its endpoint.
-            self._arm.set_joint_pos(
+
+            # Competition Vega dexcontrol 0.5.0 provides a robot-server motion
+            # plugin. Prefer that controller-managed trajectory path over the
+            # deprecated client-side set_joint_pos(wait_time>0) interpolation
+            # and over raw wait_time=0 command streaming.
+            handle = self._arm.move_to_joint_pos(
                 waypoint,
                 relative=False,
-                wait_time=distance / max_vel + settle,
-                wait_kwargs={"max_vel": max_vel, "control_hz": control_hz},
-                exit_on_reach=False,
+                velocity_scale=float(speed_scale),
             )
+            self._active_motion_handle = handle
+            state = handle.wait(timeout=timeout)
+            if state != "finished":
+                raise RuntimeError(
+                    f"Vega motion plugin ended waypoint in state {state!r}: "
+                    f"{getattr(handle, 'message', '')}"
+                )
+            self._active_motion_handle = None
             self._wait_for_joint_state(target=waypoint, newer_than=stamp)
 
     def move_tcp(self, pose, *, speed_scale: float = 1.0) -> None:
@@ -435,11 +457,8 @@ class VegaAdapter(RobotAdapter):
         if not self.config.get("urdf_path"):
             raise ValueError("vega.urdf_path is required for physical IK")
         motion = self.config.get("motion") or {}
-        for field in ("step_wait_time_s", "max_step_rad", "max_total_delta_rad", "control_hz", "joint_reached_tolerance_rad", "joint_timeout_s"):
+        for field in ("max_step_rad", "max_total_delta_rad", "joint_reached_tolerance_rad", "joint_timeout_s"):
             _positive(motion.get(field), f"vega.motion.{field}")
-        _positive(self.config.get("max_joint_speed_rad_s"), "vega.max_joint_speed_rad_s")
-        if not 100 <= float(motion["control_hz"]) <= 500:
-            raise ValueError("vega.motion.control_hz must be a verified rate in [100, 500]")
         if float(motion["joint_reached_tolerance_rad"]) >= float(motion["max_step_rad"]):
             raise ValueError("joint_reached_tolerance_rad must be smaller than max_step_rad")
         limits = (self.config.get("arm_joint_limits_rad") or {}).get(self.config["working_arm"])
