@@ -18,6 +18,7 @@ Verified competition-unit control assumptions used here:
 import importlib.metadata
 import math
 import os
+from pathlib import Path
 import sys
 import time
 
@@ -146,8 +147,11 @@ class VegaAdapter(RobotAdapter):
             for bound in self.config["arm_joint_limits_rad"][self.config["working_arm"]]
         )
         kin["joint_limits_rad"] = self._joint_limits
+        urdf_path = Path(self.config["urdf_path"]).expanduser()
+        if not urdf_path.is_absolute():
+            urdf_path = Path(__file__).resolve().parents[2] / urdf_path
         self._kinematics = PinocchioArmKinematics(
-            self.config["urdf_path"],
+            str(urdf_path),
             kin["ee_frame"],
             joint_names,
             kin,
