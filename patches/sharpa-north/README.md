@@ -50,7 +50,7 @@ runs the 271 offline cases and compiles a candidate plugin. It:
 3. Copies the SDK using independent files, excluding `.git`, `.backups`, logs,
    recordings, loose log files, motor memory dumps and Python caches. Internal
    absolute symlinks are relocated into the copy. No hardlinks connect the copy
-   to the original.
+   to the original. A fresh empty `logs/` directory is created for North's logger.
 4. Applies the patch without fuzzy matching and verifies the resulting source
    hashes. Compiler/linker paths referring to the original SDK are remapped to
    the copy in memory. Original build files remain unchanged.

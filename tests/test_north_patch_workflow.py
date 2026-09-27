@@ -126,7 +126,11 @@ class NorthWorkspaceTests(unittest.TestCase):
             (folder / "unrelated.txt").write_text("not part of candidate")
         self.prepare()
         for name in ("logs", ".backups", "recordings", ".git"):
-            self.assertFalse((self.workspace / "sdk" / name).exists())
+            if name == 'logs':
+                self.assertTrue((self.workspace / 'sdk/logs').is_dir())
+                self.assertEqual(list((self.workspace / 'sdk/logs').iterdir()), [])
+            else:
+                self.assertFalse((self.workspace / "sdk" / name).exists())
             self.assertTrue((self.sdk / name / "unrelated.txt").exists())
 
     def test_loose_logs_and_motor_dumps_stay_out_of_copy(self):

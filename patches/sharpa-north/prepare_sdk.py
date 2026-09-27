@@ -75,6 +75,8 @@ def check_links(sdk):
 def copy_sdk(sdk, copied):
     # copy2 creates independent file contents; do not use hardlinks to live SDKs.
     shutil.copytree(sdk, copied, symlinks=True, ignore=ignored)
+    # North's glog setup expects this directory to exist; retain no old logs.
+    (copied / 'logs').mkdir(exist_ok=True)
     for directory, folders, files in os.walk(copied, followlinks=False):
         for name in folders + files:
             path = Path(directory) / name
