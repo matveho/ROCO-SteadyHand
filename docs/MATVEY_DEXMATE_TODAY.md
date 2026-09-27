@@ -679,3 +679,17 @@ NEXT SINGLE EXPERIMENT:
 ```
 
 If that sheet is complete, tomorrow is a tuning/scoring day rather than another integration day.
+
+
+## LIVE UPDATE — first intentional joint target did not move the arm
+
+A direct left-arm J7 command of +0.005 rad using
+`move_to_joint_pos(..., velocity_scale=0.05)` returned `finished`, but the
+measured J7 change was only about -2.27e-05 rad. Treat arm displacement as
+**not yet verified**.
+
+`Robot()` also visibly pivoted the head upward slightly, so always clear the
+head workspace before construction.
+
+Next action is not a larger command yet: inspect the installed motion
+completion/deadband/tolerance logic first.
