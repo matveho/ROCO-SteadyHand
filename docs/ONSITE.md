@@ -1,50 +1,87 @@
 # SteadyHand onsite workspace
 
-The toolkit lives at the repository root alongside the original `policy.py` submission.
-Code, configuration templates, tests, and docs belong in Git. Generated runs, local data,
-and private planning in `llm/` are gitignored; back them up before switching machines.
+Use the onsite-2026 branch for competition development. The exact original
+submission is preserved on submission-baseline at commit
+705e4e03ed8e3427cfc5f58a20de02afc3687e6b.
 
-Run these commands from the repository root. Python 3.10+ is enough; no packages are required yet.
+Generated runs, local data, and private planning in llm/ are gitignored; back
+them up before switching machines.
 
-```powershell
+## Offline commands
+
+Run from the repository root. Python 3.10+ is enough for the current scaffold.
+
+~~~bash
 python onsite.py doctor
 python onsite.py check-config --robot vega
 python onsite.py dry-run --robot vega --part battery_size1
 python onsite.py dry-run --robot sharpa --part pin --fail-at verify_grasp
 python onsite.py new-session --robot vega --operator "Matvey Okoneshnikov"
-```
-
-`check-config` accepts unfinished templates and lists what's missing. Add `--require-ready`
-to return an error for missing setup. Passing it checks configuration completeness only.
-`dry-run` uses a mock, never connects to a robot, and does not simulate physics.
-The injected-failure example intentionally exits with an error and still saves its log.
-
-| Location | What goes here |
-|---|---|
-| `onsite.py` | Command-line entry point |
-| `steadyhand/` | Shared configuration, session logging, and dry-run code |
-| `steadyhand/adapters/` | Separate Vega and Sharpa integration files |
-| `configs/robots/` | Connection settings, joint order, and motion limits |
-| `configs/task_board.json` | Part order and pick/place pose placeholders |
-| `calibration/` | Measured transforms for each robot |
-| `data/` | Recordings and selected reference material |
-| `runs/` | Generated sessions, configuration snapshots, and trial logs |
-| `docs/ARRIVAL.md` | First robot session and trial-recording notes |
-| `tests/` | Offline checks |
-| `llm/ONSITE_PLAN.md` | Private preparation plan and source links (local only) |
-
-For a new session, substitute `sharpa` or operator `Eunice Ding` as appropriate.
-Each session includes `session.json`, configuration snapshots, `trials.csv`, and
-`notes.md`. Dry runs also write `events.jsonl` and `result.json`, explicitly marked
-as mock results. Record physical attempts in a separate `new-session` folder.
-
-All task poses use metres and **wxyz** quaternions. Calibration matrices are
-`T_destination_source`: for example, `T_base_camera` maps camera coordinates into
-the robot base frame. Unknown values stay `null`; do not substitute guessed poses.
-
-The hardware adapter files are intentionally disabled. Complete and validate them
-against the installed SDKs onsite before adding a hardware-run command.
-
-```powershell
 python -m unittest discover -s tests -v
-```
+~~~
+
+check-config accepts unfinished templates and lists missing fields. Add
+--require-ready to fail when setup is incomplete. Passing that check means only
+that the configuration is structurally complete.
+
+dry-run never connects to hardware and does not simulate physics.
+
+## Source of truth for the board task
+
+configs/task_board.json is pinned to organizer repository commit
+45dd6ad6e0792faf3450bdd2f81bb143b11bc43f, file task/param_config.py.
+
+At that commit the code's part_order starts:
+
+~~~text
+gear_60teeth, gear_20teeth, rod_16mm, ...
+~~~
+
+The organizer's hand-maintained PARTS.md lists the two gears in the opposite
+order. Their documentation says param_config.py is the source of truth, so this
+repo follows the code. Re-check the pinned commit if the organizer repository
+changes onsite.
+
+Simulation snap labels are retained as task metadata only. They do not mean a
+real robot receives the simulator's teleport/fixed-joint success mechanism.
+
+## Repository map
+
+| Location | Purpose |
+|---|---|
+| policy.py | Original submitted Vega simulation policy |
+| onsite.py | Offline command-line entry point |
+| steadyhand/models.py | Shared robot-independent poses and goals |
+| steadyhand/skills.py | Shared assembly phase vocabulary |
+| steadyhand/adapters/base.py | Common robot capability contract |
+| steadyhand/adapters/vega.py | Vega hardware integration |
+| steadyhand/adapters/sharpa.py | Sharpa North integration |
+| configs/robots/ | Connection settings, joint order, motion limits |
+| configs/task_board.json | Pinned task metadata and pose placeholders |
+| calibration/ | Measured transforms for each robot |
+| runs/ | Generated session snapshots and logs |
+| docs/ARCHITECTURE.md | Shared-code / two-adapter design |
+| docs/ARRIVAL.md | First physical robot session checklist |
+
+## Session records
+
+Each session contains session.json, a configuration snapshot, trials.csv, and
+notes.md. Dry runs additionally write events.jsonl and result.json, explicitly
+marked as mock results.
+
+All task poses use metres and wxyz quaternions. Calibration matrices are
+T_destination_source; T_base_camera maps camera coordinates into the robot base
+frame. Unknown values remain null.
+
+## Hardware enablement rule
+
+The adapters are deliberately disabled. Before enabling one:
+
+1. verify the installed SDK/version and robot identity;
+2. verify joint ordering, limits, units, and control rate;
+3. demonstrate stop/e-stop behavior;
+4. read state without commanding motion;
+5. make one small, unobstructed motion with the onsite engineer;
+6. only then add a hardware-run path.
+
+Do not make doctor, check-config, or imports contact a robot.
