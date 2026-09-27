@@ -1763,3 +1763,25 @@ Current competition-network workflow:
     measurement, z ~= 0.4460 m, i.e. BELOW the normal-task floor.
     Before any XY/task motion, recover the left TCP straight upward by at least
     10 mm; recommend +20 mm using tools/vega_jog_tcp.py after syncing latest code.
+
+
+2026-09-27 ONE-COMMAND WINDOWS -> VEGA DEPLOYMENT:
+  Added tools/deploy_vega.ps1.
+  Purpose:
+    - git pull --ff-only origin main
+    - bundle committed main
+    - SCP bundle to dexmate@192.168.50.20
+    - refuse to overwrite tracked onsite edits in ~/ROCO-SteadyHand-live
+    - fetch bundle into deployment checkout and verify exact SHA
+    - run the no-motion Vega preflight
+  The script preserves untracked onsite files and does NOT git clean.
+  SSH authentication:
+    - preferred: SSH key
+    - otherwise reads DEXMATE_PASSWORD from the Windows environment
+    - if absent, securely prompts once and reuses it for scp + ssh via a
+      temporary SSH_ASKPASS helper
+    - plaintext password is intentionally NOT committed to the repository.
+  Default deployment target:
+    user dexmate
+    host 192.168.50.20
+    live dir /home/dexmate/ROCO-SteadyHand-live
