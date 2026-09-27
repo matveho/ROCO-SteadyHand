@@ -1910,3 +1910,15 @@ Current competition-network workflow:
   Also: the RGB-only SteadyHand fallback was committed on main, but an onsite
   "unrecognized arguments: --rgb-only" means the robot checkout had not yet
   pulled/deployed that commit.
+
+
+2026-09-27 CAMERA SERVICE + DEPLOYMENT CORRECTION:
+  On competition robot dm/vgfcb66075ea-1u:
+    - systemd unit dexsensor.service is NOT installed ("Unit dexsensor.service not found").
+      Do not assume the source-robot manual's dexsensor.service exists here.
+    - Manual ad-hoc `dexsensor launch --sensor head_camera` remains the available
+      head-camera publisher path observed onsite.
+    - A repeated `--rgb-only` "unrecognized arguments" error proved the robot
+      checkout was still stale even after instructions to pull/deploy. Main DOES
+      contain the option in tools/vega_capture_snapshot.py. Before diagnosing the
+      RGB-only code itself, verify/deploy latest main to ~/ROCO-SteadyHand-live.
