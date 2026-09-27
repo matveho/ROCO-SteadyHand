@@ -222,8 +222,17 @@ def validate_execution(goal, skill, safety, speed_scale=1.0):
         step = skill.get("max_contact_step_m")
         if step is None or not math.isfinite(float(step)) or float(step) <= 0:
             raise ExecutionError("Insertion requires a validated max_contact_step_m")
-    object_pose_to_tcp(goal.pick_pose, skill)
-    object_pose_to_tcp(goal.place_pose, skill)
+    pick_tcp = object_pose_to_tcp(goal.pick_pose, skill)
+    place_tcp = object_pose_to_tcp(goal.place_pose, skill)
+    min_tcp_z_m = safety.get("min_tcp_z_m")
+    if min_tcp_z_m is not None:
+        floor = float(min_tcp_z_m)
+        for label, pose in (("pick", pick_tcp), ("place", place_tcp)):
+            if float(pose.position_m[2]) < floor:
+                raise ExecutionError(
+                    f"{goal.name}: {label} TCP z={float(pose.position_m[2]):.6f} m "
+                    f"is below configured floor {floor:.6f} m"
+                )
 
 
 def execute_part(robot, goal, skill, *, safety=None, speed_scale=1.0, event=None,
