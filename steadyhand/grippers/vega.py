@@ -20,7 +20,9 @@ destroys that reference, whereas halt() stops motion while preserving it.
 """
 
 import importlib.util
+import math
 from pathlib import Path
+import sys
 
 
 class VegaCanGripper:
@@ -33,26 +35,49 @@ class VegaCanGripper:
     def scope(self):
         return self.config.get("scope")
 
+    def validate_config(self):
+        """Validate gates/files without executing the third-party driver module."""
+        if self.scope not in ("left", "right", "both"):
+            raise ValueError("gripper.scope must be 'left', 'right', or 'both'")
+        path = self.config.get("driver_path")
+        if not path:
+            raise ValueError("gripper.driver_path is required")
+        if not Path(path).expanduser().is_file():
+            raise FileNotFoundError(path)
+        _positive(self.config.get("grip_current_a"), "gripper.grip_current_a")
+        if (not self.config.get("home_on_connect", True)
+                and not self.config.get("skip_home_verified", False)):
+            raise ValueError("Refusing to skip gripper homing without skip_home_verified=true")
+
     def connect(self):
         if self._driver is not None:
             return
-        if self.scope not in ("left", "right", "both"):
-            raise ValueError("gripper.scope must be 'left', 'right', or 'both'")
-
+        self.validate_config()
         module = _load_gripper_module(self.config.get("driver_path"))
         self._driver = module.Grippers()
-
-        if self.config.get("home_on_connect", True):
-            if self.scope == "both":
-                # For a dual-arm operation, both motors are required.
-                self._driver.home(require_all=True)
-            else:
-                self._motor().home()
-        elif not self.config.get("skip_home_verified", False):
-            self.close()
-            raise ValueError(
-                "Refusing to skip gripper homing without skip_home_verified=true"
-            )
+        try:
+            for name in ("home", "both_open", "both_close", "status", "halt", "close_bus"):
+                if not callable(getattr(self._driver, name, None)):
+                    raise TypeError(f"Onsite Grippers driver does not implement documented {name}()")
+            if self.scope in ("left", "right"):
+                motor = self._motor()
+                for name in ("home", "open", "close", "grip", "move_to",
+                             "position", "halt", "release"):
+                    if not callable(getattr(motor, name, None)):
+                        raise TypeError(
+                            f"Onsite {self.scope} gripper does not implement {name}()"
+                        )
+            if self.config.get("home_on_connect", True):
+                if self.scope == "both":
+                    self._driver.home(require_all=True)
+                else:
+                    self._motor().home()
+        except BaseException:
+            try:
+                self.close()
+            except BaseException as exc:
+                print(f"Gripper initialization cleanup failed: {exc}", file=sys.stderr)
+            raise
 
     def open(self):
         self._require()
@@ -76,22 +101,25 @@ class VegaCanGripper:
                 "the official driver has per-motor grip(), not a top-level both-grip."
             )
         value = self.config.get("grip_current_a") if current_a is None else current_a
-        if value is None:
-            raise ValueError("gripper.grip_current_a must be set before gripping")
-        self._last_grip_result = self._motor().grip(current=float(value))
+        self._last_grip_result = self._motor().grip(
+            current=_positive(value, "gripper.grip_current_a")
+        )
         return self._last_grip_result
 
     def last_grip_result(self):
         return self._last_grip_result
 
-    def move_fraction(self, fraction, *, speed=500):
+    def move_fraction(self, fraction, *, speed):
         self._require()
         fraction = float(fraction)
         if not 0.0 <= fraction <= 1.0:
             raise ValueError("gripper fraction must be in [0, 1]")
+        speed = _positive(speed, "gripper speed")
         if self.scope == "both":
-            return self._driver.both_move_to(fraction, speed=float(speed))
-        return self._motor().move_to(fraction, speed=float(speed))
+            if not callable(getattr(self._driver, "both_move_to", None)):
+                raise TypeError("Onsite Grippers driver has no both_move_to()")
+            return self._driver.both_move_to(fraction, speed=speed)
+        return self._motor().move_to(fraction, speed=speed)
 
     def position(self):
         self._require()
@@ -131,8 +159,10 @@ class VegaCanGripper:
         try:
             self.halt()
         finally:
-            self._driver.close_bus()
-            self._driver = None
+            try:
+                self._driver.close_bus()
+            finally:
+                self._driver = None
 
     def release_motors(self):
         """De-energize selected jaw(s); this destroys their calibration reference."""
@@ -145,8 +175,10 @@ class VegaCanGripper:
             else:
                 self._motor().release()
         finally:
-            self._driver.close_bus()
-            self._driver = None
+            try:
+                self._driver.close_bus()
+            finally:
+                self._driver = None
 
     def _motor(self):
         self._require()
@@ -167,7 +199,27 @@ def _load_gripper_module(path):
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load gripper module from {path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # dataclasses and other runtime decorators resolve __module__ through
+    # sys.modules; direct exec_module without registration breaks those drivers.
+    previous = sys.modules.get(spec.name)
+    sys.modules[spec.name] = module
+    try:
+        spec.loader.exec_module(module)
+    except BaseException:
+        if previous is None:
+            sys.modules.pop(spec.name, None)
+        else:
+            sys.modules[spec.name] = previous
+        raise
     if not hasattr(module, "Grippers"):
         raise ImportError(f"{path} does not define Grippers")
     return module
+
+
+def _positive(value, name):
+    if value is None:
+        raise ValueError(f"{name} must be measured/verified and set")
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise ValueError(f"{name} must be finite and > 0")
+    return number

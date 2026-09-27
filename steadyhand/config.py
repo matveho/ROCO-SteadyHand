@@ -10,8 +10,16 @@ ROBOTS = ("vega", "sharpa")
 
 
 def read_json(path):
-    with Path(path).open(encoding="utf-8") as stream:
-        return json.load(stream)
+    def unique_mapping(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError(f"{path}: duplicate JSON key {key!r}")
+            result[key] = value
+        return result
+
+    with Path(path).open(encoding="utf-8-sig") as stream:
+        return json.load(stream, object_pairs_hook=unique_mapping)
 
 
 def numeric_vector(value, length, label):
@@ -107,14 +115,22 @@ def missing_motion_setup(bundle):
         if not robot.get("urdf_path"):
             missing.append("robot.urdf_path")
         motion = robot.get("motion") or {}
-        if motion.get("step_wait_time_s") is None:
-            missing.append("robot.motion.step_wait_time_s")
+        for key in ("step_wait_time_s", "control_hz",
+                    "joint_reached_tolerance_rad", "joint_timeout_s"):
+            if motion.get(key) is None:
+                missing.append(f"robot.motion.{key}")
+        if robot.get("max_joint_speed_rad_s") is None:
+            missing.append("robot.max_joint_speed_rad_s")
         kin = robot.get("kinematics") or {}
         if not kin.get("ee_frame"):
             missing.append("robot.kinematics.ee_frame")
+        if not kin.get("base_frame"):
+            missing.append("robot.kinematics.base_frame")
         gripper = robot.get("gripper") or {}
         if not gripper.get("scope"):
             missing.append("robot.gripper.scope")
+        if gripper.get("grip_current_a") is None:
+            missing.append("robot.gripper.grip_current_a")
         return missing
 
     missing = []

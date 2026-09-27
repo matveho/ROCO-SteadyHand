@@ -17,6 +17,7 @@ Verified/public control assumptions used here:
 import importlib.metadata
 import math
 import os
+import sys
 import time
 
 from ..cameras.vega import VegaHeadCamera, VegaWristCameras
@@ -41,6 +42,8 @@ class VegaAdapter(RobotAdapter):
         self._gripper = None
         self._head_camera = None
         self._wrist_cameras = None
+        self._joint_names = ()
+        self._joint_limits = ()
 
     @property
     def capabilities(self) -> AdapterCapabilities:
@@ -59,10 +62,21 @@ class VegaAdapter(RobotAdapter):
     def connect(self) -> None:
         if self._robot is not None:
             return
-        self._validate_motion_config()
+        if not self.config.get("allow_robot_init_head_motion"):
+            raise HardwareUnavailableError(
+                "Refusing Robot(): it automatically moves the head. Set "
+                "allow_robot_init_head_motion=true only after clearing the "
+                "workspace and confirming this behavior onsite."
+            )
+        self.prepare()
 
         robot_name = self.config.get("robot_name")
-        if robot_name and not os.environ.get("ROBOT_NAME"):
+        env_name = os.environ.get("ROBOT_NAME")
+        if robot_name and env_name and robot_name != env_name:
+            raise ValueError("Configured robot_name disagrees with ROBOT_NAME; refusing to connect")
+        if not robot_name and not env_name:
+            raise ValueError("Set robot_name or ROBOT_NAME to the verified physical robot name")
+        if robot_name and not env_name:
             os.environ["ROBOT_NAME"] = str(robot_name)
 
         expected = self.config.get("sdk_version")
@@ -84,15 +98,47 @@ class VegaAdapter(RobotAdapter):
 
         # IMPORTANT: the supplied field manual documents that Robot() moves
         # the head to home. _validate_motion_config requires explicit opt-in.
-        self._robot = Robot()
-        self._arm = self._select_arm(self._robot)
+        try:
+            self._robot = Robot()
+            self._arm = self._select_arm(self._robot)
+            names = tuple(self._arm.get_joint_name())
+            if names != self._joint_names:
+                raise ValueError(
+                    f"SDK joint order {names!r} differs from configured URDF order "
+                    f"{self._joint_names!r}; verify the mapping before commanding"
+                )
+            self._read_joint_positions()
+            stamp = self._state_timestamp()
+            self._wait_for_joint_state(newer_than=stamp)
+            estop = self._read_estop_status()
+            if estop["button_pressed"] or estop["software_estop_enabled"]:
+                raise RuntimeError(
+                    "Physical or software e-stop is active; resolve with the "
+                    "engineer before commanding"
+                )
+        except BaseException:
+            self._stop_after_failure()
+            try:
+                self.close()
+            except BaseException as exc:
+                print(f"Vega connection cleanup failed: {exc}", file=sys.stderr)
+            raise
 
-        kin = self.config["kinematics"]
+    def prepare(self):
+        """Validate local settings and load IK before Robot() can move the head."""
+        self._validate_motion_config()
+        kin = dict(self.config["kinematics"])
         joint_names = (
             kin["left_arm_joint_names"]
             if self.config["working_arm"] == "left"
             else kin["right_arm_joint_names"]
         )
+        self._joint_names = tuple(joint_names)
+        self._joint_limits = tuple(
+            tuple(float(x) for x in bound)
+            for bound in self.config["arm_joint_limits_rad"][self.config["working_arm"]]
+        )
+        kin["joint_limits_rad"] = self._joint_limits
         self._kinematics = PinocchioArmKinematics(
             self.config["urdf_path"],
             kin["ee_frame"],
@@ -116,24 +162,56 @@ class VegaAdapter(RobotAdapter):
         self._gripper = gripper
 
     def close(self) -> None:
-        self.close_cameras()
+        errors = []
+        try:
+            self.close_cameras()
+        except BaseException as exc:
+            errors.append(exc)
         if self._gripper is not None:
-            self._gripper.close()
-            self._gripper = None
+            try:
+                self._gripper.close()
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                self._gripper = None
         if self._robot is not None:
             try:
                 self._robot.shutdown()
+            except BaseException as exc:
+                errors.append(exc)
             finally:
                 self._robot = None
                 self._arm = None
                 self._kinematics = None
+        if errors:
+            raise RuntimeError("Vega shutdown failed: " + "; ".join(str(exc) for exc in errors)) from errors[0]
 
     def stop(self) -> None:
         """Software emergency stop plus CAN jaw halt when available."""
-        if self._gripper is not None:
-            self._gripper.halt()
+        errors = []
         if self._robot is not None:
-            self._robot.estop.activate()
+            try:
+                self._robot.estop.activate()
+                deadline = time.monotonic() + float(self.config["motion"]["joint_timeout_s"])
+                while not self._read_estop_status()["software_estop_enabled"]:
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError("Software e-stop was NOT confirmed; use physical e-stop")
+                    time.sleep(0.01)
+            except BaseException as exc:
+                errors.append(exc)
+        if self._gripper is not None:
+            try:
+                self._gripper.halt()
+            except BaseException as exc:
+                errors.append(exc)
+        if errors:
+            raise RuntimeError("Vega stop failed: " + "; ".join(str(exc) for exc in errors)) from errors[0]
+
+    def _stop_after_failure(self):
+        try:
+            self.stop()
+        except BaseException as exc:
+            print(f"STOP FAILED: {exc}. Use physical e-stop.", file=sys.stderr)
 
     def clear_estop(self) -> None:
         self._require_robot()
@@ -145,7 +223,7 @@ class VegaAdapter(RobotAdapter):
 
     def observe(self) -> RobotObservation:
         self._require_robot()
-        q = tuple(float(x) for x in self._arm.get_joint_pos())
+        q = self._read_joint_positions()
         extras = {
             "joint_velocity": tuple(float(x) for x in self._arm.get_joint_vel()),
         }
@@ -175,11 +253,11 @@ class VegaAdapter(RobotAdapter):
 
     def read_wrench(self):
         self._require_robot()
-        return tuple(float(x) for x in self._arm.wrench_sensor.get_wrench_state())
+        return _finite_vector(self._arm.wrench_sensor.get_wrench_state(), 6, "wrist wrench")
 
     def get_tcp_pose(self):
         self._require_robot()
-        q = tuple(float(x) for x in self._arm.get_joint_pos())
+        q = self._read_joint_positions()
         return self._kinematics.forward(q)
 
     # ------------------------------------------------------------------
@@ -187,28 +265,21 @@ class VegaAdapter(RobotAdapter):
     # ------------------------------------------------------------------
 
     def move_joints(self, joint_positions, *, speed_scale: float = 1.0) -> None:
+        try:
+            self._move_joints(joint_positions, speed_scale=speed_scale)
+        except BaseException:
+            self._stop_after_failure()
+            raise
+
+    def _move_joints(self, joint_positions, *, speed_scale: float = 1.0) -> None:
         self._require_robot()
-        target = tuple(float(x) for x in joint_positions)
-        if len(target) != 7 or any(not math.isfinite(x) for x in target):
-            raise ValueError("Vega joint target must contain 7 finite values")
+        target = _finite_vector(joint_positions, 7, "Vega joint target")
         if not (0 < float(speed_scale) <= 1.0):
             raise ValueError("speed_scale must be in (0, 1]")
 
-        limits = (self.config.get("arm_joint_limits_rad") or {}).get(
-            self.config["working_arm"]
-        )
-        if limits:
-            if len(limits) != 7:
-                raise ValueError("Configured arm joint limits must contain 7 pairs")
-            for index, (value, bound) in enumerate(zip(target, limits), 1):
-                lo, hi = (float(bound[0]), float(bound[1]))
-                if not lo <= value <= hi:
-                    raise ValueError(
-                        f"Joint {index} target {value:.4f} rad outside "
-                        f"[{lo:.4f}, {hi:.4f}]"
-                    )
+        self._check_joint_limits(target)
 
-        current = tuple(float(x) for x in self._arm.get_joint_pos())
+        current = self._read_joint_positions()
         delta = [b - a for a, b in zip(current, target)]
         worst = max(abs(x) for x in delta)
 
@@ -221,8 +292,13 @@ class VegaAdapter(RobotAdapter):
             )
 
         max_step = float(motion["max_step_rad"])
-        wait = float(motion["step_wait_time_s"]) / float(speed_scale)
-        steps = max(1, int(math.ceil(worst / max_step)))
+        tolerance = float(motion["joint_reached_tolerance_rad"])
+        settle = float(motion["step_wait_time_s"]) / float(speed_scale)
+        max_vel = float(self.config["max_joint_speed_rad_s"]) * float(speed_scale)
+        control_hz = float(motion["control_hz"])
+        # Reserve the tracking tolerance so measured-to-next-target steps also
+        # remain bounded, not only consecutive planned targets.
+        steps = max(1, int(math.ceil(worst / (max_step - tolerance))))
 
         import numpy as np
 
@@ -232,13 +308,33 @@ class VegaAdapter(RobotAdapter):
                 [a + alpha * d for a, d in zip(current, delta)],
                 dtype=float,
             )
-            self._arm.set_joint_pos(waypoint, wait_time=wait)
+            measured = self._read_joint_positions()
+            distance = max(abs(a - b) for a, b in zip(measured, waypoint))
+            if distance > max_step + 1e-12:
+                raise RuntimeError("Measured joint tracking would exceed motion.max_step_rad")
+            stamp = self._state_timestamp()
+            # dexcontrol 0.5 Arm.wait_time is a streaming deadline, not speed.
+            # Explicit max_vel controls the vendor-generated linear trajectory.
+            # Allocate its duration PLUS the measured settle allowance, otherwise
+            # the SDK can truncate the trajectory before sending its endpoint.
+            self._arm.set_joint_pos(
+                waypoint,
+                relative=False,
+                wait_time=distance / max_vel + settle,
+                wait_kwargs={"max_vel": max_vel, "control_hz": control_hz},
+                exit_on_reach=False,
+            )
+            self._wait_for_joint_state(target=waypoint, newer_than=stamp)
 
     def move_tcp(self, pose, *, speed_scale: float = 1.0) -> None:
-        self._require_robot()
-        seed = tuple(float(x) for x in self._arm.get_joint_pos())
-        target_q = self._kinematics.solve(pose, seed)
-        self.move_joints(target_q, speed_scale=speed_scale)
+        try:
+            self._require_robot()
+            seed = self._read_joint_positions()
+            target_q = self._kinematics.solve(pose, seed)
+            self._move_joints(target_q, speed_scale=speed_scale)
+        except BaseException:
+            self._stop_after_failure()
+            raise
 
     # ------------------------------------------------------------------
     # Gripper
@@ -313,40 +409,100 @@ class VegaAdapter(RobotAdapter):
         return out
 
     def close_cameras(self) -> None:
+        errors = []
         if self._wrist_cameras is not None:
-            self._wrist_cameras.close()
-            self._wrist_cameras = None
+            try:
+                self._wrist_cameras.close()
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                self._wrist_cameras = None
         if self._head_camera is not None:
-            self._head_camera.close()
-            self._head_camera = None
+            try:
+                self._head_camera.close()
+            except BaseException as exc:
+                errors.append(exc)
+            finally:
+                self._head_camera = None
+        if errors:
+            raise RuntimeError("Camera shutdown failed: " + "; ".join(str(exc) for exc in errors)) from errors[0]
 
     # ------------------------------------------------------------------
 
     def _validate_motion_config(self):
-        if not self.config.get("allow_robot_init_head_motion"):
-            raise HardwareUnavailableError(
-                "Refusing Robot(): it automatically moves the head. Set "
-                "allow_robot_init_head_motion=true only after clearing the "
-                "workspace and confirming this behavior onsite."
-            )
         if self.config.get("working_arm") not in ("left", "right"):
             raise ValueError("vega.working_arm must be left or right")
         if not self.config.get("urdf_path"):
             raise ValueError("vega.urdf_path is required for physical IK")
         motion = self.config.get("motion") or {}
-        if motion.get("step_wait_time_s") is None:
-            raise ValueError(
-                "vega.motion.step_wait_time_s must be physically validated"
-            )
-        if float(motion.get("max_step_rad", 0)) <= 0:
-            raise ValueError("vega.motion.max_step_rad must be > 0")
-        if float(motion.get("max_total_delta_rad", 0)) <= 0:
-            raise ValueError("vega.motion.max_total_delta_rad must be > 0")
+        for field in ("step_wait_time_s", "max_step_rad", "max_total_delta_rad", "control_hz", "joint_reached_tolerance_rad", "joint_timeout_s"):
+            _positive(motion.get(field), f"vega.motion.{field}")
+        _positive(self.config.get("max_joint_speed_rad_s"), "vega.max_joint_speed_rad_s")
+        if not 100 <= float(motion["control_hz"]) <= 500:
+            raise ValueError("vega.motion.control_hz must be a verified rate in [100, 500]")
+        if float(motion["joint_reached_tolerance_rad"]) >= float(motion["max_step_rad"]):
+            raise ValueError("joint_reached_tolerance_rad must be smaller than max_step_rad")
+        limits = (self.config.get("arm_joint_limits_rad") or {}).get(self.config["working_arm"])
+        if not isinstance(limits, (list, tuple)) or len(limits) != 7:
+            raise ValueError("arm_joint_limits_rad must supply 7 verified [lower, upper] pairs for the working arm")
+        for bound in limits:
+            lo, hi = _finite_vector(bound, 2, "joint limit")
+            if lo >= hi:
+                raise ValueError("Joint limits require lower < upper")
         kin = self.config.get("kinematics") or {}
         if kin.get("backend") != "pinocchio":
             raise ValueError("Only pinocchio kinematics is currently implemented")
         if not kin.get("ee_frame"):
             raise ValueError("vega.kinematics.ee_frame must be verified onsite")
+
+    def _read_joint_positions(self):
+        values = _finite_vector(self._arm.get_joint_pos(), 7, "Vega joint state")
+        self._check_joint_limits(values)
+        return values
+
+    def _check_joint_limits(self, values):
+        for index, (value, (lo, hi)) in enumerate(zip(values, self._joint_limits), 1):
+            if not lo <= value <= hi:
+                raise ValueError(f"Joint {index} value {value:.5f} rad outside [{lo:.5f}, {hi:.5f}]")
+
+    def _state_timestamp(self):
+        value = self._arm.get_timestamp_ns()
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value <= 0:
+            raise RuntimeError("Vega arm state has no valid timestamp; refusing stale/unknown state")
+        return value
+
+    def _read_estop_status(self):
+        """Require real E-stop state; get_status() reports false when unavailable."""
+        raw = self._robot.estop.get_state()
+        if not isinstance(raw, dict) or "software_estop_enabled" not in raw:
+            raise RuntimeError("E-stop state is unavailable or malformed")
+        physical_keys = (
+            "left_base_estop_enabled",
+            "right_base_estop_enabled",
+            "torso_estop_enabled",
+            "remote_estop_enabled",
+        )
+        if any(key not in raw for key in physical_keys):
+            raise RuntimeError("E-stop state lacks physical button channels")
+        return {
+            "software_estop_enabled": bool(raw["software_estop_enabled"]),
+            "button_pressed": any(bool(raw[key]) for key in physical_keys),
+        }
+
+    def _wait_for_joint_state(self, *, target=None, newer_than):
+        motion = self.config["motion"]
+        deadline = time.monotonic() + float(motion["joint_timeout_s"])
+        tolerance = float(motion["joint_reached_tolerance_rad"])
+        while True:
+            values = self._read_joint_positions()
+            fresh = self._state_timestamp() > newer_than
+            reached = target is None or max(abs(a - b) for a, b in zip(values, target)) <= tolerance
+            if fresh and reached:
+                return values
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Joint motion/state timeout: target not reached or joint timestamp did not advance; stop and inspect")
+            # Read-only polling; SDK owns the active command stream above.
+            time.sleep(0.01)
 
     def _select_arm(self, robot):
         return robot.left_arm if self.config["working_arm"] == "left" else robot.right_arm
@@ -367,6 +523,25 @@ def connect(config):
     adapter = VegaAdapter(config)
     adapter.connect()
     return adapter
+
+
+def _positive(value, name):
+    if value is None:
+        raise ValueError(f"{name} must be physically validated and set")
+    number = float(value)
+    if not math.isfinite(number) or number <= 0:
+        raise ValueError(f"{name} must be finite and > 0")
+    return number
+
+
+def _finite_vector(values, size, name):
+    try:
+        result = tuple(float(value) for value in values)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must contain {size} finite values") from exc
+    if len(result) != size or any(not math.isfinite(value) for value in result):
+        raise ValueError(f"{name} must contain {size} finite values")
+    return result
 
 
 def connect_cameras(config=None, *, head=True, wrists=True):

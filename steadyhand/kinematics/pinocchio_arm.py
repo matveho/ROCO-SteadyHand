@@ -9,6 +9,7 @@ remain at neutral or at explicitly configured fixed_joint_values.
 """
 
 from pathlib import Path
+import math
 
 from ..geometry import matrix_to_quaternion, quaternion_to_matrix
 from ..models import Pose
@@ -25,8 +26,15 @@ class PinocchioArmKinematics:
         self.ee_frame = str(ee_frame)
         self.arm_joint_names = tuple(arm_joint_names)
 
-        if len(self.arm_joint_names) != 7:
-            raise ValueError("Vega arm_joint_names must contain exactly 7 joints")
+        if len(self.arm_joint_names) != 7 or len(set(self.arm_joint_names)) != 7:
+            raise ValueError("Vega arm_joint_names must contain exactly 7 distinct joints")
+        self.base_frame = self.config.get("base_frame")
+        if not self.base_frame:
+            raise ValueError(
+                "kinematics.base_frame must name the verified URDF frame in "
+                "which runtime robot_base target poses are measured"
+            )
+        self._validate_solver_config()
 
         import numpy as np
         import pinocchio as pin
@@ -46,14 +54,24 @@ class PinocchioArmKinematics:
                 f"available frame count={len(names)}"
             )
         self.frame_id = self.model.getFrameId(self.ee_frame)
+        if not self.model.existFrame(self.base_frame):
+            raise ValueError(f"Base frame {self.base_frame!r} not in URDF")
+        self.base_frame_id = self.model.getFrameId(self.base_frame)
+        base = self.model.frames[self.base_frame_id]
+        if base.parentJoint != 0:
+            raise ValueError(
+                f"Base frame {self.base_frame!r} must be fixed to the URDF root; "
+                "a movable base requires an explicit calibrated transform"
+            )
+        # A fixed frame can still be translated/rotated from the URDF root.
+        # Pinocchio oMf is in that root; callers use the configured base frame.
+        self._root_M_base = base.placement.copy()
 
         self._joint_ids = []
         self._q_idx = []
         self._v_idx = []
         for name in self.arm_joint_names:
-            jid = self.model.getJointId(name)
-            if jid == 0:
-                raise ValueError(f"Joint {name!r} not found in URDF")
+            jid = self._joint_id(name)
             joint = self.model.joints[jid]
             if joint.nq != 1 or joint.nv != 1:
                 raise ValueError(
@@ -64,17 +82,77 @@ class PinocchioArmKinematics:
             self._q_idx.append(joint.idx_q)
             self._v_idx.append(joint.idx_v)
 
+        chain = set()
+        jid = self.model.frames[self.frame_id].parentJoint
+        while jid != 0:
+            chain.add(jid)
+            jid = self.model.parents[jid]
+        wrong_chain = [name for name, jid in zip(self.arm_joint_names, self._joint_ids)
+                       if jid not in chain]
+        if wrong_chain:
+            raise ValueError(
+                f"EE frame {self.ee_frame!r} is not downstream of all selected "
+                "arm joints: " + ", ".join(wrong_chain)
+            )
+
+        self._lower = np.asarray(self.model.lowerPositionLimit)[self._q_idx].copy()
+        self._upper = np.asarray(self.model.upperPositionLimit)[self._q_idx].copy()
+        configured_limits = self.config.get("joint_limits_rad")
+        if configured_limits is not None:
+            limits = np.asarray(configured_limits, dtype=float)
+            if (limits.shape != (7, 2) or not np.all(np.isfinite(limits))
+                    or np.any(limits[:, 0] >= limits[:, 1])):
+                raise ValueError("kinematics.joint_limits_rad must be 7 finite [lower, upper] pairs")
+            self._lower = np.maximum(self._lower, limits[:, 0])
+            self._upper = np.minimum(self._upper, limits[:, 1])
+        if (np.any(np.isnan(self._lower)) or np.any(np.isnan(self._upper))
+                or np.any(self._lower >= self._upper)):
+            raise ValueError("URDF and configured arm joint limits have an invalid or empty intersection")
+
         self._base_q = pin.neutral(self.model)
         fixed_values = self.config.get("fixed_joint_values", {})
+        if not isinstance(fixed_values, dict):
+            raise ValueError("kinematics.fixed_joint_values must map joint names to measured values")
         self._require_chain_values(fixed_values)
         for name, value in fixed_values.items():
-            jid = self.model.getJointId(name)
-            if jid == 0:
-                raise ValueError(f"Configured fixed joint {name!r} not in URDF")
+            jid = self._joint_id(name)
+            if jid in self._joint_ids:
+                raise ValueError(f"Configured fixed joint {name!r} is an active arm joint")
             joint = self.model.joints[jid]
-            if joint.nq != 1:
+            if joint.nq != 1 or joint.nv != 1:
                 raise ValueError(f"Configured fixed joint {name!r} is not scalar")
-            self._base_q[joint.idx_q] = float(value)
+            value = float(value)
+            lower = self.model.lowerPositionLimit[joint.idx_q]
+            upper = self.model.upperPositionLimit[joint.idx_q]
+            if not np.isfinite(value) or not lower <= value <= upper:
+                raise ValueError(
+                    f"Configured fixed joint {name!r} value {value} is non-finite "
+                    f"or outside URDF limits [{lower}, {upper}]"
+                )
+            self._base_q[joint.idx_q] = value
+
+    def _joint_id(self, name):
+        # Pinocchio returns model.njoints (not zero) for an unknown name.
+        jid = self.model.getJointId(name)
+        if not 0 < jid < self.model.njoints:
+            raise ValueError(f"Joint {name!r} not found in URDF")
+        return jid
+
+    def _validate_solver_config(self):
+        for name, default in (("position_tolerance_m", 0.003),
+                              ("orientation_tolerance_rad", 0.05),
+                              ("damping", 1e-6), ("integration_step", 0.15)):
+            value = float(self.config.get(name, default))
+            if not math.isfinite(value) or value <= 0:
+                raise ValueError(f"kinematics.{name} must be finite and positive")
+        if float(self.config.get("integration_step", 0.15)) > 1:
+            raise ValueError("kinematics.integration_step must be <= 1")
+        iterations = float(self.config.get("max_iterations", 250))
+        if not math.isfinite(iterations) or iterations < 1 or not iterations.is_integer():
+            raise ValueError("kinematics.max_iterations must be a positive integer")
+        max_delta = self.config.get("max_seed_delta_rad")
+        if max_delta is not None and (not math.isfinite(float(max_delta)) or float(max_delta) <= 0):
+            raise ValueError("kinematics.max_seed_delta_rad must be finite and positive")
 
     def _require_chain_values(self, fixed_values):
         """Require an explicit value for every non-active movable chain joint."""
@@ -100,6 +178,13 @@ class PinocchioArmKinematics:
         arm_q = np.asarray(arm_q, dtype=float)
         if arm_q.shape != (7,) or not np.all(np.isfinite(arm_q)):
             raise ValueError("arm_q must be 7 finite joint values")
+        invalid = np.flatnonzero((arm_q < self._lower) | (arm_q > self._upper))
+        if invalid.size:
+            i = int(invalid[0])
+            raise ValueError(
+                f"Joint {self.arm_joint_names[i]!r} value {arm_q[i]} is outside "
+                f"limits [{self._lower[i]}, {self._upper[i]}]"
+            )
         q = self._base_q.copy()
         for idx, value in zip(self._q_idx, arm_q):
             q[idx] = value
@@ -113,7 +198,7 @@ class PinocchioArmKinematics:
         q = self._full_q(arm_q)
         pin.forwardKinematics(self.model, self.data, q)
         pin.updateFramePlacements(self.model, self.data)
-        placement = self.data.oMf[self.frame_id]
+        placement = self._root_M_base.actInv(self.data.oMf[self.frame_id])
         rotation = tuple(
             tuple(float(placement.rotation[i, j]) for j in range(3))
             for i in range(3)
@@ -131,7 +216,10 @@ class PinocchioArmKinematics:
             quaternion_to_matrix(target_pose.quaternion_wxyz), dtype=float
         )
         p = np.asarray(target_pose.position_m, dtype=float)
-        desired = pin.SE3(r, p)
+        if p.shape != (3,) or not np.all(np.isfinite(p)) or not np.all(np.isfinite(r)):
+            raise ValueError("IK target must contain a finite position and quaternion")
+        desired = self._root_M_base * pin.SE3(r, p)
+        p, r = desired.translation, desired.rotation
 
         pos_tol = float(self.config.get("position_tolerance_m", 0.003))
         orn_tol = float(self.config.get("orientation_tolerance_rad", 0.05))
@@ -140,7 +228,7 @@ class PinocchioArmKinematics:
         dt = float(self.config.get("integration_step", 0.15))
 
         final_pos = final_orn = None
-        for iteration in range(max_iter):
+        for iteration in range(max_iter + 1):
             pin.forwardKinematics(self.model, self.data, q)
             pin.updateFramePlacements(self.model, self.data)
             current = self.data.oMf[self.frame_id]
@@ -156,38 +244,40 @@ class PinocchioArmKinematics:
                 answer = self._arm_q(q)
                 self._check_seed_delta(answer, seed_arm_q)
                 return answer
+            if iteration == max_iter:
+                break
 
-            j_full = pin.computeFrameJacobian(
-                self.model,
-                self.data,
-                q,
-                self.frame_id,
-                pin.ReferenceFrame.LOCAL,
-            )
-            j_err = -pin.Jlog6(relative.inverse()) @ j_full
-            j = j_err[:, self._v_idx]
+            j = self._local_error_jacobian(q, relative)
+            if not np.all(np.isfinite(j)) or not np.all(np.isfinite(err)):
+                raise IKError("IK produced a non-finite error/Jacobian")
 
             lhs = j @ j.T + damp * np.eye(6)
             v_arm = -j.T @ np.linalg.solve(lhs, err)
+            if not np.all(np.isfinite(v_arm)):
+                raise IKError("IK produced a non-finite joint update")
             v = np.zeros(self.model.nv)
             for idx, value in zip(self._v_idx, v_arm):
                 v[idx] = value
             q = pin.integrate(self.model, q, v * dt)
 
             # Clamp active scalar joints to URDF limits.
-            for qidx in self._q_idx:
-                lower = self.model.lowerPositionLimit[qidx]
-                upper = self.model.upperPositionLimit[qidx]
-                if np.isfinite(lower):
-                    q[qidx] = max(q[qidx], lower)
-                if np.isfinite(upper):
-                    q[qidx] = min(q[qidx], upper)
+            q[self._q_idx] = np.clip(q[self._q_idx], self._lower, self._upper)
 
         raise IKError(
             f"IK did not converge after {max_iter} iterations "
             f"(position_error={final_pos:.5f} m, "
             f"orientation_error={final_orn:.5f} rad)"
         )
+
+    def _local_error_jacobian(self, q, relative):
+        # e(q) = log(current(q)^-1 * desired), in the current EE frame.
+        # Its derivative is -Jlog6(relative^-1) * J_LOCAL. The leading minus
+        # here and in the damped Newton update are both required.
+        pin = self.pin
+        j_full = pin.computeFrameJacobian(
+            self.model, self.data, q, self.frame_id, pin.ReferenceFrame.LOCAL
+        )
+        return (-pin.Jlog6(relative.inverse()) @ j_full)[:, self._v_idx]
 
     def _check_seed_delta(self, solution, seed):
         max_delta = self.config.get("max_seed_delta_rad")

@@ -23,6 +23,10 @@ First collect facts:
 - gripper-equipped URDF/model path;
 - current head/wrist camera status;
 - permitted onboard vs workstation execution.
+- dexcontrol's demonstrated `max_vel`, control rate, endpoint tolerance and
+  timeout values for a small blocking `Arm.set_joint_pos` command;
+- fixed URDF base frame, actual TCP/EE frame and physical values of every
+  non-arm movable joint in the selected EE chain.
 
 Then proceed in this order:
 
@@ -33,7 +37,8 @@ Then proceed in this order:
    motion.
 5. Read joints/wrench/buttons.
 6. Demonstrate stop.
-7. Command one very small unobstructed joint-position change at low speed.
+7. Run `vega_joint_check.py --connect-only`, then command one reversible,
+   unobstructed joint change no larger than 0.02 rad using explicit `max_vel`.
 8. Return to a known safe pose.
 9. Only then test gripper open/close with the arm stationary.
 10. Record every confirmed API call in VegaAdapter.

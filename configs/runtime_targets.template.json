@@ -4,19 +4,58 @@
   "pose_frame": "robot_base",
   "generated_at": null,
   "parts": {
-    "gear_60teeth": {"pick_pose": null, "place_pose": null},
-    "gear_20teeth": {"pick_pose": null, "place_pose": null},
-    "rod_16mm": {"pick_pose": null, "place_pose": null},
-    "bolt_8mm": {"pick_pose": null, "place_pose": null},
-    "usb_a": {"pick_pose": null, "place_pose": null},
-    "hdmi": {"pick_pose": null, "place_pose": null},
-    "pin": {"pick_pose": null, "place_pose": null},
-    "battery_size1": {"pick_pose": null, "place_pose": null},
-    "battery_size5": {"pick_pose": null, "place_pose": null}
+    "gear_60teeth": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "gear_20teeth": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "rod_16mm": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "bolt_8mm": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "usb_a": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "hdmi": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "pin": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "battery_size1": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "battery_size5": {
+      "pick_pose": null,
+      "place_pose": null
+    }
   },
   "_pose_example": {
-    "position_m": [0.0, 0.0, 0.0],
-    "quaternion_wxyz": [1.0, 0.0, 0.0, 0.0]
+    "position_m": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "quaternion_wxyz": [
+      1.0,
+      0.0,
+      0.0,
+      0.0
+    ]
   },
-  "_note": "pick_pose/place_pose are object/target poses in robot_base. The Vega executor converts them to TCP goals using the per-part skill configuration. Do not fill these with simulation world coordinates."
+  "_note": "Object/reference pick pose and desired object RELEASE pose in the named fixed URDF base_frame. For insertion only, place_pose denotes seated object pose. T_part_tcp must use the SAME part reference at pick and place. These are not TCP poses or simulation world positions. Do not substitute final settled battery height for release clearance.",
+  "base_frame": null,
+  "position_units": "m",
+  "quaternion_order": "wxyz"
 }

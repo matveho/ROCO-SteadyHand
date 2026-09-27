@@ -8,6 +8,7 @@ Conventions:
 
 import math
 
+from .config import check_transform
 from .models import Pose
 
 
@@ -15,12 +16,34 @@ def _mat3_vec(r, v):
     return tuple(sum(r[i][j] * v[j] for j in range(3)) for i in range(3))
 
 
+def _normalized_quaternion(q):
+    values = tuple(float(v) for v in q)
+    if len(values) != 4 or not all(math.isfinite(v) for v in values):
+        raise ValueError("Quaternion must contain four finite wxyz numbers")
+    norm = math.hypot(*values)
+    if not math.isfinite(norm) or norm <= 0:
+        raise ValueError("Quaternion norm must be finite and positive")
+    return tuple(v / norm for v in values)
+
+
+def _interpolation_fraction(t):
+    t = float(t)
+    if not math.isfinite(t) or not 0 <= t <= 1:
+        raise ValueError("Interpolation fraction must be finite and in [0, 1]")
+    return t
+
+
+def _rigid_matrix(t):
+    try:
+        value = [[float(x) for x in row] for row in t]
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Expected a finite rigid 4x4 transform") from exc
+    check_transform(value, "transform")
+    return value
+
+
 def quaternion_to_matrix(q):
-    w, x, y, z = (float(v) for v in q)
-    norm = math.sqrt(w*w + x*x + y*y + z*z)
-    if norm <= 0:
-        raise ValueError("Quaternion norm must be positive")
-    w, x, y, z = (v / norm for v in (w, x, y, z))
+    w, x, y, z = _normalized_quaternion(q)
     return (
         (1 - 2*(y*y + z*z), 2*(x*y - z*w),     2*(x*z + y*w)),
         (2*(x*y + z*w),     1 - 2*(x*x + z*z), 2*(y*z - x*w)),
@@ -30,6 +53,14 @@ def quaternion_to_matrix(q):
 
 def matrix_to_quaternion(r):
     """Return a normalized wxyz quaternion from a proper 3x3 rotation."""
+    try:
+        rows = [[float(v) for v in row] for row in r]
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Rotation must be a proper 3x3 matrix") from exc
+    if len(rows) != 3 or any(len(row) != 3 for row in rows):
+        raise ValueError("Rotation must be a proper 3x3 matrix")
+    _rigid_matrix([row + [0.0] for row in rows] + [[0, 0, 0, 1]])
+    r = rows
     tr = r[0][0] + r[1][1] + r[2][2]
     if tr > 0:
         s = math.sqrt(tr + 1.0) * 2
@@ -73,6 +104,7 @@ def pose_to_matrix(pose):
 
 
 def matrix_to_pose(t):
+    t = _rigid_matrix(t)
     r = tuple(tuple(float(t[i][j]) for j in range(3)) for i in range(3))
     return Pose(
         position_m=(float(t[0][3]), float(t[1][3]), float(t[2][3])),
@@ -89,6 +121,7 @@ def compose(a, b):
 
 
 def invert_rigid(t):
+    t = _rigid_matrix(t)
     r = [[float(t[i][j]) for j in range(3)] for i in range(3)]
     p = [float(t[i][3]) for i in range(3)]
     rt = [[r[j][i] for j in range(3)] for i in range(3)]
@@ -119,14 +152,9 @@ def offset_z(pose, dz_m):
 
 def quaternion_slerp(a, b, t):
     """Shortest-path normalized quaternion interpolation, wxyz."""
-    a = [float(x) for x in a]
-    b = [float(x) for x in b]
-    na = math.sqrt(sum(x*x for x in a))
-    nb = math.sqrt(sum(x*x for x in b))
-    if na <= 0 or nb <= 0:
-        raise ValueError("Quaternion norm must be positive")
-    a = [x / na for x in a]
-    b = [x / nb for x in b]
+    a = _normalized_quaternion(a)
+    b = _normalized_quaternion(b)
+    t = _interpolation_fraction(t)
     dot = sum(x*y for x, y in zip(a, b))
     if dot < 0:
         b = [-x for x in b]
@@ -145,16 +173,15 @@ def quaternion_slerp(a, b, t):
 
 def quaternion_angle(a, b):
     """Smallest angular distance between two orientations in radians."""
-    a = [float(x) for x in a]
-    b = [float(x) for x in b]
-    na = math.sqrt(sum(x*x for x in a))
-    nb = math.sqrt(sum(x*x for x in b))
-    dot = abs(sum(x*y for x, y in zip(a, b)) / (na * nb))
+    a = _normalized_quaternion(a)
+    b = _normalized_quaternion(b)
+    dot = abs(sum(x*y for x, y in zip(a, b)))
     dot = max(-1.0, min(1.0, dot))
     return 2.0 * math.acos(dot)
 
 
 def interpolate_pose(a, b, t):
+    t = _interpolation_fraction(t)
     return Pose(
         position_m=tuple(
             float(x) + float(t) * (float(y) - float(x))

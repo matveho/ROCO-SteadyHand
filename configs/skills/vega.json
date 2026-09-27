@@ -21,7 +21,7 @@
       0.196
     ],
     "gripper_open_fraction": 1,
-    "grip_current_a": 0.6,
+    "grip_current_a": null,
     "search": null,
     "preinsert_m": 0.012,
     "grasp_settle_s": 0.5,
@@ -30,7 +30,9 @@
     "max_orientation_step_rad": 0.12,
     "insertion_reached_tolerance_m": 0.004,
     "insertion_reached_tolerance_rad": 0.08,
-    "allow_snap_without_force_guard": false
+    "T_part_tcp": null,
+    "legacy_geometry_verified": false,
+    "max_contact_step_m": null
   },
   "parts": {
     "gear_60teeth": {
@@ -89,7 +91,7 @@
     "usb_a": {
       "hover_pick_m": 0.02,
       "hover_place_m": 0.02,
-      "retract_m": 0.1,
+      "retract_m": 0.02,
       "search": {
         "type": "grid",
         "n": 5,
@@ -140,13 +142,14 @@
     }
   },
   "safety": {
-    "max_step_translation_m": 0.2,
     "force_delta_limit": null,
-    "note": "force_delta_limit is intentionally unset because onsite wrench units/frame are unknown. Snap/contact search refuses to run without a verified limit unless allow_snap_without_force_guard is explicitly overridden.",
+    "note": "Insertion requires measured force_delta_limit, wrench_units=N,Nm, wrench_frame and max_contact_step_m. Force is checked between blocking moves, not continuously. Overload stops without automatic retract.",
     "force_axes": [
       0,
       1,
       2
-    ]
+    ],
+    "wrench_units": null,
+    "wrench_frame": null
   }
 }

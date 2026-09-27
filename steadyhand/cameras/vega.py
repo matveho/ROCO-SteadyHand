@@ -18,6 +18,7 @@ Wrists:
 """
 
 from dataclasses import dataclass
+import math
 from typing import Any, Mapping
 
 
@@ -161,7 +162,11 @@ def intrinsics_from_camera_info(camera_info) -> tuple[float, float, float, float
         raise ValueError("camera_info is required")
 
     if isinstance(camera_info, Mapping):
-        k = camera_info.get("K") or camera_info.get("k")
+        # NumPy arrays have no scalar truth value. Camera-info commonly uses
+        # one, so never select K with boolean `or`.
+        k = camera_info.get("K")
+        if k is None:
+            k = camera_info.get("k")
         if k is not None:
             if len(k) != 9:
                 raise ValueError("camera_info K must contain 9 values")
@@ -213,6 +218,8 @@ def depth_to_point_cloud(
         raise ValueError("depth_m must be a 2-D depth image")
 
     fx, fy, cx, cy = intrinsics_from_camera_info(camera_info)
+    if not all(math.isfinite(value) for value in (fx, fy, cx, cy)) or fx <= 0 or fy <= 0:
+        raise ValueError("Camera intrinsics must be finite with positive fx/fy")
 
     sampled = depth[::stride, ::stride].astype(np.float32, copy=False)
     vv, uu = np.indices(sampled.shape, dtype=np.float32)

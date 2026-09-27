@@ -156,6 +156,7 @@ class OnsiteTests(unittest.TestCase):
             "hover_pick_m": 0.02,
             "hover_place_m": 0.02,
             "retract_m": 0.03,
+            "legacy_geometry_verified": True,
             "legacy_ee_offset_m": [0.0, 0.0, 0.0],
             "legacy_ee_orientation_wxyz": [1.0, 0.0, 0.0, 0.0],
             "grip_current_a": 0.6,
@@ -169,7 +170,9 @@ class OnsiteTests(unittest.TestCase):
             "allow_snap_without_force_guard": False,
             "search": None,
         }
-        result = execute_part(robot, goal, skill, safety={})
+        result = execute_part(
+            robot, goal, skill, safety={}, verify=lambda stage, name: True
+        )
         self.assertTrue(result.completed)
         self.assertTrue(result.grasp_verified)
         self.assertTrue(result.placement_verified)
@@ -191,6 +194,7 @@ class OnsiteTests(unittest.TestCase):
             "hover_pick_m": 0.01,
             "hover_place_m": 0.01,
             "retract_m": 0.02,
+            "legacy_geometry_verified": True,
             "legacy_ee_offset_m": [0.0, 0.0, 0.0],
             "legacy_ee_orientation_wxyz": [1.0, 0.0, 0.0, 0.0],
             "grip_current_a": 0.6,

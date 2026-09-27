@@ -92,7 +92,10 @@
   "motion": {
     "step_wait_time_s": null,
     "max_step_rad": 0.12,
-    "max_total_delta_rad": 2.5
+    "max_total_delta_rad": 2.5,
+    "control_hz": null,
+    "joint_reached_tolerance_rad": null,
+    "joint_timeout_s": null
   },
   "kinematics": {
     "backend": "pinocchio",
@@ -119,9 +122,10 @@
     "position_tolerance_m": 0.003,
     "orientation_tolerance_rad": 0.05,
     "max_iterations": 250,
-    "damping": 0.000001,
+    "damping": 1e-06,
     "integration_step": 0.15,
-    "max_seed_delta_rad": 1.5
+    "max_seed_delta_rad": 1.5,
+    "base_frame": null
   },
   "gripper_driver_path": "/home/dexmate/gripper.py",
   "gripper": {
@@ -129,7 +133,7 @@
     "scope": null,
     "home_on_connect": true,
     "skip_home_verified": false,
-    "grip_current_a": 0.6
+    "grip_current_a": null
   },
   "cameras": {
     "head": {
@@ -164,7 +168,7 @@
       "notes": "Both wrist cameras are enabled onsite. Verify wrist_a/wrist_b physical left-right mapping on the actual robot."
     }
   },
-  "notes": "Motion remains gated by allow_robot_init_head_motion plus required working_arm/URDF/EE-frame/timing fields. max_step_rad=0.12 mirrors the supplied known-good stepped-motion tooling; tune only after physical validation.",
+  "notes": "Fill measured fields before motion. step_wait_time_s is additional hold/settle time, NOT a speed limit. max_joint_speed_rad_s sets vendor max_vel; control_hz drives the vendor blocking trajectory loop. No collision checking is implemented.",
   "allow_sdk_version_mismatch": false,
   "arm_joint_limits_rad": {
     "left": [

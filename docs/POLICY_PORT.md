@@ -1,39 +1,40 @@
-# Submitted policy -> physical Vega mapping
+# Submitted policy to physical Vega
 
-The physical runner preserves the structure of policy.py rather than attempting
-to execute the Isaac/Lula policy class on real hardware.
+`policy.py` is preserved unchanged. The physical stack keeps its strategy but
+replaces simulator-only services:
 
-| Submitted simulation policy | Physical SteadyHand |
-|---|---|
-| PartTarget.pick_pos / place_pos | per-attempt runtime_targets.json object poses |
-| target.ee_orientation | Vega skill grasp orientation / calibrated T_part_tcp |
-| target.extra.ee_offset | Vega skill legacy EE offset / calibrated T_part_tcp |
-| EEPathFollower | executor.move_tcp_segmented |
-| Lula L_controller | PinocchioArmKinematics + dexcontrol joint commands |
-| hover / descend / lift / transfer | executor physical phases |
-| gripper_close simulation scalar | current-limited CAN gripper grip() |
-| snap XY search | physical center-out XY insertion search |
-| obs.snap_fired | no equivalent; force/TCP/vision success must replace it |
-| return_home_q | optional validated --return-home-q |
-| exact simulator target knowledge | perception/calibration -> runtime target poses |
+| Submitted policy | Physical implementation | Status |
+|---|---|---|
+| `PartTarget.pick_pos/place_pos` | measured runtime object/release poses | legitimate sim-to-real difference |
+| `ee_offset` added in world axes | verified legacy offset or measured `T_part_tcp` | legacy semantics preserved; calibration gated |
+| `ee_orientation` | measured URDF TCP orientation | must not copy raw simulation quaternion |
+| relative world +Z hover/lift/retract | `offset_z` | preserved |
+| Lula IK | Pinocchio LOCAL log/Jlog damped IK | replacement, with explicit base/EE/joint mapping |
+| EE path steps | Cartesian interpolation, live IK reseed, segmented joint commands | replacement |
+| simulation gripper scalar | verified CAN current and full selected-side open | legitimate; no unit conversion exists |
+| nominal place then XY snap grid | nominal candidate followed by center-out grid | preserved ordering |
+| `snap_fired` | force guard plus explicit physical seating confirmation | legitimate difference |
+| return home before every part after first | validated `--return-home-q` before later parts | preserved when supplied |
 
-## What is intentionally not copied
+The original Lula wrapper multiplies the user target quaternion by a 180-degree
+USD-stage correction before solving against the URDF. Therefore the submitted
+`[0,1,0,0]` cannot be sent directly to Pinocchio for an arbitrary Vega EE
+frame. No correction is guessed in this repository.
 
-Simulation gripper radians are not sent to the real CAN grippers. The real
-driver has its own calibrated 0..1 stroke and a current-limited object grip.
+The original `place_pos` is a release pose. For batteries and other open-release
+parts it can differ from the final settled/grading pose. Runtime target capture
+must preserve release clearance. For insertion parts the physical target is the
+seated reference, approached through `preinsert_m`.
 
-Simulation snap success is not copied. In simulation it can attach/teleport the
-part; on hardware insertion is real contact and needs physical verification.
+The submitted even-size bolt grid has no zero sample, but its phase builder
+first performs a nominal place descent. The physical executor explicitly tries
+zero before the configured grid to retain that behavior.
 
-Simulation world coordinates are not copied. The onsite board and parts can
-move, so current robot-base poses must be generated for each layout.
+`usb_a` retract is 0.02 m because the submitted `FINAL_HEIGHT=None` falls back
+to that part's `init_height`; the previous physical 0.1 m value was accidental
+and has been corrected.
 
-## Bring-up fallback versus final geometry
-
-configs/skills/vega.json currently contains the submitted policy's EE offsets
-and top-down orientation as a bring-up fallback. These reproduce the old policy
-most closely when the real board orientation is similar.
-
-The stronger representation is T_part_tcp: a rigid transform from each part
-frame to the desired TCP. Once calibrated, it naturally rotates with a moved or
-rotated board/part and should replace the legacy world-axis offset.
+Unavoidable differences are physical force/contact, measured frames and target
+poses, blocking dexcontrol joint trajectories, CAN homing/current, operator
+verification, and the absence of simulator teleport/snap. These are explicit
+gates rather than implicit success assumptions.

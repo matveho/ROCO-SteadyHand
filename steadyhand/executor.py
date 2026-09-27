@@ -26,6 +26,7 @@ from .geometry import (
 )
 from .models import Pose
 from .search import centered_grid
+from .skill_config import validate_skill
 
 
 class ExecutionError(RuntimeError):
@@ -80,9 +81,16 @@ def move_tcp_segmented(
     max_translation_step_m: float,
     max_orientation_step_rad: float,
     after_waypoint=None,
+    before_waypoint=None,
     event=None,
 ):
     """Move through short Cartesian targets, reseeding IK from live state."""
+    for label, value in (("max_translation_step_m", max_translation_step_m),
+                         ("max_orientation_step_rad", max_orientation_step_rad)):
+        if not math.isfinite(float(value)) or float(value) <= 0:
+            raise ValueError(f"{label} must be finite and positive")
+    if not math.isfinite(float(speed_scale)) or not 0 < float(speed_scale) <= 1:
+        raise ValueError("speed_scale must be in (0, 1]")
     current = robot.get_tcp_pose()
     if current is None:
         raise ExecutionError("Robot adapter cannot provide current TCP pose")
@@ -94,8 +102,13 @@ def move_tcp_segmented(
         int(math.ceil(angle / float(max_orientation_step_rad))),
     )
     for index in range(1, n + 1):
+        if before_waypoint is not None:
+            before_waypoint()
         waypoint = interpolate_pose(current, target, index / n)
         robot.move_tcp(waypoint, speed_scale=speed_scale)
+        # Check contact before logging: slow/failing storage must not delay it.
+        if after_waypoint is not None:
+            after_waypoint()
         if event:
             event(
                 "tcp_waypoint",
@@ -106,8 +119,6 @@ def move_tcp_segmented(
                     "target_position_m": waypoint.position_m,
                 },
             )
-        if after_waypoint is not None:
-            after_waypoint()
 
 
 def tcp_reached(robot, target, *, position_tolerance_m, orientation_tolerance_rad):
@@ -129,6 +140,16 @@ class ForceDeltaGuard:
         self.threshold = None if threshold is None else float(threshold)
         self.axes = tuple(int(x) for x in axes)
         self.baseline = None
+        if self.enabled and (not math.isfinite(self.threshold) or self.threshold <= 0):
+            raise ValueError("force_delta_limit must be finite and positive")
+        if not self.axes or len(set(self.axes)) != len(self.axes) or any(i not in (0, 1, 2) for i in self.axes):
+            raise ValueError("force_axes must select distinct force channels 0, 1, 2")
+
+    def _read(self):
+        value = self.robot.read_wrench()
+        if value is None or len(value) != 6 or any(not math.isfinite(float(x)) for x in value):
+            raise ExecutionError("Force guard needs six finite wrench channels")
+        return tuple(float(x) for x in value)
 
     @property
     def enabled(self):
@@ -137,17 +158,14 @@ class ForceDeltaGuard:
     def capture(self):
         if not self.enabled:
             return
-        value = self.robot.read_wrench()
-        if value is None:
-            raise ExecutionError("Force guard configured but wrench is unavailable")
-        self.baseline = tuple(float(x) for x in value)
+        self.baseline = self._read()
 
     def check(self):
         if not self.enabled:
             return
         if self.baseline is None:
             raise RuntimeError("Force guard baseline has not been captured")
-        value = self.robot.read_wrench()
+        value = self._read()
         delta = math.sqrt(
             sum(
                 (float(value[i]) - self.baseline[i]) ** 2
@@ -160,7 +178,61 @@ class ForceDeltaGuard:
             )
 
 
-def execute_part(
+def validate_execution(goal, skill, safety, speed_scale=1.0):
+    """All static execution checks, callable before Robot() or CAN homing."""
+    validate_skill(skill)
+    if goal.pick_pose is None or goal.place_pose is None:
+        raise ValueError(f"{goal.name}: pick_pose and place_pose are required")
+    if goal.release_mode not in ("open", "snap"):
+        raise ValueError(f"{goal.name}: unknown release mode {goal.release_mode!r}")
+    if not math.isfinite(float(speed_scale)) or not 0 < float(speed_scale) <= 1:
+        raise ValueError("speed_scale must be in (0, 1]")
+    if goal.release_mode == "snap":
+        if safety.get("force_delta_limit") is None:
+            raise ExecutionError(f"{goal.name}: insertion requires verified force_delta_limit")
+        ForceDeltaGuard(None, safety["force_delta_limit"], safety.get("force_axes", (0, 1, 2)))
+        if safety.get("wrench_units") != "N,Nm" or not safety.get("wrench_frame"):
+            raise ExecutionError("Insertion requires measured safety.wrench_units='N,Nm' and wrench_frame")
+        step = skill.get("max_contact_step_m")
+        if step is None or not math.isfinite(float(step)) or float(step) <= 0:
+            raise ExecutionError("Insertion requires a validated max_contact_step_m")
+    object_pose_to_tcp(goal.pick_pose, skill)
+    object_pose_to_tcp(goal.place_pose, skill)
+
+
+def execute_part(robot, goal, skill, *, safety=None, speed_scale=1.0, event=None,
+                 verify=None):
+    """Stop on every failure, including Ctrl-C/SystemExit and verifier errors."""
+    try:
+        return _execute_part(robot, goal, skill, safety=safety,
+                             speed_scale=speed_scale, event=event, verify=verify)
+    except BaseException:
+        try:
+            robot.stop()
+        except BaseException:
+            # Preserve the original failure; runners report stop errors too.
+            pass
+        raise
+
+
+def _verification(robot, stage, name, verify):
+    method = robot.verify_grasp if stage in ("grasp", "lift") else robot.verify_place
+    # No existing adapter has an insertion-completion sensor. Never infer it
+    # from joint/TCP arrival or from verify_place after release.
+    result = None if stage == "insertion" else method(name)
+    # A driver's initial current/position result cannot prove the part stayed
+    # in the jaws during lift. Require the live verifier after lifting even if
+    # the cached gripper result was true.
+    if stage == "lift" and result is not False:
+        result = None
+    if result is None and verify is not None:
+        result = verify(stage, name)
+    if result is not True:
+        raise ExecutionError(f"{name}: {stage} verification failed or is unavailable")
+    return True
+
+
+def _execute_part(
     robot,
     goal,
     skill,
@@ -168,11 +240,11 @@ def execute_part(
     safety=None,
     speed_scale=1.0,
     event=None,
+    verify=None,
 ):
     """Execute one physical part using the submitted policy's phase structure."""
     safety = dict(safety or {})
-    if goal.pick_pose is None or goal.place_pose is None:
-        raise ValueError(f"{goal.name}: pick_pose and place_pose are required")
+    validate_execution(goal, skill, safety, speed_scale)
 
     def emit(phase, state, details=None):
         if event:
@@ -206,7 +278,7 @@ def execute_part(
     emit("grasp", "started")
     robot.grip(goal.name, current_a=skill.get("grip_current_a"))
     time.sleep(float(skill.get("grasp_settle_s", 0.0)))
-    grasp_verified = robot.verify_grasp(goal.name)
+    grasp_verified = _verification(robot, "grasp", goal.name, verify)
     emit("grasp", "completed", {"verified": grasp_verified})
     if grasp_verified is False:
         raise ExecutionError(f"{goal.name}: grasp verification failed")
@@ -214,6 +286,7 @@ def execute_part(
     emit("lift", "started")
     move_tcp_segmented(robot, hover_pick, **move_kwargs)
     emit("lift", "completed")
+    _verification(robot, "lift", goal.name, verify)
 
     emit("transfer", "started")
     move_tcp_segmented(robot, hover_place, **move_kwargs)
@@ -228,6 +301,7 @@ def execute_part(
             safety=safety,
             speed_scale=speed_scale,
             event=emit,
+            verify=verify,
         )
         # _execute_insertion leaves the TCP at the successful candidate.
         successful_place = _shift_xy(
@@ -248,7 +322,7 @@ def execute_part(
     move_tcp_segmented(robot, retract, **move_kwargs)
     emit("retreat", "completed")
 
-    placement_verified = robot.verify_place(goal.name)
+    placement_verified = _verification(robot, "placement", goal.name, verify)
     emit("verify_place", "completed", {"verified": placement_verified})
 
     return PartExecutionResult(
@@ -265,7 +339,7 @@ def execute_part(
     )
 
 
-def _execute_insertion(robot, goal, skill, *, safety, speed_scale, event):
+def _execute_insertion(robot, goal, skill, *, safety, speed_scale, event, verify=None):
     search = skill.get("search")
     if not search:
         offsets = [(0.0, 0.0)]
@@ -282,12 +356,10 @@ def _execute_insertion(robot, goal, skill, *, safety, speed_scale, event):
         safety.get("force_delta_limit"),
         safety.get("force_axes", (0, 1, 2)),
     )
-    if not force_guard.enabled and not skill.get(
-        "allow_snap_without_force_guard", False
-    ):
+    if not force_guard.enabled:
         raise ExecutionError(
             f"{goal.name}: snap insertion requires a verified force_delta_limit "
-            "or explicit allow_snap_without_force_guard=true"
+            "with measured units/frame"
         )
 
     place_tcp = object_pose_to_tcp(goal.place_pose, skill)
@@ -295,7 +367,7 @@ def _execute_insertion(robot, goal, skill, *, safety, speed_scale, event):
 
     move_kwargs = dict(
         speed_scale=float(speed_scale),
-        max_translation_step_m=float(skill["max_cartesian_step_m"]),
+        max_translation_step_m=min(float(skill["max_cartesian_step_m"]), float(skill["max_contact_step_m"])),
         max_orientation_step_rad=float(skill["max_orientation_step_rad"]),
         event=event,
     )
@@ -306,6 +378,9 @@ def _execute_insertion(robot, goal, skill, *, safety, speed_scale, event):
 
     force_guard.capture()
 
+    # The simulator descended at nominal before starting the grid, including
+    # for even-sized grids which have no zero sample.
+    offsets = [(0.0, 0.0)] + [xy for xy in offsets if xy != (0.0, 0.0)]
     for dx, dy in offsets:
         candidate_pre = _shift_xy(preinsert, dx, dy)
         candidate_final = _shift_xy(place_tcp, dx, dy)
@@ -315,12 +390,14 @@ def _execute_insertion(robot, goal, skill, *, safety, speed_scale, event):
             {"dx_m": dx, "dy_m": dy},
         )
 
-        move_tcp_segmented(robot, candidate_pre, **move_kwargs)
+        move_tcp_segmented(robot, candidate_pre, before_waypoint=force_guard.check,
+                           after_waypoint=force_guard.check, **move_kwargs)
         try:
             move_tcp_segmented(
                 robot,
                 candidate_final,
                 after_waypoint=force_guard.check,
+                before_waypoint=force_guard.check,
                 **move_kwargs,
             )
             reached = tcp_reached(
@@ -337,21 +414,37 @@ def _execute_insertion(robot, goal, skill, *, safety, speed_scale, event):
                     "candidate_reached",
                     {"dx_m": dx, "dy_m": dy},
                 )
-                return (float(dx), float(dy))
+                # Reaching a pose proves neither engagement nor retention.
+                if verify is None:
+                    raise ExecutionError("Insertion reached TCP target but has no physical verifier; refusing release")
+                verification = verify("insertion", goal.name)
+                if verification is True:
+                    force_guard.check()
+                    return (float(dx), float(dy))
+                if verification is None:
+                    raise ExecutionError(
+                        "Insertion reached TCP target but physical verifier is "
+                        "unavailable; refusing release"
+                    )
             event(
                 "insertion_search",
                 "candidate_not_reached",
                 {"dx_m": dx, "dy_m": dy},
             )
         except ContactLimitExceeded as exc:
+            # An overload is a fault, not permission to sweep another cell.
+            # Stop before logging; never issue an automatic blind retract.
+            robot.stop()
             event(
                 "insertion_search",
                 "contact_limit",
                 {"dx_m": dx, "dy_m": dy, "error": str(exc)},
             )
+            raise
 
         # Retract before trying another lateral location.
-        move_tcp_segmented(robot, candidate_pre, **move_kwargs)
+        move_tcp_segmented(robot, candidate_pre, before_waypoint=force_guard.check,
+                           after_waypoint=force_guard.check, **move_kwargs)
 
     raise ExecutionError(
         f"{goal.name}: no insertion-search candidate reached the target"

@@ -1,152 +1,140 @@
 # Vega live path
 
-This is the shortest path from fresh checkout to a physical one-part attempt.
-Do not skip the vendor health/e-stop checks in BOOTCAMP.md.
+The shipped config is intentionally non-runnable. Copy the robot and skill JSON
+to an onsite session directory, fill only measured values, and keep the originals
+as templates. `policy.py` remains the submitted simulation policy.
 
-## 1. Pull and inspect
-
-~~~bash
-git pull
-python onsite.py doctor
-python onsite.py check-config --robot vega
-/usr/bin/python3 tools/vega_preflight.py
-~~~
-
-doctor never contacts hardware. vega_preflight checks local modules/files only.
-
-## 2. Verify cameras without motion
+## No-motion checks
 
 ~~~bash
-export ROBOT_NAME=<onsite-name>
+git pull --ff-only
+python -m unittest discover -s tests -v
+/usr/bin/python3 tools/capture_environment.py > <session>/environment.json
+/usr/bin/python3 tools/vega_preflight.py --robot-config <onsite-vega.json>
+export ROBOT_NAME='<verified-name>'
 /usr/bin/python3 tools/vega_head_probe.py
 /usr/bin/python3 tools/vega_wrists_probe.py
-/usr/bin/python3 tools/vega_capture_snapshot.py --output ~/vega-first-snapshot
 ~~~
 
-The camera path does not construct dexcontrol Robot().
+`vega_preflight.py` imports no robot API and never constructs `Robot()`. Verify
+the wrist A/B physical mapping visually. Do not use the normal Vega URDF: it
+omits the physical grippers.
 
-## 3. Resolve IK facts
+## Required measured configuration
 
-Obtain/verify:
+In the onsite robot config fill:
 
-- gripper-equipped URDF path;
-- selected physical arm;
-- actual EE/TCP frame name in that URDF;
-- every non-arm movable joint in the EE chain and its physical value;
-- a safe step wait time from a vendor/example move.
+- `robot_name`, `working_arm`, and the gripper-equipped `urdf_path`;
+- `kinematics.base_frame`, a named fixed URDF frame that is also the coordinate
+  frame of every runtime target;
+- `kinematics.ee_frame`, the frame whose pose is actually commanded;
+- every non-arm movable ancestor such as `Lift` or `torso_flip` in
+  `kinematics.fixed_joint_values`, using the physical value;
+- `max_joint_speed_rad_s`, `motion.control_hz`,
+  `motion.step_wait_time_s`, `motion.joint_reached_tolerance_rad`, and
+  `motion.joint_timeout_s`, from the installed dexcontrol example/robot test;
+- `gripper.scope` set to the selected working arm, the actual driver path, and a verified
+  `gripper.grip_current_a`.
 
-Use current 7 arm joints from the existing inspect_joints.py and run:
+`step_wait_time_s` is extra endpoint settle time. It is not a speed control.
+The adapter sends `max_joint_speed_rad_s * speed_scale` as dexcontrol
+`wait_kwargs.max_vel` and checks a fresh timestamp plus measured endpoint after
+every segment. `control_hz` must be the verified vendor loop rate in 100–500 Hz.
+
+Validate FK/IK without the robot:
 
 ~~~bash
 /usr/bin/python3 tools/vega_ik_check.py \
-  --urdf <gripper-urdf> \
-  --ee-frame <verified-frame> \
-  --arm left \
-  --fixed <non-arm-joint>=<verified-value> \
-  --q q1 q2 q3 q4 q5 q6 q7 \
-  --dz 0.01
+  --urdf <vega_1u_gripper.urdf> \
+  --base-frame <fixed-base-frame> --ee-frame <tcp-frame> --arm left \
+  --fixed Lift=<measured> --fixed torso_flip=<measured> \
+  --q q1 q2 q3 q4 q5 q6 q7 --dz 0.01
 ~~~
 
-This performs FK + a one-centimetre IK solve and sends no robot commands.
-If the URDF chain has an unconfigured movable joint, the checker names it.
+The checker fails if the EE is not downstream of all seven configured joints,
+if a movable ancestor is unknown, or if a seed/fixed value violates the
+effective URDF/config limits. Compare its initial FK pose to an independent
+vendor/physical pose before trusting IK.
 
-## 4. Bring up CAN gripper separately
+## Targets and tool geometry
 
-Use the supplied robot instructions to bring up can1, then validate the existing
-/home/dexmate/gripper.py demo before using SteadyHand. Homing is expected at the
-start of a new powered session. Keep hands clear.
+Runtime targets must include `base_frame`, `position_units=m`, and
+`quaternion_order=wxyz`. Pick and place are object/reference poses, not TCP
+poses. For open-release parts, place is the desired release pose; it may be
+above the final settled/grading height. `T_part_tcp` must use the same object
+reference at pick and place.
 
-SteadyHand intentionally uses the documented dual-gripper API only. If the
-competition setup requires single-side CAN commands, inspect the actual library
-and add that mapping rather than guessing an attribute name.
+The legacy simulation offset is a world-axis addition. The simulation
+orientation also passed through Lula's USD-to-URDF correction, so `[0,1,0,0]`
+is not proven to be the physical URDF TCP orientation. The runner refuses the
+legacy values until `legacy_geometry_verified=true`, and only after they are
+measured for the chosen EE frame. Prefer a measured `T_part_tcp`.
 
-## 5. Create current target poses
-
-Copy configs/runtime_targets.template.json into a session-specific file.
-
-The poses are OBJECT/DESTINATION poses in robot_base, not TCP poses. The
-executor applies configs/skills/vega.json to convert them into TCP goals.
-
-The preferred long-term representation is a calibrated T_part_tcp per part.
-Until then, the skill config carries the submitted policy's world-axis EE
-offset/orientation as a bring-up fallback.
-
-Do not paste simulation world XYZ directly into this file.
-
-## 6. First physical part
-
-Start with one open-release part, not a connector insertion.
+First validate every input without constructing `Robot()` or CAN:
 
 ~~~bash
 /usr/bin/python3 tools/vega_run_part.py \
-  --targets <current-targets.json> \
-  --part battery_size1 \
-  --operator Matvey \
-  --working-arm left \
-  --robot-name '<onsite-name>' \
-  --urdf <gripper-urdf> \
-  --ee-frame <verified-frame> \
-  --step-wait <verified-seconds> \
-  --gripper-scope both \
-  --confirm-head-motion \
-  --confirm-physical-motion
+  --robot-config <onsite-vega.json> --skills <onsite-skills.json> \
+  --targets <runtime_targets.json> --part battery_size1 --operator <name> \
+  --check-only
 ~~~
 
-The runner:
+## First connection and tiny motion
 
-1. snapshots config/targets/skill settings;
-2. constructs Robot() (which may move the head);
-3. loads Pinocchio against the gripper-equipped URDF;
-4. homes/connects the CAN grippers;
-5. opens the gripper;
-6. approaches the pick through segmented Cartesian targets;
-7. descends and current-limited grips;
-8. lifts and transfers through segmented Cartesian targets;
-9. places/releases/retracts;
-10. logs every phase/waypoint;
-11. software-e-stops on an unexpected exception.
-
-A completed sequence is not automatically recorded as a successful placement.
-Verification remains separate.
-
-## 7. Snap/insertion parts
-
-The executor ports the simulation XY search patterns, but the simulator's snap
-teleport is gone. Physical insertion uses:
-
-- a pre-insert pose above the destination;
-- center-out XY candidates;
-- short Cartesian descent waypoints;
-- live TCP-reached checking;
-- an optional relative wrist-force guard;
-- retract before the next XY candidate.
-
-By default connector insertion REFUSES to run until force_delta_limit is
-measured/verified onsite. The wrench units/frame are currently unknown.
-
-There is an override, --allow-snap-without-force-guard, but it is intentionally
-explicit.
-
-## 8. Full sequence
-
-Only after individual parts work:
+Run connection-only with the head workspace clear and physical e-stop ready:
 
 ~~~bash
-/usr/bin/python3 tools/vega_run_sequence.py <same hardware arguments> \
-  --targets <current-targets.json> \
-  --operator Matvey \
-  --return-home-q q1 q2 q3 q4 q5 q6 q7 \
-  --confirm-head-motion \
-  --confirm-physical-motion
+/usr/bin/python3 tools/vega_joint_check.py \
+  --robot-config <onsite-vega.json> --connect-only \
+  --confirm-head-motion --confirm-physical-motion
 ~~~
 
-Use --return-home-q only after physically validating that pose/path. This
-preserves the submitted policy's strategy of returning to a consistent IK seed
-between parts.
+Then select one unobstructed joint and make no more than a 0.02 rad reversible
+move. The tool pauses before moving and before returning:
 
-## Remaining hard gap
+~~~bash
+/usr/bin/python3 tools/vega_joint_check.py \
+  --robot-config <onsite-vega.json> --joint-index 7 --delta-rad 0.01 \
+  --speed-scale 0.1 --confirm-head-motion --confirm-physical-motion
+~~~
 
-Automatic runtime target generation is still the major missing Vega layer:
-camera images must become current board/part poses. Everything below those poses
-is now represented in code, but perception/calibration cannot be honestly
-completed without real board imagery and verified camera/base extrinsics.
+Bring `can1` up with the supplied robot instructions and run the unmodified
+`/home/dexmate/gripper.py` demo before SteadyHand. The organizer-linked driver
+exposes `g.left` and `g.right`; the wrapper homes and moves only the configured
+working-arm motor during a one-arm attempt. Verify that the installed file has
+the same API.
+
+## First pick/place
+
+Use one open-release part, an interactive terminal, and direct observation:
+
+~~~bash
+/usr/bin/python3 tools/vega_run_part.py \
+  --robot-config <onsite-vega.json> --skills <onsite-skills.json> \
+  --targets <runtime_targets.json> --part battery_size1 --operator <name> \
+  --speed-scale 0.1 --confirm-head-motion --confirm-physical-motion
+~~~
+
+The runner loads all local config, targets, geometry, gripper gates, and IK
+before `Robot()` can move the head. It then homes CAN, executes segmented TCP
+motion, checks fresh joint readback after every segment, and requires the
+operator to type `yes` after grasp, after lift, and after placement. Any
+exception, Ctrl-C, failed verification, stale state, tracking error, or limit
+violation activates software e-stop and halts CAN. `close()` still attempts
+robot shutdown if camera or CAN cleanup fails.
+
+## Insertion remains a later step
+
+Insertion is disabled until these are measured: `force_delta_limit`,
+`wrench_units="N,Nm"`, `wrench_frame`, and `max_contact_step_m`. Force is only
+checked between blocking joint moves, not continuously. A contact-limit event
+stops without blind automatic retract. TCP arrival is never insertion success;
+the operator must confirm physical seating before release. There is no bypass
+for running without a force guard.
+
+Full sequence execution defaults to `battery_size1`. More than one explicit
+part requires a physically validated `--return-home-q`; the home path itself is
+not collision checked.
+
+Automatic target perception and collision checking are not implemented. Keep
+using measured `runtime_targets.json` and visually clear every segmented path.
