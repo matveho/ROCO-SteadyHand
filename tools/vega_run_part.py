@@ -37,7 +37,7 @@ def add_hardware_arguments(p):
     p.add_argument("--control-hz", type=float)
     p.add_argument("--joint-tolerance", type=float)
     p.add_argument("--joint-timeout", type=float)
-    p.add_argument("--speed-scale", type=float, default=1.0)
+    p.add_argument("--speed-scale", type=float, default=0.15)
     p.add_argument("--gripper-scope", choices=("left", "right", "both"))
     p.add_argument("--grip-current", type=float)
     p.add_argument("--force-delta-limit", type=float)
@@ -103,6 +103,7 @@ def prepare_inputs(args, bundle, order):
     for name in order:
         goal = require_goal(goals, name)
         skill = skill_for_part(skills, name)
+        skill["runtime_pose_type"] = targets.get("pose_type", "object")
         if args.grip_current is not None or skill.get("grip_current_a") is None:
             skill["grip_current_a"] = cfg["gripper"].get("grip_current_a")
         validate_execution(goal, skill, safety, args.speed_scale)
