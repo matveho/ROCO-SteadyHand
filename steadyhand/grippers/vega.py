@@ -46,6 +46,7 @@ class VegaCanGripper:
         if not resolved.is_file():
             raise FileNotFoundError(str(resolved))
         _positive(self.config.get("grip_current_a"), "gripper.grip_current_a")
+        _positive(self.config.get("open_speed_dps", 500), "gripper.open_speed_dps")
         if (not self.config.get("home_on_connect", True)
                 and not self.config.get("skip_home_verified", False)):
             raise ValueError("Refusing to skip gripper homing without skip_home_verified=true")
@@ -82,9 +83,10 @@ class VegaCanGripper:
 
     def open(self):
         self._require()
+        speed = _positive(self.config.get("open_speed_dps", 500), "gripper.open_speed_dps")
         if self.scope == "both":
-            return self._driver.both_open()
-        return self._motor().open()
+            return self._driver.both_open(speed=speed)
+        return self._motor().open(speed=speed)
 
     def close_empty(self):
         """Position-close an empty jaw. Use grip() when holding an object."""
