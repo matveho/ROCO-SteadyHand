@@ -106,6 +106,11 @@ class VegaAdapter(RobotAdapter):
         cfg = dict(self.config.get("gripper") or {})
         if not cfg.get("driver_path"):
             cfg["driver_path"] = self.config.get("gripper_driver_path")
+        if not cfg.get("scope"):
+            # A physical board run currently uses one arm. The organizer's
+            # competition driver exposes independent g.left/g.right motors, so
+            # default the gripper side to the selected working arm.
+            cfg["scope"] = self.config.get("working_arm")
         gripper = VegaCanGripper(cfg)
         gripper.connect()
         self._gripper = gripper
@@ -251,6 +256,16 @@ class VegaAdapter(RobotAdapter):
     def grip(self, part_name=None, *, current_a=None) -> None:
         self._require_gripper()
         self._gripper.grip(current_a=current_a)
+
+    def verify_grasp(self, part_name):
+        """Use the official driver's current/stall-based grip result."""
+        self._require_gripper()
+        result = self._gripper.last_grip_result()
+        if result is None:
+            return None
+        if isinstance(result, dict) and "gripped" in result:
+            return bool(result["gripped"])
+        return None
 
     def gripper_status(self):
         self._require_gripper()
