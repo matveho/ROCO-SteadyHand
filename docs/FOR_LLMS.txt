@@ -1303,3 +1303,74 @@ Included:
 FUTURE AGENTS:
 Append a concise entry here after meaningful work, and update the body sections
 rather than only appending history. This file must describe CURRENT truth.
+
+
+===============================================================================
+LIVE COMPETITION VEGA FACTS — VERIFIED 2026-09-27 ONSITE
+===============================================================================
+
+Evidence source: direct SSH/login and read-only inspection on the competition
+Vega supplied to Team SteadyHand.
+
+VERIFIED_ON_COMP_ROBOT:
+  hostname: vega-1u
+  robot computer reachable on local competition network at 192.168.50.20
+  OS: Ubuntu 22.04.5 LTS
+  kernel: 5.15.185-tegra
+  architecture: aarch64
+  active shell environment observed: conda "(base)"
+  default/conda python: Python 3.13 environment containing dexcontrol 0.5.0
+  system /usr/bin/python3: Python 3.10
+
+Important interpreter split:
+  arm/control work currently resolves dexcontrol in the Conda Python 3.13
+  environment. Wrist-camera tooling has previously been documented against
+  system Python 3.10. Do not assume one interpreter can run both stacks until
+  tested.
+
+VERIFIED_ON_COMP_ROBOT filesystem:
+  local dexcontrol source checkout exists at:
+    /home/dexmate/dexcontrol
+
+  gripper-equipped URDF found at:
+    /home/dexmate/miniconda3/lib/python3.13/site-packages/dexmate_urdf/robots/humanoid/vega_1u/vega_1u_gripper.urdf
+
+  previously assumed paths did NOT appear in the initial inspection:
+    ~/Downloads/Dexmate
+    /home/dexmate/gripper.py
+
+Therefore do not use those older paths blindly on this unit.
+
+VERIFIED from the installed dexcontrol source/examples on this robot:
+  Robot() resolves robot variant from the ROBOT_NAME environment variable.
+  The vendor ArmSafeInitializer defaults to control_hz=250 and executes
+  trajectories by repeatedly calling left_arm.set_joint_pos(...) and
+  right_arm.set_joint_pos(...) with a RateLimiter at that frequency.
+  The safe-initializer example includes planning/self-collision logic and an
+  operator confirmation before executing the real arm trajectory; it is NOT a
+  read-only state probe.
+
+Still to verify before task execution:
+  actual ROBOT_NAME value
+  whether Robot() head-home behavior on this exact unit matches prior docs
+  working arm
+  live joint names/order/limits/state
+  desired EE/TCP frame for our task
+  model values for any non-active movable URDF ancestors
+  installed/competition gripper driver location/API and CAN readiness
+  physical/software e-stop behavior
+  exact motion-control semantics used by our current adapter
+
+Repository coordination note at this observation:
+  main = 87c975666ea302bd85235b203a31f8b2ff9497ff
+    ("harden Vega physical execution path"; CI passed)
+  onsite-2026 was still at da43e4394d09fc20f4a83728c47f91e359c61b1b.
+  Do not blindly reset/sync branches while multiple agents are active. Inspect
+  ancestry and coordinate first.
+
+
+2026-09-27 onsite update:
+  Added direct competition-Vega SSH/environment/source observations, the actual
+  installed gripper-URDF path, interpreter split, vendor 250 Hz safe-initializer
+  behavior, and the current main/onsite branch divergence. These observations
+  supersede older assumed file paths where they conflict.
