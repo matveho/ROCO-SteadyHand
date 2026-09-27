@@ -98,19 +98,41 @@ def validate_bundle(bundle):
     return bundle
 
 
-def missing_setup(bundle):
+def missing_motion_setup(bundle):
+    robot = bundle["robot"]
+    if robot["robot_id"] == "vega":
+        missing = []
+        if robot.get("working_arm") not in ("left", "right"):
+            missing.append("robot.working_arm")
+        if not robot.get("urdf_path"):
+            missing.append("robot.urdf_path")
+        motion = robot.get("motion") or {}
+        if motion.get("step_wait_time_s") is None:
+            missing.append("robot.motion.step_wait_time_s")
+        kin = robot.get("kinematics") or {}
+        if not kin.get("ee_frame"):
+            missing.append("robot.kinematics.ee_frame")
+        gripper = robot.get("gripper") or {}
+        if not gripper.get("scope"):
+            missing.append("robot.gripper.scope")
+        return missing
+
     missing = []
     for key in ("robot_name", "working_arm", "joint_names", "joint_limits_rad"):
-        if not bundle["robot"].get(key):
+        if not robot.get(key):
             missing.append(f"robot.{key}")
-    for key in ("base_frame", "camera_frame", "wrist_frame", "tcp_frame",
-                "T_base_camera", "T_base_board", "T_wrist_tcp", "measured_at"):
-        if not bundle["calibration"].get(key):
-            missing.append(f"calibration.{key}")
-    if not bundle["tasks"].get("pose_frame"):
-        missing.append("tasks.pose_frame")
-    for name, spec in bundle["tasks"]["parts"].items():
-        for key in ("pick_pose", "place_pose", "verification_method"):
-            if spec.get(key) is None:
-                missing.append(f"tasks.{name}.{key}")
     return missing
+
+
+def missing_perception_setup(bundle):
+    calibration = bundle["calibration"]
+    required = ("base_frame", "camera_frame", "T_base_camera", "T_base_board", "measured_at")
+    return [
+        f"calibration.{key}"
+        for key in required
+        if not calibration.get(key)
+    ]
+
+
+def missing_setup(bundle):
+    return missing_motion_setup(bundle) + missing_perception_setup(bundle)
