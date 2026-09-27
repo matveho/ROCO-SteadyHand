@@ -880,29 +880,43 @@ Offline fake-driver test added.
 13. CURRENT VEGA CONFIG / UNVERIFIED VALUES
 ===============================================================================
 
-configs/robots/vega.json contains known arm joint names and documented limits.
+configs/robots/vega.json now records these VERIFIED_ON_COMP_ROBOT values:
+  robot_name = dm/vgfcb66075ea-1u
+  host = 192.168.50.20
+  sdk_version = 0.5.0
+  live arm joint names/order
+  live arm joint limits
+  motion.control_hz = 100 as the vendor arm-config default (informational)
+  installed gripper-URDF candidate =
+    /home/dexmate/miniconda3/lib/python3.13/site-packages/dexmate_urdf/robots/humanoid/vega_1u/vega_1u_gripper.urdf
 
-Still intentionally null/unresolved:
-  robot_name
-  working_arm
-  host
-  urdf_path
+The physical arm motion path now uses dexcontrol move_to_joint_pos() and the
+robot-server motion plugin. These old client-interpolation fields are therefore
+NOT motion-readiness gates anymore:
   max_joint_speed_rad_s
   motion.step_wait_time_s
+  motion.control_hz
+
+Still intentionally null/unresolved:
+  working_arm
+  urdf_path (final run selection is still gated even though candidate path is known)
+  motion.joint_reached_tolerance_rad
+  motion.joint_timeout_s
+  kinematics.base_frame
   kinematics.ee_frame
   kinematics.fixed_joint_values
-  gripper.scope (runner defaults to working arm)
+  gripper.driver_path / gripper_driver_path
+  gripper.scope
+  gripper.grip_current_a
   wrist_a/wrist_b physical mapping
 
-sdk_version currently expected:
-  0.5.0
+Pinocchio-specific unresolved fact:
+  Lift and torso_flip are movable ancestors in the installed URDF. Their neutral
+  model values are both 0.0, but that does NOT establish the competition unit's
+  physical/model convention. Keep fixed_joint_values empty until verified.
 
 allow_sdk_version_mismatch:
   false
-
-This exact version gate may need adjustment if the actual installed package
-reports a patch/build variant. Do not disable it blindly; inspect the real
-installed version and API first.
 
 Skill config:
   configs/skills/vega.json
@@ -925,22 +939,22 @@ is still intentionally null.
 14. CRITICAL KNOWN ISSUES / RISKS — PRIORITIZED
 ===============================================================================
 
-P0 — MUST RESOLVE BEFORE SERIOUS MOTION
----------------------------------------
+P0 — MUST RESOLVE BEFORE SERIOUS CARTESIAN/TASK MOTION
+-------------------------------------------------------
 
-1. set_joint_pos / wait_time semantics are not fully reconciled.
-   See section 9. Our adapter's positive wait_time strategy differs from the
-   organizer source pose utility's wait_time=0 + explicit sleep.
+1. First intentional joint displacement is not yet physically verified.
+   The robot-server motion plugin is verified with a current-pose target only.
+   Next test is one unobstructed joint by about 0.005 rad at velocity_scale=0.05,
+   with e-stop reachable and measured readback checked.
 
-2. Actual URDF + EE/TCP frame must be selected and physically validated.
-   L_ee/R_ee are not necessarily the desired jaw-tip TCP.
-   custom tip_l/tip_r may be closer, but must be verified.
+2. Actual EE/TCP + base frame must be selected and physically validated.
+   L_ee/R_ee and gripper-base frames exist, but none has yet been established as
+   the scoring-task jaw TCP.
 
-3. Pinocchio fixed chain values.
-   Organizer gripper URDFs include Lift/torso_flip modeling joints despite live
-   vega_1u exposing no torso/chassis. Current IK intentionally refuses hidden
-   movable chain joints without explicit values. Determine the correct model
-   configuration for the competition unit.
+3. Pinocchio fixed chain values remain unresolved.
+   Installed gripper URDF includes Lift and torso_flip ahead of both arms despite
+   the live Vega1U config exposing no torso/chassis component. Neutral model
+   values are not sufficient evidence of the physical model convention.
 
 4. FK/IK math has not been physically validated.
    A 1 cm requested free-space displacement must produce the expected physical
@@ -948,60 +962,54 @@ P0 — MUST RESOLVE BEFORE SERIOUS MOTION
 
 5. Collision checking is incomplete.
    Current executor does not perform robust self/environment collision planning.
-   Valid IK != safe path.
-   Keep unused arm parked and use large clearances initially.
+   Valid IK != safe path. Keep unused arm parked and use large clearances.
+
+6. Competition gripper driver/CAN path is unresolved on this exact unit.
+   /home/dexmate/gripper.py was not present. Do not install/homing-activate
+   anything until sponsor/technician confirms the intended local driver/CAN flow.
 
 P1 — REQUIRED FOR RELIABLE SCORING
 ----------------------------------
 
-6. Automatic perception / board registration is missing.
+7. Automatic perception / board registration is missing.
    Current physical run needs runtime_targets.json.
-   Biggest missing layer:
-     camera -> board/part pose -> robot_base target
 
-7. calibration/vega.json is null.
+8. calibration/vega.json is null.
    Need T_base_camera / board registration and actual frame names.
 
-8. Real T_part_tcp per part is not calibrated.
+9. Real T_part_tcp per part is not calibrated.
    Legacy sim offsets are not orientation-general.
 
-9. Placement verification is not implemented.
-   VegaAdapter.verify_place() currently defaults to None.
-   Completed motion does not imply assembled part.
+10. Placement verification is not implemented.
+    Completed motion does not imply assembled part.
 
-10. Grasp verification is now wired to official Motor.grip()["gripped"], but has
-    not been physically validated on the competition parts.
+11. Grasp verification is wired to official Motor.grip()["gripped"], but has not
+    been physically validated on this competition unit/parts.
 
-11. Sequence recovery is weak.
-    vega_run_sequence currently aborts/e-stops on a part exception rather than
-    robustly retracting, retrying once, skipping, and continuing to protect score.
+12. Sequence recovery is weak.
+    vega_run_sequence can still lose the sequence on an ordinary part failure.
 
-12. Insertion success logic is weak.
+13. Insertion success logic is weak.
     Reaching commanded TCP depth does not prove USB/HDMI/pin/bolt insertion.
-    Need a real success signal (vision, depth, force signature, geometry, etc.).
 
-13. Wrench units/frame are unknown.
+14. Wrench units/frame are unknown.
     force_delta_limit intentionally remains null.
-    Do not choose a number by intuition.
 
-14. Wrist camera A/B physical mapping is unknown.
+15. Wrist camera A/B physical mapping is unknown.
 
 P2 — IMPORTANT CLEANUP / CONSISTENCY
 ------------------------------------
 
-15. Some docs are stale relative to code:
-    - docs/VEGA_LIVE.md still describes the old dual-gripper-only assumption and
-      examples with --gripper-scope both.
-    - README.md / docs/ARCHITECTURE.md / docs/ONSITE.md contain wording implying
-      all hardware adapters are disabled, while Vega is now implemented but gated.
-    Code is newer than those statements.
+16. docs/VEGA_LIVE.md and docs/MATVEY_DEXMATE_TODAY.md were updated with the
+    current competition-unit facts and move_to_joint_pos() path.
+    README.md / docs/ARCHITECTURE.md / docs/ONSITE.md may still contain older
+    high-level wording; use FOR_LLMS.txt + VEGA_LIVE.md as current Vega truth.
 
-16. Standard CI cannot validate real dexcontrol, Pinocchio, GStreamer, CAN, or
-    physical robot behavior.
-    Passing CI means syntax/shared logic/mocks are okay, not hardware readiness.
+17. Standard CI cannot validate real dexcontrol, Pinocchio, GStreamer, CAN,
+    physical robot motion, or collision safety.
 
-17. Source-robot calibration and safe-pose numbers in dexmate-setup are highly
-    useful but must not be promoted to VERIFIED_ON_COMP_ROBOT without testing.
+18. Source-robot calibration and pose numbers from dexmate-setup are useful
+    references but are not VERIFIED_ON_COMP_ROBOT unless explicitly noted.
 
 ===============================================================================
 15. TESTING / CI STATUS
@@ -1037,7 +1045,7 @@ What tests do NOT prove:
   dexcontrol API behavior
   actual Robot() lifecycle
   actual e-stop behavior
-  actual set_joint_pos timing semantics
+  real intentional joint/TCP displacement behavior
   actual gripper CAN bus
   actual camera/GStreamer stack
   actual Pinocchio model alignment to robot
@@ -1053,22 +1061,29 @@ physical or authoritative oracle.
 ===============================================================================
 
 Matvey / Vega:
-  Use docs/MATVEY_DEXMATE_TODAY.md.
+  Use docs/MATVEY_DEXMATE_TODAY.md and docs/VEGA_LIVE.md.
 
-Highest-value sequence:
-  1. Clone/save organizer dexmate-setup and record commit.
-  2. At/with sponsor: resolve wait_time semantics, robot identity, actual model,
-     EE/TCP frame, e-stop/recovery, safe arm usage.
-  3. No-motion camera tests.
-  4. Read actual joint state.
-  5. Offline FK/IK +1 cm sanity.
-  6. Tiny safe joint move.
-  7. Per-side gripper home/open/grip/release with arm parked.
-  8. Tiny free-space TCP move.
-  9. Produce one real target for an easy open-release part.
- 10. Run one part.
- 11. Repeat until 5 consecutive successes.
- 12. Only then expand to other parts / insertion.
+Already completed onsite:
+  - robot identity / dexcontrol version / firmware captured
+  - live arm components, joint names/order/limits captured
+  - e-stop state readable and clear
+  - installed gripper-URDF candidate located
+  - wait_time semantics resolved from installed source
+  - robot-server motion plugin verified with a current-pose command
+  - VegaAdapter migrated to move_to_joint_pos()
+
+Highest-value sequence NOW:
+  1. Tiny safe joint displacement + return using the motion plugin.
+  2. Resolve physical Lift/torso_flip values and base/EE frame.
+  3. Offline FK/IK +1 cm sanity from live q.
+  4. Tiny free-space TCP move and physical direction check.
+  5. Resolve actual gripper driver/CAN path with sponsor.
+  6. Per-side gripper home/open/grip/release with arm parked.
+  7. Head/wrist camera capture + wrist physical mapping.
+  8. Produce one real target for an easy open-release part.
+  9. Run one part.
+ 10. Repeat until 5 consecutive successes.
+ 11. Only then expand to other parts / insertion.
 
 Best first target:
   battery_size1 or another physically obvious open-release part.
@@ -1076,9 +1091,6 @@ Best first target:
 
 Eunice / Sharpa:
   Use docs/EUNICE_SHARPA_TODAY.md.
-
-Highest-value outcome today is not "finish all tasks"; it is to leave with the
-full North control contract and a minimal verified live adapter.
 
 Coordination:
   Avoid both agents editing shared base/config/model/executor files at the same
@@ -1169,9 +1181,11 @@ Local development:
   .venv is reasonable.
 
 Vega Jetson:
-  Do NOT blindly create/use a venv for wrist-camera code.
-  The wrist camera module/GStreamer bindings are exposed to system Python 3.10.
-  Prefer /usr/bin/python3 for wrist camera tools.
+  Arm/control stack is verified in Conda Python 3.13 with dexcontrol 0.5.0.
+  Wrist-camera/GStreamer bindings were previously documented against system
+  Python 3.10; prefer /usr/bin/python3 for wrist camera tools until retested.
+  Do not import dexmotion merely to inspect it: direct import caused a native
+  segmentation fault onsite. Read installed source files directly instead.
 
 Sharpa:
   Use the exact environment/vendor setup supplied onsite. Do not infer that the
@@ -1193,13 +1207,15 @@ Architecture/background:
   docs/POLICY_PORT.md
   docs/UPSTREAMS.md
 
-Potentially stale:
+Current Vega execution truth:
+  docs/FOR_LLMS.txt
   docs/VEGA_LIVE.md
-    still contains old both-gripper assumptions in places
+  docs/MATVEY_DEXMATE_TODAY.md
+
+Potentially stale high-level wording:
   docs/ONSITE.md
   docs/ARCHITECTURE.md
   README.md
-    some wording predates the gated live Vega implementation
 
 When changing behavior:
   update the relevant execution doc AND this file.
@@ -1268,19 +1284,21 @@ Before coding:
   read the owner-specific checklist relevant to your work
 
 Offline:
-  python onsite.py doctor
-  python -m unittest discover -s tests -v
+  python3 onsite.py doctor
+  python3 -m unittest discover -s tests -v
 
 Before giving exact CLI examples for onsite.py:
   inspect steadyhand/cli.py and onsite.py live.
   Do not repeat commands from old chat/docs if syntax has changed.
 
 Before touching Vega hardware:
-  read organizer dexmate-setup current commit and compare to the pinned reference.
+  read docs/VEGA_LIVE.md first.
+  use Conda python3 for dexcontrol arm/control work.
   ask sponsor before system installation/boot modifications.
-  know physical e-stop.
-  know software stop.
-  no Robot() if you intend zero motion.
+  keep physical e-stop reachable.
+  remember Robot() can initialize/move the head.
+  use move_to_joint_pos() for controlled joint targets; do not reintroduce
+  wait_time interpolation or low-rate raw set_joint_pos streaming.
 
 ===============================================================================
 24. CHANGE LOG FOR THIS HANDOFF
@@ -1488,3 +1506,10 @@ Current competition-network workflow:
   - migrated VegaAdapter to move_to_joint_pos() + MotionHandle
   - recorded the working laptop-Wi-Fi + robot-Ethernet deployment workflow
   - recorded the dexmotion import segfault as an onsite operational hazard
+
+
+2026-09-27 handoff-body refresh:
+  Updated sections 13/14/16/19/20/23 so the main body, not only appended notes,
+  reflects the verified competition unit and the robot-server motion-plugin
+  implementation. Current canonical Vega docs are FOR_LLMS.txt, VEGA_LIVE.md,
+  and MATVEY_DEXMATE_TODAY.md.
