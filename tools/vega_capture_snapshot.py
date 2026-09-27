@@ -79,7 +79,7 @@ def main(argv=None):
                 "camera_info": serializable(h.camera_info),
                 "left_shape": list(h.left_rgb.shape),
                 "right_shape": list(h.right_rgb.shape),
-                "depth_shape": list(h.depth_m.shape),
+                "depth_shape": None if h.depth_m is None else list(h.depth_m.shape),
             },
         }
 
