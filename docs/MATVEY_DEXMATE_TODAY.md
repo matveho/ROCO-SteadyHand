@@ -50,6 +50,34 @@ The day is successful if this is no longer a diagram: **at least one easy part w
 
 # PHASE 1 — Establish the exact robot interface
 
+## Read this organizer-linked repo first
+
+The organizers explicitly said the official Vega configuration was modified and
+directed teams to:
+
+`https://github.com/intelligent-control-lab/dexmate-setup`
+
+Pinned reference checked today:
+
+`4be4d16140b25f730673d664b49c58280b07ef46`
+
+Clone/copy it locally before relying on venue internet.
+
+This repo already confirms several things we previously planned to ask:
+
+- CAN adapter is `can1` at 1 Mbit/s;
+- motor 1 = left gripper, motor 2 = right gripper;
+- `Grippers().left` and `.right` are independent Motor objects;
+- use `Motor.grip(current=...)` for objects;
+- `grip()` returns a dict including `gripped`;
+- `halt()` stops while preserving calibration;
+- `release()` de-energizes and destroys the multi-turn position reference;
+- gripper-equipped URDFs and calibration/reference files are included;
+- vendor pose/safety scripts and joint-inspection tools are included.
+
+Our SteadyHand gripper wrapper has been updated to this API. Still verify the
+actual competition unit before motion.
+
 Do this before serious motion.
 
 ## Ask/verify at the DexMate bootcamp
@@ -72,7 +100,7 @@ Write the answers directly into your notes/config.
 - [ ] Recovery after e-stop
 - [ ] What happens if Python crashes mid-command?
 - [ ] Exact CAN interface/startup command for grippers
-- [ ] Whether `/home/dexmate/gripper.py` supports **left-only/right-only** commands
+- [x] Per-side gripper API exists in the organizer-linked driver (`g.left` / `g.right`); verify the same file/API is installed on the competition unit
 - [ ] Wrench units/reference frame if vendor knows them
 - [ ] Whether code should run directly on the Jetson or from a workstation
 
@@ -253,7 +281,7 @@ Then determine:
 - [ ] halt
 - [ ] position read
 - [ ] current/status read
-- [ ] left-only/right-only API if available
+- [x] Organizer repo exposes left-only/right-only `Motor` API; verify it on the physical unit
 
 Update:
 
@@ -399,7 +427,7 @@ Run:
   --urdf <actual-gripper-urdf> \
   --ee-frame <actual-frame> \
   --step-wait <verified-value> \
-  --gripper-scope both \
+  --gripper-scope <left-or-right> \
   --confirm-head-motion \
   --confirm-physical-motion
 ```
