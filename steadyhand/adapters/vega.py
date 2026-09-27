@@ -14,6 +14,7 @@ Verified/public control assumptions used here:
 - the competition gripper is a separate CAN device.
 """
 
+import importlib.metadata
 import math
 import os
 import time
@@ -63,6 +64,21 @@ class VegaAdapter(RobotAdapter):
         robot_name = self.config.get("robot_name")
         if robot_name and not os.environ.get("ROBOT_NAME"):
             os.environ["ROBOT_NAME"] = str(robot_name)
+
+        expected = self.config.get("sdk_version")
+        if expected:
+            try:
+                installed = importlib.metadata.version("dexcontrol")
+            except importlib.metadata.PackageNotFoundError as exc:
+                raise HardwareUnavailableError("dexcontrol is not installed") from exc
+            if (
+                installed != expected
+                and not self.config.get("allow_sdk_version_mismatch", False)
+            ):
+                raise HardwareUnavailableError(
+                    f"dexcontrol {installed} is installed, expected {expected}; "
+                    "verify the onsite API before allowing a version mismatch"
+                )
 
         from dexcontrol.robot import Robot
 
