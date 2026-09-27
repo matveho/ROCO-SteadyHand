@@ -4,7 +4,7 @@ import argparse
 import platform
 import sys
 
-from .config import ROBOTS, WORKSPACE, load_bundle, missing_setup
+from .config import (ROBOTS, WORKSPACE, load_bundle, missing_motion_setup, missing_perception_setup, missing_setup)
 from .runner import PHASES, dry_run
 from .sessions import create_session
 
@@ -34,16 +34,30 @@ def main(argv=None):
             print("Offline doctor dependencies: standard library only")
             for robot in ROBOTS:
                 bundle = load_bundle(robot)
-                print(f"{robot}: templates valid; {len(missing_setup(bundle))} setup fields missing")
+                motion_missing = missing_motion_setup(bundle)
+                perception_missing = missing_perception_setup(bundle)
+                print(
+                    f"{robot}: templates valid; "
+                    f"{len(motion_missing)} motion fields missing; "
+                    f"{len(perception_missing)} perception/calibration fields missing"
+                )
             print("Vega: live joint/camera/gripper/IK path is implemented but configuration-gated; no connection attempted")
             print("Sharpa: full-body live adapter still awaits the onsite North interface")
             return 0
         bundle = load_bundle(args.robot)
         if args.command == "check-config":
-            missing = missing_setup(bundle)
+            motion_missing = missing_motion_setup(bundle)
+            perception_missing = missing_perception_setup(bundle)
+            missing = motion_missing + perception_missing
             print(f"{args.robot}: configuration structure is valid")
-            for item in missing:
-                print(f"  MISSING {item}")
+            print("  Motion:")
+            for item in motion_missing:
+                print(f"    MISSING {item}")
+            print("  Perception/calibration:")
+            for item in perception_missing:
+                print(f"    MISSING {item}")
+            if args.robot == "vega":
+                print("  Per-attempt part poses are supplied separately via runtime_targets.json.")
             print("Configuration checks do not establish hardware readiness.")
             return 2 if missing and args.require_ready else 0
         if args.command == "new-session":
