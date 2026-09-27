@@ -1546,3 +1546,12 @@ Current competition-network workflow:
   MotionHandle tolerance decision.
   SteadyHand's independent measured-state check after handle completion remains
   necessary and should not be removed.
+
+
+2026-09-27 robot-server process-location check:
+  A read-only process listing on the Vega Jetson using names
+  robot-server|motion|plugin|dexmate|dexbot found no apparent robot-server or
+  motion-plugin process beyond the user's login/session processes. Do not assume
+  the motion plugin runs as a normally named local Jetson process; it may be
+  managed under another service/process name or run elsewhere in the robot
+  control stack.
