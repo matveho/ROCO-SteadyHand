@@ -1930,3 +1930,16 @@ Current competition-network workflow:
   h.depth_m was non-null when computing depth_shape. This is a SteadyHand bug,
   not a camera failure. Main now records depth_shape=null when --rgb-only is
   used. Retry the same RGB-only capture after deploying latest.
+
+
+2026-09-27 FIRST SUCCESSFUL HEAD STEREO SNAPSHOT ON COMPETITION VEGA:
+  RGB-only head capture succeeded after enabling the head publisher and using the
+  new --rgb-only path:
+    /home/dexmate/vega-stereo-4
+  The dexcontrol camera client retrieved camera_info successfully and both
+  left_rgb/right_rgb streams were active. This is the first real perception
+  fixture from competition robot dm/vgfcb66075ea-1u.
+  Next priority: inspect/export the actual stereo images and runtime camera_info,
+  then build the shortest viable board/part localization path. Added
+  tools/copy_from_vega.ps1 so Windows can retrieve robot-side fixtures using the
+  same SSH_ASKPASS workaround as deployment.
