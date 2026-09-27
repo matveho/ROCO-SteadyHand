@@ -36,7 +36,7 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--transfer-y", type=float, default=0.08,
                    help="metres in +base-Y; default moves left arm outward 8 cm")
-    p.add_argument("--speed-scale", type=float, default=0.15)
+    p.add_argument("--speed-scale", type=float, default=0.45)
     args = p.parse_args(argv)
 
     bundle = load_bundle("vega")
