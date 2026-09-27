@@ -315,14 +315,12 @@ class VegaAdapter(RobotAdapter):
         # remain bounded, not only consecutive planned targets.
         steps = max(1, int(math.ceil(worst / (max_step - tolerance))))
 
-        import numpy as np
-
         for index in range(1, steps + 1):
             alpha = index / steps
-            waypoint = np.asarray(
-                [a + alpha * d for a, d in zip(current, delta)],
-                dtype=float,
-            )
+            waypoint = [
+                float(a + alpha * d)
+                for a, d in zip(current, delta)
+            ]
             measured = self._read_joint_positions()
             distance = max(abs(a - b) for a, b in zip(measured, waypoint))
             if distance > max_step + 1e-12:
