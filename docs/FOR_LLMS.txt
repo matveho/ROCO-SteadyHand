@@ -1681,3 +1681,85 @@ Current competition-network workflow:
   steadyhand/executor.py now rejects task Cartesian targets/waypoints below the
   configured floor; configs/skills/vega.json records the contact height, margin,
   and hard floor.
+
+
+2026-09-27 PICK/PLACE PIPELINE PREP UPDATE:
+  User authorized aggressive onsite bring-up with physical e-stop supervision and
+  wants a real pick/place within the next hour.
+
+  Main is now configured for the physically verified competition Vega:
+    working_arm = left
+    robot_name = dm/vgfcb66075ea-1u
+    urdf_path = configs/robots/vega_1u_competition_kinematics.urdf
+    kinematics.ee_frame = tip_l
+    kinematics.base_frame = vega_1u_base_link
+    fixed_joint_values:
+      Lift = 0.0
+      torso_flip = 0.22689280275926285
+    motion.joint_reached_tolerance_rad = 0.005
+    motion.joint_timeout_s = 30.0
+    gripper.scope = left
+    gripper.grip_current_a = 0.6 A
+    gripper.open_speed_dps = 500
+    gripper driver = vendor/dexmate_setup/gripper.py
+  0.6 A and 500 dps are organizer-documented defaults, not yet physically
+  validated on this exact serial.
+
+  A compact tracked URDF now reproduces the organizer competition base/arm/tip
+  kinematics without meshes, so fresh Git bundles no longer depend on the
+  manually copied full custom URDF. It includes both arms and tip_l/tip_r.
+  It is FK/IK-only: NO collision geometry.
+
+  Table safety:
+    measured tip_l light-contact z = 0.4460002716867571 m
+    user-selected normal task floor = 0.4560002716867571 m (+10 mm)
+  executor.py now rejects normal task TCP targets and Cartesian waypoints below
+  this floor. calibration/vega.json records base/tcp frame names and the floor.
+  Re-measure if robot/table geometry changes.
+
+  Rapid bring-up mode:
+    runtime target files may set pose_type="tcp".
+    In that mode pick_pose/place_pose are explicit tip_l TCP poses in
+    vega_1u_base_link and bypass uncalibrated object->TCP geometry.
+    This is intended for the first taught pick/place only; normal competition
+    perception should return to pose_type="object" plus calibrated T_part_tcp.
+    Template:
+      configs/runtime_targets.tcp_bringup.json
+    Writer:
+      tools/vega_write_tcp_targets.py
+    Bounded visual alignment jog:
+      tools/vega_jog_tcp.py
+      each command <= 50 mm, preserves orientation, default speed_scale=0.10,
+      hard floor enforced; if starting below floor only straight +Z recovery
+      to >= floor is allowed.
+
+  tools/vega_run_part.py:
+    now defaults speed_scale=0.15 instead of 1.0
+    propagates runtime pose_type into skill validation/execution
+    continues to require explicit head/motion confirmations and interactive
+    lift/place verification.
+
+  tools/vega_preflight.py:
+    updated for robot-server motion semantics; no longer treats legacy
+    step_wait/max_joint_speed as readiness gates. It now reports python-can,
+    can1 presence, vendored gripper driver, joint tolerance/timeout, and table
+    floor.
+
+  Vendored organizer gripper driver:
+    vendor/dexmate_setup/gripper.py
+    source intelligent-control-lab/dexmate-setup
+    pinned commit 4be4d16140b25f730673d664b49c58280b07ef46
+  CAN remains can1 @ 1 Mbps. Do not call release() casually because it loses
+  gripper multi-turn calibration; halt() preserves calibration.
+
+  Latest CI checked after tracked compact URDF/config update:
+    main c6101183ea2c890467e3b3d2e1e6cd881f5a17bc
+    offline-tests SUCCESS.
+  Later calibration/doc-only commits may advance main; check latest head before
+  deployment.
+
+  CURRENT PHYSICAL STATE AT TIME OF THIS NOTE:
+    left tip_l was intentionally stopped at light table contact during floor
+    measurement, z ~= 0.4460 m, i.e. BELOW the normal-task floor.
+    Before any XY/task motion, recover the left TCP straight upward by at least
+    10 mm; recommend +20 mm using tools/vega_jog_tcp.py after syncing latest code.
