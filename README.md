@@ -11,6 +11,7 @@ in the steadyhand package and is deliberately separated from the submission.
   705e4e03ed8e3427cfc5f58a20de02afc3687e6b. Never develop on this branch.
 - onsite-2026: active competition integration work.
 - main: kept fast-forwarded to the current integration head for easy cloning.
+- sharpa-wip: hardware and software calibration on the sharpa machine
 
 The original policy.py remains unchanged from the submission snapshot.
 
@@ -53,6 +54,12 @@ The optional [North arm-index fix](patches/sharpa-north/README.md) is stored as 
 reviewable patch with offline tests and a helper that builds in a separate SDK
 copy. The original organizer SDK remains unchanged. These tools do not start a
 controller or resolve physical joint-tracking errors.
+
+North now has a [read-only observation check](docs/SHARPA_OBSERVATIONS.md), an
+optional SDK serialization check that sends no commands, and pure bounded joint
+command construction. See [the North inference path](docs/SHARPA_INFERENCE.md)
+for connecting the existing task phases to the organizer SDK. Hardware motion
+is still disabled until tracking, mapping and stop behavior are verified.
 
 
 ## Vega live stack

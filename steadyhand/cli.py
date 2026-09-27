@@ -42,7 +42,7 @@ def main(argv=None):
                     f"{len(perception_missing)} perception/calibration fields missing"
                 )
             print("Vega: live joint/camera/gripper/IK path is implemented but configuration-gated; no connection attempted")
-            print("Sharpa: full-body live adapter still awaits the onsite North interface")
+            print("Sharpa: read-only North observations available; hardware motion remains disabled")
             return 0
         bundle = load_bundle(args.robot)
         if args.command == "check-config":
