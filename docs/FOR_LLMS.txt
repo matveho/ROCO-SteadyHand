@@ -1386,3 +1386,12 @@ Repository coordination note at this observation:
 - installed gripper URDF contains base_link, L_ee, R_ee, L/R gripper frames
 - movable model joints include Lift and torso_flip before both arm chains despite live torso/chassis being absent
 - standard installed gripper URDF does not expose tip_l/tip_r frames in the inspected frame list
+
+
+Additional URDF facts verified onsite 2026-09-27:
+  Lift neutral=0.0, limits=[0.0, 0.4]
+  torso_flip neutral=0.0, limits=[0.0, 1.0]
+  L_ee and L_gripper_base parent joint = L_arm_j7
+  R_ee and R_gripper_base parent joint = R_arm_j7
+These are model facts only; neutral values are not yet promoted to verified physical
+competition-unit fixed values.
