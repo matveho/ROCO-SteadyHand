@@ -559,36 +559,44 @@ Do NOT automatically command the source robot's numeric rest/home poses on the
 competition unit before sponsor confirmation.
 
 ===============================================================================
-9. IMPORTANT CONTROL-SEMANTICS CONFLICT TO RESOLVE ONSITE
+9. VEGA CONTROL SEMANTICS — RESOLVED ONSITE 2026-09-27
 ===============================================================================
 
-This is a high-priority audit item.
+VERIFIED_ON_COMP_ROBOT from the installed dexcontrol 0.5.0 source:
 
-Organizer Q&A/manual language:
-  wait_time=0 is associated with real-time/continuous command usage and a
-  100–500 Hz command loop.
+  Arm.set_joint_pos(..., wait_time=0)
+    sends one raw joint-position setpoint and returns immediately.
+    It is intended for repeated high-frequency streaming (e.g. 100 Hz).
+    Installed docs state a maximum caller frequency of 500 Hz.
 
-Organizer-linked known-good source pose utility:
-  software/poses/goto_pose.py
-  calls:
-    comp.set_joint_pos(..., wait_time=0.0)
-  then sleeps WAIT (default 0.6 s) between bounded 0.12 rad steps.
+  Arm.set_joint_pos(..., wait_time>0)
+    performs client-side interpolation.
+    This path is deprecated and the installed source explicitly recommends
+    move_to_joint_pos() instead.
 
-Our current VegaAdapter:
-  uses a POSITIVE wait_time for each set_joint_pos call:
-    self._arm.set_joint_pos(waypoint, wait_time=wait)
+  Arm.move_to_joint_pos(..., velocity_scale=...)
+    sends a joint target to the robot-server motion plugin.
+    The robot-server handles trajectory generation, smoothing, and gravity
+    compensation. The client receives a MotionHandle supporting wait/cancel and
+    terminal states including finished/cancelled/error.
 
-Therefore:
-  Do not assume our set_joint_pos timing semantics are correct merely because the
-  Python signature exists.
-  During DexMate training, ask the sponsor to explain:
-    - what wait_time actually means
-    - whether positive wait_time blocks/interpolates
-    - whether the organizer goto_pose.py pattern is the recommended safe pattern
-    - whether repeated step commands should use wait_time=0 + explicit sleep
-  Then align VegaAdapter with the confirmed behavior.
+VERIFIED_ON_COMP_ROBOT runtime:
+  - left-arm current-pose target commanded with move_to_joint_pos()
+  - velocity_scale=0.05
+  - MotionHandle reached state "finished" within 5 seconds
+  - no intentional arm displacement was requested
+  - live Vega1U arm config reports default_control_hz=100
 
-This is currently one of the most important pre-motion code-review points.
+CURRENT STEADYHAND IMPLEMENTATION:
+  steadyhand/adapters/vega.py now uses move_to_joint_pos() rather than
+  set_joint_pos(). It retains small software waypoint bounds, waits on the
+  MotionHandle, then requires fresh measured joint state at the waypoint.
+  If a motion fault occurs, the active handle is cancellable before the
+  software e-stop path runs.
+
+Therefore the old wait_time ambiguity is CLOSED for this competition unit.
+Do not reintroduce wait_time-based interpolation or raw low-rate
+set_joint_pos(wait_time=0) calls into SteadyHand.
 
 ===============================================================================
 10. SHARPA NORTH — KNOWN FACTS / UNKNOWNS
@@ -1351,12 +1359,9 @@ VERIFIED from the installed dexcontrol source/examples on this robot:
   read-only state probe.
 
 Still to verify before task execution:
-  actual ROBOT_NAME value
-  whether Robot() head-home behavior on this exact unit matches prior docs
-  working arm
-  live joint names/order/limits/state
-  desired EE/TCP frame for our task
-  model values for any non-active movable URDF ancestors
+  working arm for the scoring strategy
+  exact desired EE/TCP frame for our task
+  physical values/convention for non-active movable URDF ancestors Lift and torso_flip
   installed/competition gripper driver location/API and CAN readiness
   physical/software e-stop behavior
   exact motion-control semantics used by our current adapter
@@ -1410,3 +1415,76 @@ competition-unit fixed values.
   within 5 s. This verifies the robot-side motion plugin is running and the
   client can receive completion status.
 - No intentional arm displacement was requested in that verification.
+
+
+ADDITIONAL VERIFIED_ON_COMP_ROBOT FACTS — 2026-09-27
+-----------------------------------------------------
+Robot identity/control:
+  ROBOT_NAME = dm/vgfcb66075ea-1u
+  robot model = vega_1u
+  dexcontrol client = 0.5.0
+  robot firmware/system version reported = 0.5.1
+  minimum client version reported = 0.5.0
+  communication config =
+    /home/dexmate/.dexmate/comm/zenoh/dm_internal_061826.dzcfg
+
+Live components:
+  left_arm
+  right_arm
+  head
+  estop
+  heartbeat
+
+Not present as live components:
+  torso
+  chassis
+
+Arm contract:
+  live left/right arm joint names/order match configs/robots/vega.json exactly.
+  live left/right joint limits match configs/robots/vega.json exactly.
+  arm timestamps are live/nonzero.
+  the live arm config reports default_control_hz=100.
+
+Model/config split:
+  live Vega1UConfig points to the standard vega_1u.urdf.
+  our physical tool model candidate is the installed gripper URDF:
+    /home/dexmate/miniconda3/lib/python3.13/site-packages/dexmate_urdf/robots/humanoid/vega_1u/vega_1u_gripper.urdf
+
+Gripper URDF facts:
+  base_link is a fixed root frame.
+  L_ee / L_gripper_base are parented to L_arm_j7.
+  R_ee / R_gripper_base are parented to R_arm_j7.
+  inspected standard gripper URDF does not expose tip_l / tip_r.
+  Lift:
+    prismatic +Z, neutral 0.0, limits [0.0, 0.4] m.
+  torso_flip:
+    revolute +X, neutral 0.0, limits [0.0, 1.0] rad.
+  IMPORTANT: neutral values are model defaults, NOT verified physical values.
+
+Operational hazard observed:
+  importing dexmotion directly in the Conda Python 3.13 environment caused a
+  native segmentation fault during onsite inspection. Avoid importing dexmotion
+  merely to inspect source. Read installed files directly. A later broad grep
+  over its tree also coincided with losing the SSH connection; keep inspection
+  commands narrow on the competition Jetson.
+
+Current competition-network workflow:
+  laptop has Internet over IROS Wi-Fi.
+  laptop remains directly connected to Vega over Ethernet.
+  Vega itself did not resolve GitHub from the robot Ethernet path.
+  repository workflow used successfully:
+    GitHub -> laptop over Wi-Fi -> scp repository -> Vega over Ethernet/SSH.
+  Do not change Vega networking merely to obtain GitHub access unless sponsor
+  guidance requires it.
+
+
+2026-09-27 live control-path consolidation:
+  - recorded the exact competition robot identity, live component set, firmware,
+    Zenoh config, arm names/limits, and installed gripper-URDF path
+  - recorded URDF Lift/torso_flip model facts without promoting neutral values
+    to physical calibration
+  - resolved set_joint_pos wait_time semantics from installed dexcontrol source
+  - verified the robot-server motion plugin with a current-pose command
+  - migrated VegaAdapter to move_to_joint_pos() + MotionHandle
+  - recorded the working laptop-Wi-Fi + robot-Ethernet deployment workflow
+  - recorded the dexmotion import segfault as an onsite operational hazard
