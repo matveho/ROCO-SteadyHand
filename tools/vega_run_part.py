@@ -17,7 +17,7 @@ Example after bring-up:
   --urdf ~/Downloads/Dexmate/vega_1u_gripper.urdf \
   --ee-frame L_ee \
   --step-wait 0.5 \
-  --gripper-scope both \
+  --gripper-scope left \
   --confirm-head-motion \
   --confirm-physical-motion
 """
@@ -54,7 +54,7 @@ def parser():
     p.add_argument("--ee-frame", required=True)
     p.add_argument("--step-wait", type=float, required=True)
     p.add_argument("--speed-scale", type=float, default=1.0)
-    p.add_argument("--gripper-scope", choices=("both",), required=True)
+    p.add_argument("--gripper-scope", choices=("left", "right", "both"))
     p.add_argument("--grip-current", type=float)
     p.add_argument("--force-delta-limit", type=float)
     p.add_argument("--allow-snap-without-force-guard", action="store_true")
@@ -83,7 +83,7 @@ def main(argv=None):
     robot_cfg["urdf_path"] = str(Path(args.urdf).expanduser())
     robot_cfg["kinematics"]["ee_frame"] = args.ee_frame
     robot_cfg["motion"]["step_wait_time_s"] = args.step_wait
-    robot_cfg["gripper"]["scope"] = args.gripper_scope
+    robot_cfg["gripper"]["scope"] = args.gripper_scope or args.working_arm
     if args.robot_name:
         robot_cfg["robot_name"] = args.robot_name
     if args.grip_current is not None:
