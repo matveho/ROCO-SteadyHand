@@ -318,7 +318,7 @@ class Motor:
         self.halted = False
     def home(self):
         self.homed = True
-    def open(self):
+    def open(self, speed=150):
         self.opened = True
         return "opened"
     def close(self):
@@ -351,8 +351,8 @@ class Grippers:
         self.closed = False
     def home(self, require_all=False):
         self.left.home(); self.right.home()
-    def both_open(self):
-        self.left.open(); self.right.open()
+    def both_open(self, speed=500):
+        self.left.open(speed=speed); self.right.open(speed=speed)
     def both_close(self):
         return "both_closed"
     def both_move_to(self, fraction, speed=500):
