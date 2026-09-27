@@ -1663,3 +1663,21 @@ Current competition-network workflow:
   SteadyHand IK layer. Exact TCP calibration/floor height still requires onsite
   contact/reference measurement; organizer calibration numbers are from another
   Vega unit.
+
+
+2026-09-27 MEASURED TABLE TCP FLOOR:
+  User manually stopped a slow downward left-tip Cartesian probe at first light
+  table contact. Readback:
+    left joints rad =
+      [0.3743644059, 0.8141838908, 1.5522208214, -0.9500368237,
+       -1.3224359751, 0.4539618790, -0.5846381783]
+    tip_l contact xyz in vega_1u_base_link =
+      [0.6531807699, 0.2234521549, 0.4460002717] m
+  User explicitly selected a hard normal-task floor 10 mm above that contact:
+    min_tcp_z_m = 0.4560002716867571 m
+  This floor is tied to the current physical table/setup and the current
+  organizer-derived kinematic assumptions (Lift=0, torso_flip=0.2268928028).
+  Re-measure if table/robot geometry changes.
+  steadyhand/executor.py now rejects task Cartesian targets/waypoints below the
+  configured floor; configs/skills/vega.json records the contact height, margin,
+  and hard floor.
