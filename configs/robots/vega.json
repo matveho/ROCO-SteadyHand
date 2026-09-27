@@ -2,10 +2,10 @@
   "schema_version": 1,
   "robot_id": "vega",
   "robot_name": "dm/vgfcb66075ea-1u",
-  "working_arm": null,
+  "working_arm": "left",
   "host": "192.168.50.20",
   "sdk_version": "0.5.0",
-  "urdf_path": null,
+  "urdf_path": "configs/robots/vega_1u_competition.urdf",
   "urdf_candidates": [
     "/home/dexmate/miniconda3/lib/python3.13/site-packages/dexmate_urdf/robots/humanoid/vega_1u/vega_1u_gripper.urdf"
   ],
@@ -94,12 +94,12 @@
     "max_step_rad": 0.12,
     "max_total_delta_rad": 2.5,
     "control_hz": 100,
-    "joint_reached_tolerance_rad": null,
-    "joint_timeout_s": null
+    "joint_reached_tolerance_rad": 0.005,
+    "joint_timeout_s": 30
   },
   "kinematics": {
     "backend": "pinocchio",
-    "ee_frame": null,
+    "ee_frame": "tip_l",
     "left_arm_joint_names": [
       "L_arm_j1",
       "L_arm_j2",
@@ -118,22 +118,25 @@
       "R_arm_j6",
       "R_arm_j7"
     ],
-    "fixed_joint_values": {},
-    "position_tolerance_m": 0.003,
-    "orientation_tolerance_rad": 0.05,
-    "max_iterations": 250,
+    "fixed_joint_values": {
+      "Lift": 0,
+      "torso_flip": 0.22689280275926285
+    },
+    "position_tolerance_m": 0.002,
+    "orientation_tolerance_rad": 0.02,
+    "max_iterations": 500,
     "damping": 0.000001,
     "integration_step": 0.15,
     "max_seed_delta_rad": 1.5,
-    "base_frame": null
+    "base_frame": "vega_1u_base_link"
   },
-  "gripper_driver_path": null,
+  "gripper_driver_path": "vendor/dexmate_setup/gripper.py",
   "gripper": {
-    "driver_path": null,
-    "scope": null,
+    "driver_path": "vendor/dexmate_setup/gripper.py",
+    "scope": "left",
     "home_on_connect": true,
     "skip_home_verified": false,
-    "grip_current_a": null
+    "grip_current_a": 0.6
   },
   "cameras": {
     "head": {
@@ -168,7 +171,7 @@
       "notes": "Both wrist cameras are enabled onsite. Verify wrist_a/wrist_b physical left-right mapping on the actual robot."
     }
   },
-  "notes": "Competition unit verified Sep 27: ROBOT_NAME dm/vgfcb66075ea-1u, host 192.168.50.20, dexcontrol 0.5.0, firmware/system 0.5.1, arm config default_control_hz=100. Physical execution uses dexcontrol move_to_joint_pos() with robot-server motion generation and runner speed_scale as velocity_scale. working_arm, urdf_path, EE/base frames, Lift/torso_flip physical model values, gripper driver/current, joint tolerance/timeout, and calibration remain gated. No collision checking is implemented.",
+  "notes": "Competition Vega dm/vgfcb66075ea-1u. Sep 27 physical verification: dexcontrol 0.5.0 move_to_joint_pos() moves joints bidirectionally; Pinocchio tip_l Cartesian -20 mm Z command moved physically down 20 mm. Working arm is left. Competition custom URDF/base/TCP convention comes from organizer-linked dexmate-setup pinned commit 4be4d16140b25f730673d664b49c58280b07ef46. Fixed Lift=0 and torso_flip=0.22689280275926285 are organizer source-robot assumptions and must be rechecked if geometry changes. Gripper driver is vendored from the same organizer commit; 0.6 A is the organizer-documented object-grip default. Table TCP floor is recorded in configs/skills/vega.json. No general collision checking is implemented.",
   "allow_sdk_version_mismatch": false,
   "arm_joint_limits_rad": {
     "left": [
