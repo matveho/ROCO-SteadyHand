@@ -65,7 +65,9 @@ class PinocchioArmKinematics:
             self._v_idx.append(joint.idx_v)
 
         self._base_q = pin.neutral(self.model)
-        for name, value in self.config.get("fixed_joint_values", {}).items():
+        fixed_values = self.config.get("fixed_joint_values", {})
+        self._require_chain_values(fixed_values)
+        for name, value in fixed_values.items():
             jid = self.model.getJointId(name)
             if jid == 0:
                 raise ValueError(f"Configured fixed joint {name!r} not in URDF")
@@ -73,6 +75,25 @@ class PinocchioArmKinematics:
             if joint.nq != 1:
                 raise ValueError(f"Configured fixed joint {name!r} is not scalar")
             self._base_q[joint.idx_q] = float(value)
+
+    def _require_chain_values(self, fixed_values):
+        """Require an explicit value for every non-active movable chain joint."""
+        active = set(self._joint_ids)
+        jid = self.model.frames[self.frame_id].parentJoint
+        missing = []
+        while jid != 0:
+            joint = self.model.joints[jid]
+            name = self.model.names[jid]
+            if joint.nq > 0 and jid not in active and name not in fixed_values:
+                missing.append(name)
+            jid = self.model.parents[jid]
+        if missing:
+            raise ValueError(
+                "IK chain has non-arm movable joints with unknown physical "
+                "values: " + ", ".join(reversed(missing)) +
+                ". Add them to kinematics.fixed_joint_values after verifying "
+                "the real robot."
+            )
 
     def _full_q(self, arm_q):
         np = self.np
