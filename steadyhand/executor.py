@@ -48,13 +48,15 @@ class PartExecutionResult:
 
 
 def object_pose_to_tcp(object_pose: Pose, skill: dict) -> Pose:
-    """Convert object/target pose into desired TCP pose.
+    """Convert a runtime pose into a desired TCP pose.
 
-    Preferred representation is T_part_tcp, which rotates naturally with the
-    part/board. Until it is calibrated, legacy_ee_offset_m +
-    legacy_ee_orientation_wxyz reproduces the submitted simulation policy's
-    world-axis offset behavior as a bring-up fallback.
+    For rapid onsite bring-up, runtime_pose_type='tcp' means the runtime file
+    already contains measured TCP poses in the configured base frame. Normal
+    competition perception should use object poses plus calibrated T_part_tcp.
     """
+    if skill.get("runtime_pose_type") == "tcp":
+        return object_pose
+
     t_part_tcp = skill.get("T_part_tcp")
     if t_part_tcp is not None:
         return matrix_to_pose(compose(pose_to_matrix(object_pose), t_part_tcp))
