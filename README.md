@@ -8,10 +8,9 @@ in the steadyhand package and is deliberately separated from the submission.
 ## Branches
 
 - submission-baseline: exact original submission snapshot at
-  705e4e03ed8e3427cfc5f58a20de02afc3687e6b.
+  705e4e03ed8e3427cfc5f58a20de02afc3687e6b. Never develop on this branch.
 - onsite-2026: active competition integration work.
-- main: contains the initial onsite scaffold; do not treat it as the pristine
-  submission baseline.
+- main: kept fast-forwarded to the current integration head for easy cloning.
 
 The original policy.py remains unchanged from the submission snapshot.
 
