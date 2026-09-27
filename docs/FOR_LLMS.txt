@@ -1601,3 +1601,50 @@ Current competition-network workflow:
   physical observation: arm/hand visibly returned upward.
   Conclusion: bidirectional intentional joint motion through dexcontrol
   move_to_joint_pos() is physically verified on the competition Vega.
+
+
+2026-09-27 organizer dexmate-setup exploitation:
+  Reviewed organizer-linked intelligent-control-lab/dexmate-setup pinned commit
+  4be4d16140b25f730673d664b49c58280b07ef46 more deeply.
+  High-value files include:
+    docs/files/calibration/adjusted-20260924.json
+    docs/files/calibration/tcp-pivot-fit.json
+    docs/files/urdf/custom/vega_1u_gripper.urdf
+    software/gripper/gripper.py
+    software/gripper/GRIPPER_README.md
+    software/poses/goto_pose.py / goto_ready.py / goto_rest.py
+  IMPORTANT: adjusted-20260924.json is for source robot
+  dm/vg3eb20f25bb-1u, NOT our competition unit dm/vgfcb66075ea-1u.
+  Treat its numeric calibration as a strong starting point, not per-unit truth.
+  That file defines base convention x forward/y robot-left/z up, fixed assumptions
+  Lift=0 m and torso_flip=0.22689280275926285 rad, and a provisional right TCP
+  parent R_ee -> tip_r. It explicitly says no calibrated gripping-pad-centre
+  transform is supplied and the TCP is not fully grasp validated.
+
+  Organizer custom URDF was copied to the live deployment as:
+    ~/ROCO-SteadyHand-live/configs/robots/vega_1u_competition.urdf
+  Pinocchio loads it successfully. Relevant frames:
+    vega_1u_base_link PRESENT and fixed to universe
+    base_link MISSING
+    L_ee PRESENT
+    tip_l PRESENT
+  Movable model-only ancestors remain Lift and torso_flip.
+
+  Read-only FK using current live left-arm state plus organizer source-robot fixed
+  assumptions Lift=0, torso_flip=0.22689280275926285 produced:
+    current left q =
+      [1.5824447, 0.00016755161, 0.0021327923, -3.0503206,
+       -0.24771458, 0.20035158, -0.25003937]
+    tip_l in vega_1u_base_link translation =
+      [0.37263382, 0.13176722, 1.29513296] m
+    rotation =
+      [[-0.83391015, 0.35042652, -0.4263744],
+       [ 0.24222064, 0.92655994,  0.28777742],
+       [ 0.49590627, 0.13670383, -0.85754827]]
+  This is a model prediction only, not yet physically validated TCP accuracy.
+
+  During that FK run Robot() loaded Zenoh config:
+    /home/dexmate/.dexmate/comm/zenoh/iros_temp.dzcfg
+  (earlier sessions used dm_internal_061826.dzcfg). Robot initialization still
+  succeeded and live arm state was read. Record this environment change; do not
+  assume the two configs are equivalent without need.
