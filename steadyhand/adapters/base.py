@@ -83,6 +83,16 @@ class RobotAdapter(ABC):
     def close_gripper(self, part_name: str | None = None) -> None:
         raise NotImplementedError
 
+    def grip(self, part_name: str | None = None, *, current_a: float | None = None) -> None:
+        """Object-aware grasp; default falls back to close_gripper()."""
+        self.close_gripper(part_name)
+
+    def get_tcp_pose(self) -> Pose | None:
+        return None
+
+    def read_wrench(self):
+        return None
+
     def verify_grasp(self, part_name: str) -> bool | None:
         return None
 
