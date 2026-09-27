@@ -85,3 +85,25 @@ The adapters are deliberately disabled. Before enabling one:
 6. only then add a hardware-run path.
 
 Do not make doctor, check-config, or imports contact a robot.
+
+
+## Prepared onsite utilities
+
+~~~bash
+# Reproducibility snapshot; does not contact hardware.
+python tools/capture_environment.py > environment.json
+
+# Vega Jetson only: head stereo/depth subscription without Robot().
+/usr/bin/python3 tools/vega_head_probe.py
+
+# Vega Jetson only: local dual-wrist capture.
+/usr/bin/python3 tools/vega_wrists_probe.py
+~~~
+
+The head probe intentionally uses the sensor manager rather than constructing
+Robot(), because the supplied Vega field manual documents automatic head motion
+during Robot() initialization. The wrist probe reports wrist_a/wrist_b only;
+verify their physical left/right assignment onsite.
+
+See docs/BOOTCAMP.md for the first-access order and docs/UPSTREAMS.md for pinned
+public reference repositories.
