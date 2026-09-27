@@ -43,6 +43,8 @@ def main(argv=None):
     p = argparse.ArgumentParser()
     p.add_argument("--output")
     p.add_argument("--head-only", action="store_true")
+    p.add_argument("--rgb-only", action="store_true",
+                   help="capture rectified head stereo RGB without requiring depth")
     args = p.parse_args(argv)
 
     import numpy as np
@@ -61,10 +63,11 @@ def main(argv=None):
         if wrists:
             wrists.connect()
 
-        h = head.read()
+        h = head.read(include_depth=not args.rgb_only)
         np.save(output / "head_left_rgb.npy", h.left_rgb)
         np.save(output / "head_right_rgb.npy", h.right_rgb)
-        np.save(output / "head_depth_m.npy", h.depth_m)
+        if h.depth_m is not None:
+            np.save(output / "head_depth_m.npy", h.depth_m)
 
         metadata = {
             "captured_at_utc": datetime.now(timezone.utc).isoformat(),
