@@ -1,13 +1,15 @@
 {
   "schema_version": 1,
   "robot_id": "vega",
-  "measured_at": null,
-  "base_frame": null,
+  "measured_at": "2026-09-27",
+  "base_frame": "vega_1u_base_link",
   "camera_frame": null,
-  "wrist_frame": null,
-  "tcp_frame": null,
+  "wrist_frame": "L_ee",
+  "tcp_frame": "tip_l",
   "T_base_camera": null,
   "T_base_board": null,
   "T_wrist_tcp": null,
-  "notes": "4x4 transforms, translation in metres. T_destination_source maps source coordinates into destination coordinates. Record head/arm pose when calibration depends on it."
+  "notes": "Base/TCP frame names are from the tracked competition kinematics URDF. Table contact was measured onsite by a slow left tip_l vertical probe stopped at first light contact; normal task floor is 10 mm above that contact. Camera/board extrinsics and T_wrist_tcp remain unset here because organizer calibration was for a different Vega serial; task kinematics uses the explicit tip_l frame in the URDF.",
+  "table_contact_tip_z_m": 0.4460002716867571,
+  "normal_task_min_tcp_z_m": 0.4560002716867571
 }
