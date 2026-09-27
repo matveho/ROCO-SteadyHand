@@ -115,12 +115,13 @@ def missing_motion_setup(bundle):
         if not robot.get("urdf_path"):
             missing.append("robot.urdf_path")
         motion = robot.get("motion") or {}
-        for key in ("step_wait_time_s", "control_hz",
-                    "joint_reached_tolerance_rad", "joint_timeout_s"):
+        # Physical Vega motion uses dexcontrol move_to_joint_pos() and the
+        # robot-server motion plugin. Legacy client-side interpolation fields
+        # (step_wait_time_s/control_hz/max_joint_speed_rad_s) are not readiness
+        # gates for this path.
+        for key in ("joint_reached_tolerance_rad", "joint_timeout_s"):
             if motion.get(key) is None:
                 missing.append(f"robot.motion.{key}")
-        if robot.get("max_joint_speed_rad_s") is None:
-            missing.append("robot.max_joint_speed_rad_s")
         kin = robot.get("kinematics") or {}
         if not kin.get("ee_frame"):
             missing.append("robot.kinematics.ee_frame")
