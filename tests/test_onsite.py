@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.adapters import sharpa, vega
 from steadyhand.adapters.base import HardwareUnavailableError, RobotAdapter
 from steadyhand.adapters.mock import MockAdapter
+from steadyhand.cameras.vega import intrinsics_from_camera_info
 from steadyhand.config import load_bundle, missing_setup, validate_bundle
 from steadyhand.geometry import (
     compose,
@@ -46,6 +47,27 @@ class OnsiteTests(unittest.TestCase):
         self.assertEqual(tasks["part_order"], EXPECTED_PART_ORDER)
         self.assertEqual(tasks["source"]["commit"], ORGANIZER_COMMIT)
         self.assertEqual(tasks["source"]["source_file"], "task/param_config.py")
+
+    def test_vega_camera_contract_is_recorded(self):
+        robot = load_bundle("vega")["robot"]
+        head = robot["cameras"]["head"]
+        wrists = robot["cameras"]["wrists"]
+        self.assertEqual(head["model"], "ZED X Mini")
+        self.assertEqual((head["width"], head["height"]), (1920, 1200))
+        self.assertEqual(head["configured_fps"], 30)
+        self.assertEqual(head["observed_publish_hz_approx"], 24)
+        self.assertFalse(head["native_point_cloud"])
+        self.assertEqual(wrists["model"], "Sony ISX031")
+        self.assertEqual(wrists["api_labels"], ["wrist_a", "wrist_b"])
+        self.assertIsNone(wrists["api_label_to_physical_mount"])
+
+    def test_runtime_camera_intrinsics_parser(self):
+        self.assertEqual(
+            intrinsics_from_camera_info(
+                {"K": [700, 0, 960, 0, 701, 600, 0, 0, 1]}
+            ),
+            (700.0, 701.0, 960.0, 600.0),
+        )
 
     def test_goal_conversion_does_not_invent_unknown_poses(self):
         spec = load_bundle("vega")["tasks"]["parts"]["usb_a"]
