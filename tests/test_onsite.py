@@ -51,8 +51,14 @@ class OnsiteTests(unittest.TestCase):
         self.assertNotIn("robot.motion.step_wait_time_s", missing)
         self.assertNotIn("robot.motion.control_hz", missing)
         self.assertNotIn("robot.max_joint_speed_rad_s", missing)
-        self.assertIn("robot.motion.joint_reached_tolerance_rad", missing)
-        self.assertIn("robot.motion.joint_timeout_s", missing)
+        self.assertNotIn("robot.motion.joint_reached_tolerance_rad", missing)
+        self.assertNotIn("robot.motion.joint_timeout_s", missing)
+        self.assertEqual(missing, [])
+
+    def test_direct_tcp_bringup_bypasses_object_transform(self):
+        pose = Pose((0.55, 0.20, 0.50), (1.0, 0.0, 0.0, 0.0))
+        skill = {"runtime_pose_type": "tcp"}
+        self.assertEqual(object_pose_to_tcp(pose, skill), pose)
 
     def test_task_config_is_pinned_to_organizer_code(self):
         tasks = load_bundle("vega")["tasks"]
