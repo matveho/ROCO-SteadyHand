@@ -53,3 +53,43 @@ def append_event(folder, **event):
     record = {"timestamp_utc": timestamp(), **event}
     with (Path(folder) / "events.jsonl").open("a", encoding="utf-8") as stream:
         stream.write(json.dumps(record, allow_nan=False) + "\n")
+
+
+def mark_hardware_connected(folder):
+    path = Path(folder) / "session.json"
+    value = json.loads(path.read_text(encoding="utf-8"))
+    value["hardware_connected_by_toolkit"] = True
+    value["hardware_connected_at_utc"] = timestamp()
+    write_json(path, value)
+
+
+def append_trial(
+    folder,
+    *,
+    trial_id,
+    part,
+    grasp_success=None,
+    placement_success=None,
+    elapsed_s=None,
+    failure_stage="",
+    video_path="",
+    notes="",
+):
+    def cell(value):
+        if value is None:
+            return ""
+        if isinstance(value, bool):
+            return "true" if value else "false"
+        return value
+
+    with (Path(folder) / "trials.csv").open("a", encoding="utf-8", newline="") as stream:
+        csv.writer(stream).writerow([
+            trial_id,
+            part,
+            cell(grasp_success),
+            cell(placement_success),
+            cell(elapsed_s),
+            failure_stage,
+            video_path,
+            notes,
+        ])
