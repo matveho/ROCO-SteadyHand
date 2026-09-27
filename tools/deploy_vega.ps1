@@ -112,51 +112,63 @@ powershell.exe -NoProfile -Command "[Console]::Out.Write($env:ROCO_SSH_PASSWORD)
         $RemoteScriptPath = Join-Path $env:TEMP $RemoteScriptName
         $SkipPreflightValue = if ($SkipPreflight) { "1" } else { "0" }
 
-        @"
+        if ($LiveDir -notmatch '^/[A-Za-z0-9._/-]+$') {
+            throw "LiveDir contains unsupported characters: $LiveDir"
+        }
+
+        $RemoteTemplate = @'
 #!/usr/bin/env bash
 set -euo pipefail
 
-LIVE='$LiveDir'
-BUNDLE="/home/dexmate/$BundleName"
-EXPECTED='$Head'
-SKIP_PREFLIGHT='$SkipPreflightValue'
+LIVE='__LIVE__'
+BUNDLE="/home/dexmate/__BUNDLE__"
+EXPECTED='__EXPECTED__'
+SKIP_PREFLIGHT='__SKIP_PREFLIGHT__'
 
-if [ ! -d "\$LIVE/.git" ]; then
-    mkdir -p "\$LIVE"
-    git -C "\$LIVE" init
+if [ ! -d "$LIVE/.git" ]; then
+    mkdir -p "$LIVE"
+    git -C "$LIVE" init
 fi
 
-DIRTY="\$(git -C "\$LIVE" status --porcelain --untracked-files=no)"
-if [ -n "\$DIRTY" ]; then
-    echo "REFUSING DEPLOY: tracked files in \$LIVE have onsite edits:" >&2
-    echo "\$DIRTY" >&2
+DIRTY="$(git -C "$LIVE" status --porcelain --untracked-files=no)"
+if [ -n "$DIRTY" ]; then
+    echo "REFUSING DEPLOY: tracked files in $LIVE have onsite edits:" >&2
+    echo "$DIRTY" >&2
     exit 3
 fi
 
-git -C "\$LIVE" fetch --force "\$BUNDLE" main:refs/remotes/deploy/main
-git -C "\$LIVE" checkout -B main refs/remotes/deploy/main
+git -C "$LIVE" fetch --force "$BUNDLE" main:refs/remotes/deploy/main
+git -C "$LIVE" checkout -B main refs/remotes/deploy/main
 
-ACTUAL="\$(git -C "\$LIVE" rev-parse HEAD)"
-if [ "\$ACTUAL" != "\$EXPECTED" ]; then
-    echo "REFUSING: deployed SHA \$ACTUAL != expected \$EXPECTED" >&2
+ACTUAL="$(git -C "$LIVE" rev-parse HEAD)"
+if [ "$ACTUAL" != "$EXPECTED" ]; then
+    echo "REFUSING: deployed SHA $ACTUAL != expected $EXPECTED" >&2
     exit 4
 fi
 
-rm -f "\$BUNDLE" "/home/dexmate/$RemoteScriptName"
+rm -f "$BUNDLE" "/home/dexmate/__REMOTE_SCRIPT__"
 
-echo "DEPLOYED_SHA=\$ACTUAL"
-echo "DEPLOY_DIR=\$LIVE"
+echo "DEPLOYED_SHA=$ACTUAL"
+echo "DEPLOY_DIR=$LIVE"
 
-if [ "\$SKIP_PREFLIGHT" != "1" ]; then
+if [ "$SKIP_PREFLIGHT" != "1" ]; then
     echo
     echo "=== Vega no-motion preflight ==="
     set +e
-    (cd "\$LIVE" && python3 tools/vega_preflight.py)
-    PRE=\$?
+    (cd "$LIVE" && python3 tools/vega_preflight.py)
+    PRE=$?
     set -e
-    echo "PREFLIGHT_EXIT=\$PRE"
+    echo "PREFLIGHT_EXIT=$PRE"
 fi
-"@ | Set-Content -Path $RemoteScriptPath -Encoding ASCII
+'@
+
+        $RemoteBody = $RemoteTemplate
+        $RemoteBody = $RemoteBody.Replace("__LIVE__", $LiveDir)
+        $RemoteBody = $RemoteBody.Replace("__BUNDLE__", $BundleName)
+        $RemoteBody = $RemoteBody.Replace("__EXPECTED__", $Head)
+        $RemoteBody = $RemoteBody.Replace("__SKIP_PREFLIGHT__", $SkipPreflightValue)
+        $RemoteBody = $RemoteBody.Replace("__REMOTE_SCRIPT__", $RemoteScriptName)
+        $RemoteBody | Set-Content -Path $RemoteScriptPath -Encoding ASCII
 
         $CommonSsh = @(
             "-o", "StrictHostKeyChecking=accept-new",
