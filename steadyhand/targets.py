@@ -33,6 +33,9 @@ def load_runtime_targets(path, task_config, *, expected_base_frame=None):
         raise ValueError("runtime targets: expected robot_id 'vega'")
     if value.get("pose_frame") != "robot_base":
         raise ValueError("runtime targets: pose_frame must be robot_base")
+    pose_type = value.get("pose_type", "object")
+    if pose_type not in ("object", "tcp"):
+        raise ValueError("runtime targets: pose_type must be 'object' or 'tcp'")
     if expected_base_frame is not None:
         if not isinstance(expected_base_frame, str) or not expected_base_frame.strip():
             raise ValueError("runtime targets: expected_base_frame must name a verified URDF frame")
