@@ -43,19 +43,20 @@
   },
   "_pose_example": {
     "position_m": [
-      0.0,
-      0.0,
-      0.0
+      0,
+      0,
+      0
     ],
     "quaternion_wxyz": [
-      1.0,
-      0.0,
-      0.0,
-      0.0
+      1,
+      0,
+      0,
+      0
     ]
   },
-  "_note": "Object/reference pick pose and desired object RELEASE pose in the named fixed URDF base_frame. For insertion only, place_pose denotes seated object pose. T_part_tcp must use the SAME part reference at pick and place. These are not TCP poses or simulation world positions. Do not substitute final settled battery height for release clearance.",
+  "_note": "pose_type='object' is the normal competition form: pick/place are part poses in base_frame and execution applies T_part_tcp. For rapid onsite bring-up only, pose_type='tcp' makes pick/place explicit measured TCP poses and bypasses object->TCP calibration. All TCP targets remain subject to the hard min_tcp_z_m floor.",
   "base_frame": null,
   "position_units": "m",
-  "quaternion_order": "wxyz"
+  "quaternion_order": "wxyz",
+  "pose_type": "object"
 }
