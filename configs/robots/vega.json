@@ -227,5 +227,10 @@
         1.378
       ]
     ]
+  },
+  "competition_setup_source": {
+    "repository": "intelligent-control-lab/dexmate-setup",
+    "commit": "4be4d16140b25f730673d664b49c58280b07ef46",
+    "note": "Organizer-linked Sep 27 reference for modified official Vega; verify source-robot calibration values against competition unit before use."
   }
 }
