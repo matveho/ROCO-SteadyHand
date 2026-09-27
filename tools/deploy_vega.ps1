@@ -168,7 +168,16 @@ fi
         $RemoteBody = $RemoteBody.Replace("__EXPECTED__", $Head)
         $RemoteBody = $RemoteBody.Replace("__SKIP_PREFLIGHT__", $SkipPreflightValue)
         $RemoteBody = $RemoteBody.Replace("__REMOTE_SCRIPT__", $RemoteScriptName)
-        $RemoteBody | Set-Content -Path $RemoteScriptPath -Encoding ASCII
+
+        # Bash on the Jetson requires Unix LF line endings. Windows PowerShell
+        # Set-Content would write CRLF, which makes "set -euo pipefail" parse as
+        # an invalid option (the hidden CR becomes part of "pipefail").
+        $RemoteBody = $RemoteBody -replace "`r`n", "`n"
+        [System.IO.File]::WriteAllText(
+            $RemoteScriptPath,
+            $RemoteBody,
+            (New-Object System.Text.UTF8Encoding($false))
+        )
 
         $CommonSsh = @(
             "-o", "StrictHostKeyChecking=accept-new",
