@@ -2004,3 +2004,18 @@ Current competition-network workflow:
     head path for COARSE board registration. Fine centering is explicitly assigned
     to the wrist camera so cm-level head-extrinsic error does not have to become
     part-placement error.
+
+
+2026-09-27 LIVE ZED CAMERA_INFO SHAPE:
+  Competition Vega head camera info does NOT expose K/fx/fy at the top level.
+  Successful snapshot metadata showed:
+    camera_info["actual"] = {"width":960,"height":600,"fps":30}
+    camera_info["intrinsics"]["left"] =
+      fx=fy=370.1708679199219
+      cx=498.1136474609375
+      cy=314.3125915527344
+    camera_info["intrinsics"]["baseline"] = 0.04986825957894325 m
+    serial_number = 55089643
+  steadyhand/cameras/vega.py intrinsics_from_camera_info() now recognizes this
+  live nested DexSensor representation. The previous board-benchmark failure
+  was only this parser mismatch; camera acquisition itself succeeded.
