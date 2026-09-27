@@ -16,6 +16,7 @@ from steadyhand.adapters.base import HardwareUnavailableError, RobotAdapter
 from steadyhand.adapters.mock import MockAdapter
 from steadyhand.cameras.vega import intrinsics_from_camera_info
 from steadyhand.config import load_bundle, missing_setup, validate_bundle
+from steadyhand.executor import ExecutionError, execute_part, object_pose_to_tcp
 from steadyhand.geometry import (
     compose,
     invert_rigid,
@@ -23,7 +24,7 @@ from steadyhand.geometry import (
     transform_point,
     transform_pose,
 )
-from steadyhand.models import Pose
+from steadyhand.models import PartGoal, Pose
 from steadyhand.runner import dry_run
 from steadyhand.search import centered_grid, square_spiral
 from steadyhand.sessions import create_session
@@ -139,6 +140,84 @@ class OnsiteTests(unittest.TestCase):
                 "verify_grasp", "stop", "close",
             ],
         )
+
+    def test_physical_executor_runs_open_part_on_mock(self):
+        robot = MockAdapter()
+        robot.connect()
+        goal = PartGoal(
+            name="battery_size1",
+            release_mode="open",
+            pick_pose=Pose((0.10, 0.00, 0.10), (1, 0, 0, 0)),
+            place_pose=Pose((0.20, 0.00, 0.10), (1, 0, 0, 0)),
+            verification_method=None,
+        )
+        skill = {
+            "hover_pick_m": 0.02,
+            "hover_place_m": 0.02,
+            "retract_m": 0.03,
+            "legacy_ee_offset_m": [0.0, 0.0, 0.0],
+            "legacy_ee_orientation_wxyz": [1.0, 0.0, 0.0, 0.0],
+            "grip_current_a": 0.6,
+            "grasp_settle_s": 0.0,
+            "release_settle_s": 0.0,
+            "max_cartesian_step_m": 0.05,
+            "max_orientation_step_rad": 0.2,
+            "preinsert_m": 0.01,
+            "insertion_reached_tolerance_m": 0.004,
+            "insertion_reached_tolerance_rad": 0.08,
+            "allow_snap_without_force_guard": False,
+            "search": None,
+        }
+        result = execute_part(robot, goal, skill, safety={})
+        self.assertTrue(result.completed)
+        self.assertTrue(result.grasp_verified)
+        self.assertTrue(result.placement_verified)
+        names = [command[0] for command in robot.commands]
+        self.assertIn("grip", names)
+        self.assertIn("verify_place", names)
+
+    def test_snap_refuses_contact_search_without_verified_force_limit(self):
+        robot = MockAdapter()
+        robot.connect()
+        goal = PartGoal(
+            name="pin",
+            release_mode="snap",
+            pick_pose=Pose((0.10, 0.00, 0.10), (1, 0, 0, 0)),
+            place_pose=Pose((0.20, 0.00, 0.10), (1, 0, 0, 0)),
+            verification_method=None,
+        )
+        skill = {
+            "hover_pick_m": 0.01,
+            "hover_place_m": 0.01,
+            "retract_m": 0.02,
+            "legacy_ee_offset_m": [0.0, 0.0, 0.0],
+            "legacy_ee_orientation_wxyz": [1.0, 0.0, 0.0, 0.0],
+            "grip_current_a": 0.6,
+            "grasp_settle_s": 0.0,
+            "release_settle_s": 0.0,
+            "max_cartesian_step_m": 0.05,
+            "max_orientation_step_rad": 0.2,
+            "preinsert_m": 0.01,
+            "insertion_reached_tolerance_m": 0.004,
+            "insertion_reached_tolerance_rad": 0.08,
+            "allow_snap_without_force_guard": False,
+            "search": {"type": "grid", "n": 3, "extent_xy_m": [0.001, 0.001]},
+        }
+        with self.assertRaisesRegex(ExecutionError, "force_delta_limit"):
+            execute_part(robot, goal, skill, safety={})
+
+    def test_part_relative_tcp_transform_is_supported(self):
+        object_pose = Pose((1.0, 2.0, 3.0), (1.0, 0.0, 0.0, 0.0))
+        skill = {
+            "T_part_tcp": [
+                [1, 0, 0, 0.1],
+                [0, 1, 0, -0.2],
+                [0, 0, 1, 0.3],
+                [0, 0, 0, 1],
+            ]
+        }
+        tcp = object_pose_to_tcp(object_pose, skill)
+        self.assertEqual(tcp.position_m, (1.1, 1.8, 3.3))
 
     def test_rejects_wrong_robot_calibration(self):
         bundle = load_bundle("vega")
