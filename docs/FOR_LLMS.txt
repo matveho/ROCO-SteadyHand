@@ -1785,3 +1785,62 @@ Current competition-network workflow:
     user dexmate
     host 192.168.50.20
     live dir /home/dexmate/ROCO-SteadyHand-live
+
+
+2026-09-27 VEGA FIRST END-TO-END PICK/PLACE + PERCEPTION BLOCKER:
+  Physical manipulation status:
+    - tools/vega_first_pick_place.py completed an end-to-end battery_size1
+      pick -> lift -> +Y transfer -> place -> release -> retract sequence.
+    - The large battery was dropped during the downward/place portion, so grasp
+      retention is NOT yet reliable; however arm Cartesian execution, gripper
+      homing/open/grip path, transfer, release, and retract all physically ran.
+    - Onsite operator requested faster testing. Current first-pick script default
+      arm speed_scale is 0.45. Treat 0.45 as the practical minimum for ordinary
+      testing and ~0.9 as appropriate only for clearly unobstructed/free-space
+      moves; contact/precision phases may still need slower motion.
+    - Gripper bring-up was increased from organizer default 0.6 A / 60 deg/s to
+      1.0 A / 240 deg/s after the large battery grasp was too loose.
+    - steadyhand/grippers/vega.py now passes configurable grip_speed_dps and casts
+      protocol speeds to integer values (the vendored CAN driver bit-packs speed
+      and fails on float input).
+
+  Windows file transfer:
+    - Bare Windows OpenSSH scp can fail on this laptop with:
+        CreateProcessW failed error:2
+        ssh_askpass: posix_spawnp: No such file or directory
+        Permission denied (publickey,password)
+    - Avoid bare scp when password auth is required.
+    - Use tools/copy_to_vega.ps1 for arbitrary files or tools/deploy_vega.ps1 for
+      repository deployment; both use an explicit temporary SSH_ASKPASS helper.
+
+  Head camera onsite facts:
+    - Competition head ZED X Mini serial observed by ZED SDK:
+        55089643
+    - The robot initially lacked:
+        /usr/local/zed/settings/SN55089643.conf
+      and ZED initialization stalled attempting to download calibration while the
+      competition robot had no usable Internet route.
+    - Calibration was downloaded externally and copied onto the robot. After that,
+      dexsensor successfully started head_camera and the info service became live.
+    - Runtime reports ZED SDK 5.2.2 compiled / 5.2.3 runtime and camera FW 2001.
+    - /etc/dexmate/dexsensor/default.toml currently configures head_camera as:
+        model ZED_X_MINI
+        resolution SVGA (960x600)
+        rate 30 Hz
+        depth_mode NEURAL
+        coordinate_units METER
+      This differs from older docs claiming HD1200 and therefore live config wins.
+    - CRITICAL: in [sensors.streams] for head_camera, current live config has:
+        left_rgb = true
+        right_rgb = true
+        depth = false
+        imu = true
+      Thus dexsensor launches only TWO image streams and SteadyHand's RGB-D capture
+      fails with "One or more Vega head streams are not ready" because it subscribes
+      to depth as well.
+    - Next action is to enable depth=true for the head_camera stream in the system
+      dexsensor config, restart only the head_camera service, and retry the head-only
+      snapshot.
+    - Conda python3 contains dexcontrol and is required for the SteadyHand head
+      camera path. /usr/bin/python3 does NOT have dexcontrol on this unit. Wrist
+      cameras remain a separate system-Python/GStreamer path.
