@@ -1,5 +1,9 @@
 # TODAY — Split Ownership (Sep 27)
 
+**Venue:** Exhibit Hall, COMP7. Late teams may check in at the booth before 5:00 PM; find a registration committee member on arrival.
+
+**Confirmed bootcamps:** Sharpa North 2:00–3:00 PM; DexMate Vega 4:00–5:00 PM. Sponsor technicians are available throughout the afternoon.
+
 Two people, two robots. **Do not both debug the same platform today.**
 
 ## Matvey → DexMate Vega U
