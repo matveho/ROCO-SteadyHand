@@ -2,10 +2,48 @@
 
 Our entry for the Industrial Board Assembly track at RoCo @ IROS 2026 in Pittsburgh.
 
-This repo contains our submitted simulation policy in `policy.py`. It runs inside the [RoCo simulation environment](https://github.com/rocochallenge/RoCo_TaskBoardAssembly); real-robot integration is still in progress.
+policy.py is the submitted Vega simulation policy. Real-robot integration lives
+in the steadyhand package and is deliberately separated from the submission.
 
-Onsite participants: **Matvey Okoneshnikov** and **Eunice Ding**.
-Original submission  by **Yifei Jiang**.
+## Branches
 
-Start with `python onsite.py doctor` (Python 3.10+, no extra packages).
-See the [onsite guide](docs/ONSITE.md) for configuration, dry runs, and session logs.
+- submission-baseline: exact original submission snapshot at
+  705e4e03ed8e3427cfc5f58a20de02afc3687e6b.
+- onsite-2026: active competition integration work.
+- main: contains the initial onsite scaffold; do not treat it as the pristine
+  submission baseline.
+
+The original policy.py remains unchanged from the submission snapshot.
+
+## Architecture
+
+Shared code owns task definitions, calibration, logging and the manipulation
+vocabulary. Robot-specific code is isolated behind one adapter contract.
+
+~~~text
+task / perception / calibration
+            |
+       shared skills
+            |
+      RobotAdapter
+       /        \
+   Vega          Sharpa
+ dexcontrol     North/Wave
+~~~
+
+See docs/ARCHITECTURE.md.
+
+## Offline preparation
+
+~~~bash
+python onsite.py doctor
+python onsite.py check-config --robot vega
+python onsite.py dry-run --robot vega --part battery_size1
+python -m unittest discover -s tests -v
+~~~
+
+The hardware adapters are intentionally disabled until each competition robot's
+installed control path and stop behavior have been verified. A dry run never
+contacts hardware and never claims physical success.
+
+See docs/ONSITE.md and docs/ARRIVAL.md.
