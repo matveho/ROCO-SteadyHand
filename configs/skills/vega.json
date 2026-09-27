@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "robot_id": "vega",
+  "source": {
+    "type": "port_from_submitted_sim_policy",
+    "note": "Hover/search values and legacy EE offsets come from the simulation setup. They are starting points, not verified real-robot calibration."
+  },
+  "defaults": {
+    "hover_pick_m": 0.10,
+    "hover_place_m": 0.10,
+    "retract_m": 0.10,
+    "legacy_ee_orientation_wxyz": [0.0, 1.0, 0.0, 0.0],
+    "legacy_ee_offset_m": [0.0, 0.016, 0.196],
+    "gripper_open_fraction": 1.0,
+    "grip_current_a": 0.6,
+    "search": null
+  },
+  "parts": {
+    "gear_60teeth": {
+      "hover_pick_m": 0.08,
+      "hover_place_m": 0.08,
+      "retract_m": 0.15,
+      "legacy_ee_offset_m": [0.0, 0.016, 0.2]
+    },
+    "gear_20teeth": {
+      "hover_pick_m": 0.05,
+      "hover_place_m": 0.05,
+      "retract_m": 0.10,
+      "legacy_ee_offset_m": [0.0, 0.016, 0.197]
+    },
+    "rod_16mm": {
+      "legacy_ee_offset_m": [0.0, 0.016, 0.21],
+      "search": {"type": "grid", "n": 5, "extent_xy_m": [0.002, 0.002]}
+    },
+    "bolt_8mm": {
+      "hover_pick_m": 0.05,
+      "hover_place_m": 0.05,
+      "retract_m": 0.10,
+      "legacy_ee_offset_m": [0.0, 0.0147, 0.2045],
+      "search": {"type": "grid", "n": 6, "extent_xy_m": [0.006, 0.006]}
+    },
+    "usb_a": {
+      "hover_pick_m": 0.02,
+      "hover_place_m": 0.02,
+      "retract_m": 0.10,
+      "search": {"type": "grid", "n": 5, "extent_xy_m": [0.002, 0.002]}
+    },
+    "hdmi": {
+      "search": {"type": "grid", "n": 5, "extent_xy_m": [0.002, 0.002]}
+    },
+    "pin": {
+      "legacy_ee_offset_m": [0.0, 0.017, 0.185],
+      "search": {"type": "grid", "n": 5, "extent_xy_m": [0.002, 0.002]}
+    },
+    "battery_size1": {
+      "legacy_ee_offset_m": [0.0, 0.015, 0.185]
+    },
+    "battery_size5": {
+      "legacy_ee_offset_m": [-0.001, 0.015, 0.1875]
+    }
+  },
+  "safety": {
+    "max_step_translation_m": 0.20,
+    "force_delta_limit": null,
+    "note": "force_delta_limit is intentionally unset because onsite wrench units/frame are unknown."
+  }
+}
