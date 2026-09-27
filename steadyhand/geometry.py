@@ -115,3 +115,57 @@ def transform_pose(t_destination_source, pose_in_source):
 def offset_z(pose, dz_m):
     x, y, z = pose.position_m
     return Pose((x, y, z + float(dz_m)), pose.quaternion_wxyz)
+
+
+def quaternion_slerp(a, b, t):
+    """Shortest-path normalized quaternion interpolation, wxyz."""
+    a = [float(x) for x in a]
+    b = [float(x) for x in b]
+    na = math.sqrt(sum(x*x for x in a))
+    nb = math.sqrt(sum(x*x for x in b))
+    if na <= 0 or nb <= 0:
+        raise ValueError("Quaternion norm must be positive")
+    a = [x / na for x in a]
+    b = [x / nb for x in b]
+    dot = sum(x*y for x, y in zip(a, b))
+    if dot < 0:
+        b = [-x for x in b]
+        dot = -dot
+    dot = max(-1.0, min(1.0, dot))
+    if dot > 0.9995:
+        q = [x + float(t) * (y - x) for x, y in zip(a, b)]
+        n = math.sqrt(sum(x*x for x in q))
+        return tuple(x / n for x in q)
+    theta = math.acos(dot)
+    s = math.sin(theta)
+    w0 = math.sin((1.0 - float(t)) * theta) / s
+    w1 = math.sin(float(t) * theta) / s
+    return tuple(w0*x + w1*y for x, y in zip(a, b))
+
+
+def quaternion_angle(a, b):
+    """Smallest angular distance between two orientations in radians."""
+    a = [float(x) for x in a]
+    b = [float(x) for x in b]
+    na = math.sqrt(sum(x*x for x in a))
+    nb = math.sqrt(sum(x*x for x in b))
+    dot = abs(sum(x*y for x, y in zip(a, b)) / (na * nb))
+    dot = max(-1.0, min(1.0, dot))
+    return 2.0 * math.acos(dot)
+
+
+def interpolate_pose(a, b, t):
+    return Pose(
+        position_m=tuple(
+            float(x) + float(t) * (float(y) - float(x))
+            for x, y in zip(a.position_m, b.position_m)
+        ),
+        quaternion_wxyz=quaternion_slerp(
+            a.quaternion_wxyz, b.quaternion_wxyz, t
+        ),
+    )
+
+
+def pose_distance(a, b):
+    dp = math.sqrt(sum((float(x)-float(y))**2 for x, y in zip(a.position_m, b.position_m)))
+    return dp, quaternion_angle(a.quaternion_wxyz, b.quaternion_wxyz)
