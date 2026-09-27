@@ -46,6 +46,7 @@ class VegaCanGripper:
         if not resolved.is_file():
             raise FileNotFoundError(str(resolved))
         _positive(self.config.get("grip_current_a"), "gripper.grip_current_a")
+        _positive(self.config.get("grip_speed_dps", 60), "gripper.grip_speed_dps")
         _positive(self.config.get("open_speed_dps", 500), "gripper.open_speed_dps")
         if (not self.config.get("home_on_connect", True)
                 and not self.config.get("skip_home_verified", False)):
@@ -107,8 +108,13 @@ class VegaCanGripper:
                 "the official driver has per-motor grip(), not a top-level both-grip."
             )
         value = self.config.get("grip_current_a") if current_a is None else current_a
+        speed = int(round(_positive(
+            self.config.get("grip_speed_dps", 60),
+            "gripper.grip_speed_dps",
+        )))
         self._last_grip_result = self._motor().grip(
-            current=_positive(value, "gripper.grip_current_a")
+            current=_positive(value, "gripper.grip_current_a"),
+            speed=speed,
         )
         return self._last_grip_result
 
