@@ -42,8 +42,9 @@ class VegaCanGripper:
         path = self.config.get("driver_path")
         if not path:
             raise ValueError("gripper.driver_path is required")
-        if not Path(path).expanduser().is_file():
-            raise FileNotFoundError(path)
+        resolved = _resolve_driver_path(path)
+        if not resolved.is_file():
+            raise FileNotFoundError(str(resolved))
         _positive(self.config.get("grip_current_a"), "gripper.grip_current_a")
         if (not self.config.get("home_on_connect", True)
                 and not self.config.get("skip_home_verified", False)):
@@ -189,10 +190,17 @@ class VegaCanGripper:
             raise RuntimeError("Vega CAN gripper is not connected")
 
 
+def _resolve_driver_path(path):
+    path = Path(path).expanduser()
+    if not path.is_absolute():
+        path = Path(__file__).resolve().parents[2] / path
+    return path
+
+
 def _load_gripper_module(path):
     if not path:
         raise ValueError("gripper.driver_path is required")
-    path = Path(path).expanduser()
+    path = _resolve_driver_path(path)
     if not path.is_file():
         raise FileNotFoundError(path)
     spec = importlib.util.spec_from_file_location("steadyhand_vega_gripper_driver", path)
