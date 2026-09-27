@@ -1871,3 +1871,15 @@ Current competition-network workflow:
   Argus crash/restart window can legitimately see CAMERA NOT DETECTED. Before
   escalating to cable/hardware diagnosis, retry head_camera once against the now
   stable fresh nvargus-daemon without restarting Argus again.
+
+
+2026-09-27 HEAD RGB FALLBACK FOR PERCEPTION:
+  Live dexsensor accepts depth modes only NONE/NEURAL_PLUS/NEURAL_LIGHT/NEURAL.
+  PERFORMANCE is rejected by config validation. NEURAL fails because the live
+  ZED runtime cannot find its TensorRT backend. To avoid losing robot time on
+  SDK repair, SteadyHand now supports RGB-only head capture:
+    tools/vega_capture_snapshot.py --head-only --rgb-only
+  and VegaHeadCamera.read(include_depth=False).
+  Immediate perception path is rectified left/right stereo RGB plus runtime
+  camera_info; depth can be reconstructed in our process if necessary. Keep the
+  system head_camera stream depth=false while using this fallback.
