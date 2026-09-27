@@ -9,8 +9,84 @@
   "urdf_candidates": [
     "~/Downloads/Dexmate/vega_1u_gripper.urdf"
   ],
-  "joint_names": [],
-  "joint_limits_rad": null,
+  "joint_names": [
+    "L_arm_j1",
+    "L_arm_j2",
+    "L_arm_j3",
+    "L_arm_j4",
+    "L_arm_j5",
+    "L_arm_j6",
+    "L_arm_j7",
+    "R_arm_j1",
+    "R_arm_j2",
+    "R_arm_j3",
+    "R_arm_j4",
+    "R_arm_j5",
+    "R_arm_j6",
+    "R_arm_j7"
+  ],
+  "joint_limits_rad": {
+    "left": [
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -0.453,
+        1.553
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -3.071,
+        0.244
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.396,
+        1.396
+      ],
+      [
+        -1.378,
+        1.117
+      ]
+    ],
+    "right": [
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.553,
+        0.453
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -3.071,
+        0.244
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.396,
+        1.396
+      ],
+      [
+        -1.117,
+        1.378
+      ]
+    ]
+  },
   "max_joint_speed_rad_s": null,
   "allow_robot_init_head_motion": false,
   "motion": {
@@ -89,5 +165,67 @@
     }
   },
   "notes": "Motion remains gated by allow_robot_init_head_motion plus required working_arm/URDF/EE-frame/timing fields. max_step_rad=0.12 mirrors the supplied known-good stepped-motion tooling; tune only after physical validation.",
-  "allow_sdk_version_mismatch": false
+  "allow_sdk_version_mismatch": false,
+  "arm_joint_limits_rad": {
+    "left": [
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -0.453,
+        1.553
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -3.071,
+        0.244
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.396,
+        1.396
+      ],
+      [
+        -1.378,
+        1.117
+      ]
+    ],
+    "right": [
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.553,
+        0.453
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -3.071,
+        0.244
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.396,
+        1.396
+      ],
+      [
+        -1.117,
+        1.378
+      ]
+    ]
+  }
 }
