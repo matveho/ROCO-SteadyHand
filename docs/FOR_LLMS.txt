@@ -2940,3 +2940,24 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   Do not silently continue treating that measured width as 400 mm in future
   geometry work. Only width was supplied in this measurement; do not invent the
   second dimension.
+
+2026-09-28 MANUAL BOARD CALIBRATION PHYSICAL CLAW-CENTER OBSERVATION:
+  Operator explicitly measures/aligns to the physical CENTER OF THE CLAW, not
+  blindly to modeled tip_l.
+  Operator observed nominal flat forward (+base-X, away from robot) motion is
+  not physically board-parallel: the claw center rises at about 10 degrees as
+  it moves forward. This indicates unresolved tool-frame/orientation geometry.
+  tools/vega_board_manual_calibrate.py now applies operator-tunable compensation:
+    dz_commanded = -dx_base * tan(forward_rise_angle_deg)
+  default forward_rise_angle_deg = 10.0.
+  Forward therefore commands downward Z; back applies the inverse. No vertical
+  compensation is assumed for left/right because none has been measured yet.
+  This compensation is calibration-only pending a proper claw-center/tool-frame
+  solution.
+
+  The same physical run exposed two calibration-specific numerical problems:
+    - 10 mm Cartesian IK tolerance could treat 5-10 mm jogs as already solved;
+      manual calibration now uses 0.7 mm position / 0.02 rad orientation IK tolerance.
+    - stationary endpoint residual max_joint_error=0.006571 rad exceeded the generic
+      0.005 rad joint threshold; manual calibration locally accepts 0.010 rad.
+      Normal manipulation retains its configured tighter threshold.
