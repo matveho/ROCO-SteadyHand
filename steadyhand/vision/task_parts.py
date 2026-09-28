@@ -5,9 +5,10 @@ perspective-rectify the detected board to a square, then segment dark task
 parts from the bright board surface.  This deliberately exploits the fixed
 competition layout instead of attempting general object recognition.
 
-The current physical board has nine black/dark task parts.  In the head view
-the two gears touch in the binary mask, so the common 8-component case is
-split at the horizontal occupancy valley of the largest wide component.
+Part segmentation is deliberately arrangement-agnostic. The board may be in an
+initial, intermediate, or final state; parts may be missing, already moved,
+separated, touching, or temporarily occluded. Detection therefore returns all
+valid dark connected components it sees and never requires a specific count.
 """
 
 from __future__ import annotations
@@ -35,11 +36,15 @@ FINAL_LAYOUT_ORDER = (
 
 
 def label_final_layout(parts):
-    """Attach confirmed final-layout names to nine spatially sorted detections."""
+    """Attach final-layout names only when the exact final layout is present.
+
+    This helper is advisory metadata, never an execution gate. If the current
+    board does not contain exactly the confirmed final-layout detection count,
+    return the detections unchanged and unlabeled.
+    """
     if len(parts) != len(FINAL_LAYOUT_ORDER):
-        raise ValueError(
-            f"final layout expects {len(FINAL_LAYOUT_ORDER)} parts, got {len(parts)}"
-        )
+        return [dict(part) for part in parts]
+
     out = []
     for part, name in zip(parts, FINAL_LAYOUT_ORDER):
         item = dict(part)
@@ -47,7 +52,6 @@ def label_final_layout(parts):
         item["identity_source"] = "confirmed_final_layout_spatial_order"
         out.append(item)
     return out
-
 
 def rectify_board(rgb, corners_px, *, canonical_size=800):
     """Return (rectified_rgb, H_image_to_board).
@@ -85,7 +89,6 @@ def detect_dark_part_boxes(
     border_margin_px=20,
     min_area_px=600,
     max_area_px=30000,
-    expected_parts=9,
 ):
     """Detect task-part boxes in an already rectified board image.
 
@@ -93,9 +96,10 @@ def detect_dark_part_boxes(
     board-pixel box/center, normalized center, and board millimetres measured
     from rectified top-left.
 
-    This is intentionally a board-specific detector.  If exactly one pair has
-    merged (the normal touching-gear case), the largest wide component is split
-    at its column-occupancy valley.
+    The detector is intentionally count-agnostic. It returns every filtered
+    connected component and never assumes all task parts are present or that
+    any particular pair is touching. Touching objects may therefore appear as
+    one component; separated objects appear separately.
     """
     import cv2
     import numpy as np
@@ -145,58 +149,8 @@ def detect_dark_part_boxes(
         for c in components
     ]
 
-    if len(boxes) == int(expected_parts) - 1:
-        largest = max(components, key=lambda c: c["area"])
-        # The touching-gear cluster is both the largest dark object and wider
-        # than it is tall.  Refuse an arbitrary split if that signature is gone.
-        if largest["w"] < 1.05 * largest["h"]:
-            raise RuntimeError(
-                f"Found {len(boxes)} components but largest component does not "
-                "look like the expected touching-gear cluster"
-            )
-
-        x, y, bw, bh = (
-            largest["x"], largest["y"], largest["w"], largest["h"]
-        )
-        local = (
-            labels[y:y + bh, x:x + bw] == largest["component_id"]
-        ).astype(np.uint8)
-        occupancy = local.sum(axis=0).astype(float)
-        smooth = np.convolve(occupancy, np.ones(9) / 9.0, mode="same")
-
-        lo = int(round(0.55 * bw))
-        hi = int(round(0.88 * bw))
-        if hi <= lo + 2:
-            raise RuntimeError("Touching-part component is too narrow to split")
-        split_local = lo + int(np.argmin(smooth[lo:hi]))
-        split_x = x + split_local
-
-        yy, xx = np.nonzero(labels == largest["component_id"])
-        left = xx < split_x
-        right = ~left
-        if int(left.sum()) < int(min_area_px) or int(right.sum()) < int(min_area_px):
-            raise RuntimeError("Touching-part split produced an implausibly small part")
-
-        def bbox(sel):
-            sx, sy = xx[sel], yy[sel]
-            return [
-                int(sx.min()), int(sy.min()),
-                int(sx.max()) + 1, int(sy.max()) + 1,
-            ]
-
-        merged_box = [
-            largest["x"], largest["y"],
-            largest["x"] + largest["w"], largest["y"] + largest["h"],
-        ]
-        boxes.remove(merged_box)
-        boxes.extend((bbox(left), bbox(right)))
-
-    if len(boxes) != int(expected_parts):
-        raise RuntimeError(
-            f"Expected {expected_parts} task parts, detected {len(boxes)} "
-            f"after filtering/splitting"
-        )
-
+    # Never split or reject detections based on an expected task-part count.
+    # Board localization/calibration must work for arbitrary task state.
     boxes.sort(key=lambda b: ((b[1] + b[3]) / 2.0, (b[0] + b[2]) / 2.0))
     result = []
     denom = float(w - 1)
