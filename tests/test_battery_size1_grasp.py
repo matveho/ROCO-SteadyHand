@@ -103,6 +103,16 @@ class CalibrationContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "below task floor"):
                 load_calibration(path, self.cfg, floor_m=self.floor)
 
+    def test_jaw_goal_pixel_is_bound_to_safe_taught_hover(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cal.json"
+            complete_calibration(path)
+            bad = json.loads(path.read_text())
+            bad["jaw_alignment"]["taught_hover_tcp_z_m"] = self.floor + 0.040
+            path.write_text(json.dumps(bad))
+            with self.assertRaisesRegex(ValueError, "60-120 mm"):
+                load_calibration(path, self.cfg, floor_m=self.floor)
+
     def test_alignment_result_must_match_calibration_goal_digest_and_live_pose(self):
         with tempfile.TemporaryDirectory() as directory:
             cal = Path(directory) / "cal.json"
