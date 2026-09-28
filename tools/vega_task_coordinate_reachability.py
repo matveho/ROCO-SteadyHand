@@ -22,6 +22,7 @@ from steadyhand.vega_presets import configured_right_preset
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POINTS = ("battery_size1.pick", "usb_a.pick", "rod_16mm.place", "gear_20teeth.place")
+FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
 
 
 def _finite_vector(value, size, name):
@@ -34,7 +35,11 @@ def _finite_vector(value, size, name):
 
 
 def _load_manual(path, cfg):
-    raw = json.loads(Path(path).read_text(encoding="utf-8"))
+    path = Path(path)
+    if not path.is_file() and path.name == "vega_board_manual.json" and FALLBACK_CALIBRATION.is_file():
+        print(f"USING PERMANENT BOARD CALIBRATION FALLBACK: {FALLBACK_CALIBRATION}", flush=True)
+        path = FALLBACK_CALIBRATION
+    raw = json.loads(path.read_text(encoding="utf-8"))
     if raw.get("robot_name") != cfg.get("robot_name"):
         raise ValueError("manual calibration belongs to a different robot")
     if raw.get("base_frame") != cfg["kinematics"]["base_frame"]:

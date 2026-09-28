@@ -101,6 +101,7 @@
   },
   "board_calibration": {
     "forward_rise_angle_deg": 13.0,
+    "fallback_file": "calibration/vega_board_manual_fallback.json",
     "source": "operator measured TOP_RIGHT 84 mm, CENTER 45 mm, BOTTOM_RIGHT -5 mm over 386 mm forward span",
     "status": "active_supervised_board_plane_correction"
   },

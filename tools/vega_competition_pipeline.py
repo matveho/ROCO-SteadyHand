@@ -33,6 +33,7 @@ from tools.vega_task_coordinate_reachability import (
 
 ROOT = Path(__file__).resolve().parents[1]
 CALIBRATION = ROOT / "calibration" / "vega_board_manual.json"
+FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
 TASK_COORDINATES = ROOT / "configs" / "task_coordinates.json"
 
 
@@ -54,7 +55,8 @@ COMPETITION_TASKS = OrderedDict([
 def _load_runtime():
     bundle = load_bundle("vega")
     task_data = json.loads(TASK_COORDINATES.read_text(encoding="utf-8"))
-    center, ux, uy, plane = _load_manual(CALIBRATION, bundle["robot"])
+    path = CALIBRATION if CALIBRATION.is_file() else FALLBACK_CALIBRATION
+    center, ux, uy, plane = _load_manual(path, bundle["robot"])
     _, ready_pose = configured_right_preset(bundle["robot"], "right_ready")
     return bundle, task_data, (center, ux, uy, plane), ready_pose
 
@@ -66,7 +68,8 @@ def _surface_z(x, y, plane):
 
 def _board_targets(runtime, clearance_m):
     _, _, (center, _, _, plane), ready_pose = runtime
-    raw = json.loads(CALIBRATION.read_text(encoding="utf-8"))
+    path = CALIBRATION if CALIBRATION.is_file() else FALLBACK_CALIBRATION
+    raw = json.loads(path.read_text(encoding="utf-8"))
     samples = raw.get("samples") or {}
     targets = OrderedDict()
     for label in ("CENTER", "TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT"):

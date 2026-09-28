@@ -1,0 +1,206 @@
+{
+  "schema_version": 2,
+  "calibration_kind": "vega_board_five_point_surface",
+  "generated_at_utc": "2026-09-12T07:16:26.911157+00:00",
+  "robot_name": "dm/vgfcb66075ea-1u",
+  "base_frame": "vega_1u_base_link",
+  "tcp_frame": "tip_r",
+  "camera_frame": "zed_left_camera_optical",
+  "board_width_m_declared": 0.386,
+  "floor_m": 0.4560002716867571,
+  "initial_hover_z_m": 0.5360002716867571,
+  "forward_rise_angle_deg": 13.0,
+  "manual_corrected": {
+    "CENTER": {
+      "position_m": [
+        0.42667793709610435,
+        -0.02278118945120526,
+        0.549185619491169
+      ],
+      "quaternion_wxyz": [
+        0.8157327962684398,
+        0.052508534855277546,
+        0.07124617504446944,
+        0.5716177406282605
+      ]
+    },
+    "TOP_RIGHT": {
+      "position_m": [
+        0.628660753467146,
+        -0.2005313372537897,
+        0.5382148883199647
+      ],
+      "quaternion_wxyz": [
+        0.8162110145125433,
+        0.052628600373260136,
+        0.07203184897319999,
+        0.570825037068854
+      ]
+    },
+    "BOTTOM_RIGHT": {
+      "position_m": [
+        0.2298480569108205,
+        -0.21187429033016159,
+        0.5503086366771945
+      ],
+      "quaternion_wxyz": [
+        0.8167021258160609,
+        0.05651996589558202,
+        0.06586546040964959,
+        0.5704952868058722
+      ]
+    },
+    "BOTTOM_LEFT": {
+      "position_m": [
+        0.24030307747211604,
+        0.16457494351495464,
+        0.5491225121215311
+      ],
+      "quaternion_wxyz": [
+        0.8161122056756818,
+        0.05229028482983494,
+        0.07152307874844498,
+        0.5710613303892433
+      ]
+    }
+  },
+  "corrected_board_frame_xy": {
+    "center_base_xy_m": [
+      0.42667793709610435,
+      -0.02278118945120526
+    ],
+    "board_x_unit_base_xy": [
+      -0.027762019012503955,
+      -0.9996145608685126
+    ],
+    "board_y_unit_base_xy": [
+      -0.9995957770813589,
+      -0.028430308494885165
+    ],
+    "width_m": 0.37659438805897266,
+    "height_m": 0.3989739709793365,
+    "inferred_top_left_base_m": [
+      0.6391157740284414,
+      0.17591789659132653,
+      0.5370287637643012
+    ]
+  },
+  "board_surface_plane_base": {
+    "model": "z_m = a*x_m + b*y_m + c",
+    "coefficients": {
+      "a": 0.19205467430571835,
+      "b": 0.007154801534026262,
+      "c": -0.029510319309734814
+    },
+    "residuals_mm": [
+      3.7278219565391386,
+      -1.7921550267816637,
+      -0.11715590260006313,
+      -1.8185110271573128
+    ],
+    "max_abs_residual_mm": 3.7278219565391386
+  },
+  "height_reference": "board_surface_z_mm_in_vega_1u_base_link",
+  "samples": {
+    "CENTER": {
+      "tip_r_pose": {
+        "position_m": [
+          0.42667793709610435,
+          -0.02278118945120526,
+          0.549185619491169
+        ],
+        "quaternion_wxyz": [
+          0.8157327962684398,
+          0.052508534855277546,
+          0.07124617504446944,
+          0.5716177406282605
+        ]
+      },
+      "measured_surface_z_mm": 56.0
+    },
+    "TOP_RIGHT": {
+      "tip_r_pose": {
+        "position_m": [
+          0.628660753467146,
+          -0.2005313372537897,
+          0.5382148883199647
+        ],
+        "quaternion_wxyz": [
+          0.8162110145125433,
+          0.052628600373260136,
+          0.07203184897319999,
+          0.570825037068854
+        ]
+      },
+      "measured_surface_z_mm": 88.0
+    },
+    "BOTTOM_RIGHT": {
+      "tip_r_pose": {
+        "position_m": [
+          0.2298480569108205,
+          -0.21187429033016159,
+          0.5503086366771945
+        ],
+        "quaternion_wxyz": [
+          0.8167021258160609,
+          0.05651996589558202,
+          0.06586546040964959,
+          0.5704952868058722
+        ]
+      },
+      "measured_surface_z_mm": 13.0
+    },
+    "BOTTOM_LEFT": {
+      "tip_r_pose": {
+        "position_m": [
+          0.24030307747211604,
+          0.16457494351495464,
+          0.5491225121215311
+        ],
+        "quaternion_wxyz": [
+          0.8161122056756818,
+          0.05229028482983494,
+          0.07152307874844498,
+          0.5710613303892433
+        ]
+      },
+      "measured_surface_z_mm": 16.0
+    }
+  },
+  "right_ready": {
+    "joint_names": [
+      "R_arm_j1",
+      "R_arm_j2",
+      "R_arm_j3",
+      "R_arm_j4",
+      "R_arm_j5",
+      "R_arm_j6",
+      "R_arm_j7"
+    ],
+    "joint_positions_rad": [
+      0.21463710069656372,
+      -0.3935612738132477,
+      -1.8070772886276245,
+      -1.646824598312378,
+      1.711227297782898,
+      -1.385257363319397,
+      0.0025394540280103683
+    ],
+    "tip_r": {
+      "position_m": [
+        0.44780069372494935,
+        -0.057527080297007635,
+        0.6050230329337706
+      ],
+      "quaternion_wxyz": [
+        0.8158175491223725,
+        0.052638024999248696,
+        0.0714430131564337,
+        0.5714602879809529
+      ]
+    },
+    "source": "configured_operator_measured_RIGHT_READY"
+  },
+  "source": "operator_final_physical_calibration_pasted_2026-09-12",
+  "fallback_note": "Permanent fallback when no newer calibration is available. Surface plane residual max is 3.73 mm; task motion uses this fitted plane and 50 mm clearance by default."
+}
