@@ -22,10 +22,12 @@ import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.cameras.vega import VegaHeadCamera
 from steadyhand.config import load_bundle
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vision.scene import detect_head_task_scene, render_scene_overlay
+from steadyhand.vega_camera_clear import move_camera_clear
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -220,13 +222,11 @@ def main(argv=None):
     p.add_argument("--interval-s", type=float, default=0.5)
     p.add_argument("--output")
     p.add_argument("--publisher-log", default="~/head_camera.log")
-    p.add_argument(
-        "--release-software-estop",
-        action="store_true",
-        help="explicitly deactivate the robot software E-stop before head motion",
-    )
+    p.add_argument("--confirm-physical-motion", action="store_true")
     args = p.parse_args(argv)
 
+    if not args.confirm_physical_motion:
+        p.error("--confirm-physical-motion is required because board imaging now moves the left arm to camera-clear")
     if args.frames < 0:
         p.error("--frames must be >=0")
     if args.interval_s < 0:
@@ -237,9 +237,6 @@ def main(argv=None):
 
     cfg = load_bundle("vega")["robot"]
     os.environ.setdefault("ROBOT_NAME", cfg["robot_name"])
-    # ROBOT_NAME must be established before importing/constructing Robot().
-    from dexcontrol.robot import Robot
-
     safety = load_vega_skills()["safety"]
     plane_z = float(safety["min_tcp_z_m"] if args.plane_z is None else args.plane_z)
 
@@ -251,40 +248,25 @@ def main(argv=None):
         robot_name=cfg["robot_name"],
     )
     camera = None
-    robot = None
+    adapter = None
     try:
-        robot = Robot()
+        cfg["allow_robot_init_head_motion"] = True
+        cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
+        adapter = VegaAdapter(cfg)
+        adapter.connect()
 
-        # Robot() can connect while the software E-stop remains active. In that
-        # state head commands are silently ineffective. Never proceed to CV
-        # unless control is actually enabled.
-        estop_state = robot.estop.get_state() if robot.has_component("estop") else None
-        print("SOFTWARE ESTOP STATE =", estop_state, flush=True)
-        if estop_state:
-            if not args.release_software_estop:
-                raise RuntimeError(
-                    "Software E-stop is active, so the head cannot move. "
-                    "Re-run with --release-software-estop only after confirming "
-                    "the physical workspace is clear and the physical E-stop is accessible."
-                )
-            print("DEACTIVATING SOFTWARE ESTOP for head positioning", flush=True)
-            robot.estop.deactivate()
-            time.sleep(0.5)
-            estop_after = robot.estop.get_state()
-            print("SOFTWARE ESTOP AFTER =", estop_after, flush=True)
-            if estop_after:
-                raise RuntimeError("Software E-stop remained active after deactivate()")
+        move_camera_clear(adapter, floor_m=plane_z, speed_scale=0.90)
 
         target_head = np.asarray(
             [args.head_j1, args.head_j2, args.head_j3], dtype=float
         )
         head_q = _aim_head_down(
-            robot,
+            adapter._robot,
             target_head,
             settle_s=max(float(args.settle_s), 1.0),
         )
 
-        # Only connect/read the camera after verified head readback.
+        # Only connect/read the camera after the arm is clear and head readback verified.
         camera = _connect_camera_with_retry(args.publisher_log)
         index = 0
         while args.frames == 0 or index < args.frames:
@@ -303,7 +285,7 @@ def main(argv=None):
             )
             # Read back each frame so repeated perception remains consistent
             # if another process has moved the head.
-            head_q = np.asarray(robot.head.get_joint_pos(), dtype=float)
+            head_q = np.asarray(adapter._robot.head.get_joint_pos(), dtype=float)
             scene = detect_head_task_scene(
                 frame.left_rgb,
                 frame.camera_info,
@@ -333,8 +315,8 @@ def main(argv=None):
     finally:
         if camera is not None:
             camera.close()
-        if robot is not None:
-            robot.shutdown()
+        if adapter is not None:
+            adapter.close()
 
 
 if __name__ == "__main__":
