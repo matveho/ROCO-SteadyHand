@@ -3,7 +3,7 @@
   "part": "battery_size1",
   "robot_name": "dm/vgfcb66075ea-1u",
   "base_frame": "vega_1u_base_link",
-  "wrist_camera": "wrist_b",
+  "wrist_camera": "wrist_a",
   "jaw_alignment": {
     "goal_pixel_uv": null,
     "image_size_px": null,
