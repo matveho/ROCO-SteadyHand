@@ -26,6 +26,7 @@ from steadyhand.battery_size1 import (
 )
 from steadyhand.cameras.vega import VegaWristCameras
 from steadyhand.config import load_bundle
+from steadyhand.geometry import quaternion_angle
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vision.wrist_servo import run_xy_servo
 from tools.vega_wrist_fine_center import WristBOnlyCapture
@@ -142,6 +143,23 @@ def main(argv=None):
             )
         if not floor + 0.060 <= start.position_m[2] <= floor + 0.120:
             raise RuntimeError("battery jaw centering requires a 60-120 mm safe hover")
+        taught_hover_z = float(
+            calibration["jaw_alignment"]["taught_hover_tcp_z_m"]
+        )
+        taught_hover_quat = tuple(
+            float(v)
+            for v in calibration["jaw_alignment"]["taught_tip_quaternion_wxyz"]
+        )
+        if abs(start.position_m[2] - taught_hover_z) > 0.005:
+            raise RuntimeError(
+                "current hover Z differs by >5 mm from the hover where the jaw "
+                "goal pixel was taught"
+            )
+        if quaternion_angle(start.quaternion_wxyz, taught_hover_quat) > 0.04:
+            raise RuntimeError(
+                "current tip orientation differs from the pose where the jaw "
+                "goal pixel was taught"
+            )
 
         robot._kinematics.config["position_tolerance_m"] = 0.0007
         robot._kinematics.config["orientation_tolerance_rad"] = 0.01
