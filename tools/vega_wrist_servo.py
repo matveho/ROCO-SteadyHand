@@ -48,6 +48,13 @@ class WristCapture:
             rgb = np.asarray(frame.rgb)
             if rgb.ndim != 3 or rgb.shape[2] != 3 or rgb.dtype != np.uint8:
                 raise ValueError(f"{label}: expected uint8 HxWx3 RGB, got {rgb.shape}/{rgb.dtype}")
+            # Combined-camera boot can yield a few all/near-black startup frames.
+            # Never feed those into tracking or save them as a valid observation.
+            if float(rgb.mean()) < 4.0 or float(rgb.std()) < 2.0:
+                raise RuntimeError(
+                    f"{label}: startup/invalid dark frame "
+                    f"(mean={float(rgb.mean()):.2f}, std={float(rgb.std()):.2f}); retry capture"
+                )
             filename = f"{self.index:03d}_{label}.png"
             if not cv2.imwrite(str(self.output / filename), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)):
                 raise RuntimeError(f"Failed to save {filename}")
@@ -85,7 +92,8 @@ def move_to_board(robot, args, floor):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--camera", choices=("wrist_a", "wrist_b"), help="onsite-verified LEFT camera label")
+    p.add_argument("--camera", choices=("wrist_a", "wrist_b"), default="wrist_b",
+                   help="camera used for servo; competition-unit default wrist_b=LEFT")
     p.add_argument("--execute", action="store_true")
     p.add_argument("--confirm-physical-motion", action="store_true", help="also acknowledges Robot() head homing")
     p.add_argument("--move-to-board", action="store_true", help="first move to saved coarse board center")
@@ -105,8 +113,8 @@ def main(argv=None):
     p.add_argument("--speed-scale", type=float, default=0.45)
     p.add_argument("--output", help="new run directory; default runs/wrist_servo_<UTC>")
     args = p.parse_args(argv)
-    if args.execute and (not args.camera or not args.confirm_physical_motion):
-        p.error("--execute requires --camera and --confirm-physical-motion")
+    if args.execute and not args.confirm_physical_motion:
+        p.error("--execute requires --confirm-physical-motion")
     if args.board_xy and not args.move_to_board:
         p.error("--board-xy requires --move-to-board")
     # Validate all motion options before Robot() can home its head.
