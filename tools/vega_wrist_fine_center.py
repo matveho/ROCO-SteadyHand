@@ -1,4 +1,4 @@
-"""Fine XY validation using the verified physical-left wrist camera (wrist_b).
+"""Fine XY validation using the verified physical-right wrist camera (wrist_a).
 
 This tool deliberately starts from an ALREADY ESTABLISHED safe low hover. It
 never performs global/board navigation, never changes Z or TCP orientation,
@@ -31,8 +31,8 @@ from steadyhand.vision.wrist_servo import run_xy_servo
 ROOT = Path(__file__).resolve().parents[1]
 
 
-class WristBOnlyCapture:
-    """Fresh wrist_b RGB capture with startup-black and stale-frame rejection."""
+class WristAOnlyCapture:
+    """Fresh wrist_a RGB capture with startup-black and stale-frame rejection."""
 
     def __init__(
         self,
@@ -63,7 +63,7 @@ class WristBOnlyCapture:
         last_dark = None
         for attempt in range(1, self.warmup_attempts + 1):
             pair = self.cameras.read(timeout=3.0, fresh=True)
-            frame = pair.wrist_b
+            frame = pair.wrist_a
             identity = (frame.frame_id, frame.timestamp_ns)
             if (
                 any(value is not None for value in identity)
@@ -77,13 +77,13 @@ class WristBOnlyCapture:
                         "timestamp_ns": frame.timestamp_ns,
                     }
                 )
-                raise RuntimeError("wrist_b repeated frame identity; refusing stale feedback")
+                raise RuntimeError("wrist_a repeated frame identity; refusing stale feedback")
             self.last_identity = identity
 
             rgb = np.asarray(frame.rgb)
             if rgb.ndim != 3 or rgb.shape[2] != 3 or rgb.dtype != np.uint8:
                 raise ValueError(
-                    f"wrist_b expected uint8 HxWx3 RGB, got {rgb.shape}/{rgb.dtype}"
+                    f"wrist_a expected uint8 HxWx3 RGB, got {rgb.shape}/{rgb.dtype}"
                 )
 
             mean = float(rgb.mean())
@@ -105,7 +105,7 @@ class WristBOnlyCapture:
                 time.sleep(0.10)
                 continue
 
-            filename = f"{self.index:03d}_wrist_b.png"
+            filename = f"{self.index:03d}_wrist_a.png"
             ok = cv2.imwrite(
                 str(self.output / filename),
                 cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),
@@ -114,7 +114,7 @@ class WristBOnlyCapture:
                 raise RuntimeError(f"Failed to save {filename}")
             metadata.update({"accepted": True, "file": filename})
             self._log_capture(metadata)
-            (self.output / f"{self.index:03d}_wrist_b.json").write_text(
+            (self.output / f"{self.index:03d}_wrist_a.json").write_text(
                 json.dumps(metadata, indent=2, default=int) + "\n",
                 encoding="utf-8",
             )
@@ -123,7 +123,7 @@ class WristBOnlyCapture:
 
         mean, std = last_dark or (float("nan"), float("nan"))
         raise RuntimeError(
-            f"wrist_b remained black/invalid for {self.warmup_attempts} fresh frames "
+            f"wrist_a remained black/invalid for {self.warmup_attempts} fresh frames "
             f"(last mean={mean:.2f}, std={std:.2f})"
         )
 
@@ -143,7 +143,7 @@ def main(argv=None):
         nargs=2,
         type=float,
         metavar=("U", "V"),
-        help="optional feature pixel in the initial wrist_b image; default is a nearby textured feature",
+        help="optional feature pixel in the initial wrist_a image; default is a nearby textured feature",
     )
     p.add_argument("--probe-m", type=float, default=0.008)
     p.add_argument("--gain", type=float, default=0.65)
@@ -195,11 +195,11 @@ def main(argv=None):
     import numpy as np
 
     cfg = load_bundle("vega")["robot"]
-    if cfg["working_arm"] != "left" or cfg["kinematics"]["ee_frame"] != "tip_l":
-        raise ValueError("Fine wrist benchmark requires working_arm=left and ee_frame=tip_l")
+    if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
+        raise ValueError("Fine wrist benchmark requires working_arm=right and ee_frame=tip_r")
     wrist_map = cfg["cameras"]["wrists"]["api_label_to_physical_mount"]
-    if wrist_map.get("wrist_b") != "left_wrist":
-        raise ValueError("Competition mapping must verify wrist_b=left_wrist before motion")
+    if wrist_map.get("wrist_a") != "right_wrist":
+        raise ValueError("Competition mapping must verify wrist_a=left_wrist before motion")
 
     floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
     output = (
@@ -213,7 +213,7 @@ def main(argv=None):
         encoding="utf-8",
     )
     print("RUN OUTPUT", output.resolve(), flush=True)
-    print("CAMERA wrist_b = VERIFIED PHYSICAL LEFT", flush=True)
+    print("CAMERA wrist_a = VERIFIED PHYSICAL LEFT", flush=True)
     print("GOAL = image center (SERVO VALIDATION ONLY; NOT jaw alignment)", flush=True)
 
     capture = None
@@ -229,7 +229,7 @@ def main(argv=None):
         if "goal_uv" in fields:
             goal_pixel = fields["goal_uv"]
         if "feature_uv" in fields and capture is not None:
-            raw = output / f"{capture.index - 1:03d}_wrist_b.png"
+            raw = output / f"{capture.index - 1:03d}_wrist_a.png"
             annotated = cv2.imread(str(raw))
             if annotated is not None:
                 uv = tuple(int(round(v)) for v in fields["feature_uv"])
@@ -252,14 +252,14 @@ def main(argv=None):
     cameras = VegaWristCameras()
     try:
         cameras.connect()
-        capture = WristBOnlyCapture(
+        capture = WristAOnlyCapture(
             cameras,
             output,
             settle_s=args.settle_s,
             warmup_attempts=args.warmup_attempts,
         )
 
-        # Warm the verified LEFT stream before constructing Robot(); black
+        # Warm the verified RIGHT stream before constructing Robot(); black
         # startup frames are discarded and never become servo observations.
         capture()
 
@@ -323,7 +323,7 @@ def main(argv=None):
             json.dumps(result, indent=2) + "\n",
             encoding="utf-8",
         )
-        print("WRIST_B FINE CENTER PASS", flush=True)
+        print("WRIST_A FINE CENTER PASS", flush=True)
         return 0
     except BaseException as exc:
         # Do not assert software E-stop for camera/tracking/validation failures.
@@ -337,7 +337,7 @@ def main(argv=None):
             )
         except BaseException:
             pass
-        print("WRIST_B FINE CENTER STOPPED", json.dumps(record), flush=True)
+        print("WRIST_A FINE CENTER STOPPED", json.dumps(record), flush=True)
         raise
     finally:
         try:
