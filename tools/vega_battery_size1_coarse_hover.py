@@ -25,6 +25,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters.vega import VegaAdapter
+from steadyhand.battery_size1 import require_right_battery_config
 from steadyhand.battery_size1_hover import (
     accepted_hover_from_manual,
     load_source_localization,
@@ -113,10 +114,7 @@ def main(argv=None):
         p.error("--speed-scale must be 0.45..0.90")
 
     cfg = load_bundle("vega")["robot"]
-    if cfg.get("working_arm") != "right":
-        raise RuntimeError(
-            "battery_size1 coarse hover requires configured working arm RIGHT"
-        )
+    require_right_battery_config(cfg)
     floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
 
     manual_path = _resolve(args.manual_calibration)
@@ -152,7 +150,10 @@ def main(argv=None):
         "status": "starting",
         "robot_name": cfg["robot_name"],
         "base_frame": cfg["kinematics"]["base_frame"],
+        "working_arm": "right",
         "tcp_frame": cfg["kinematics"]["ee_frame"],
+        "wrist_camera": "wrist_a",
+        "gripper_scope": "right",
         "floor_m": floor,
         "localization": {
             "path": str(localization_path),
