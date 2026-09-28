@@ -16,6 +16,7 @@ import math
 
 from .executor import move_tcp_segmented
 from .models import Pose
+from .vega_presets import configured_right_preset, preset_max_delta
 
 
 CAMERA_CLEAR_X_M = 0.50
@@ -232,38 +233,101 @@ def move_camera_clear_for_image(
         )
         return current
 
-    kin_cfg = robot._kinematics.config
-    old_kin = dict(kin_cfg)
-    old_joint_tol = float(robot.config["motion"]["joint_reached_tolerance_rad"])
+    # The competition unit now has an operator-measured camera-clear joint
+    # endpoint. Use it directly so this startup phase cannot fail in local IK.
+    # The adapter still enforces joint limits, endpoint convergence, and the
+    # configured maximum joint delta. If the live state is too far away, stop
+    # and ask for manual recovery rather than inventing an unvalidated path.
     try:
-        robot.config["motion"]["joint_reached_tolerance_rad"] = max(
-            old_joint_tol, CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD
+        target_q, measured_pose = configured_right_preset(
+            robot.config, "right_camera_clear"
         )
-        kin_cfg["position_tolerance_m"] = CAMERA_CLEAR_ESCAPE_POSITION_TOLERANCE_M
-        kin_cfg["orientation_tolerance_rad"] = 0.04
-        kin_cfg["max_seed_delta_rad"] = 2.5
-        kin_cfg["max_iterations"] = 180
-
-        target = _reachable_image_clear_pose(robot, floor_m=floor_m)
-        move_tcp_segmented(
-            robot,
-            target,
-            speed_scale=float(speed_scale),
-            max_translation_step_m=0.08,
-            max_orientation_step_rad=0.10,
-            min_tcp_z_m=floor_m,
+    except KeyError:
+        # Keep the generic path for test adapters and older non-competition
+        # bundles. The competition config contains the measured preset above.
+        kin_cfg = robot._kinematics.config
+        old_kin = dict(kin_cfg)
+        old_joint_tol = float(robot.config["motion"]["joint_reached_tolerance_rad"])
+        try:
+            robot.config["motion"]["joint_reached_tolerance_rad"] = max(
+                old_joint_tol, CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD
+            )
+            kin_cfg["position_tolerance_m"] = CAMERA_CLEAR_ESCAPE_POSITION_TOLERANCE_M
+            kin_cfg["orientation_tolerance_rad"] = 0.04
+            kin_cfg["max_seed_delta_rad"] = 2.5
+            kin_cfg["max_iterations"] = 180
+            target = _reachable_image_clear_pose(robot, floor_m=floor_m)
+            move_tcp_segmented(
+                robot,
+                target,
+                speed_scale=float(speed_scale),
+                max_translation_step_m=0.08,
+                max_orientation_step_rad=0.10,
+                min_tcp_z_m=floor_m,
+            )
+            actual = robot.get_tcp_pose()
+            print(
+                "CAMERA IMAGE CLEAR: REACHED ->",
+                tuple(round(float(v), 4) for v in actual.position_m),
+                flush=True,
+            )
+            return actual
+        finally:
+            robot.config["motion"]["joint_reached_tolerance_rad"] = old_joint_tol
+            kin_cfg.clear()
+            kin_cfg.update(old_kin)
+    except ValueError as exc:
+        if "joint_presets" not in robot.config:
+            # Minimal fake/legacy adapters have no measured-preset section.
+            # They retain the generic IK behavior for compatibility.
+            kin_cfg = robot._kinematics.config
+            old_kin = dict(kin_cfg)
+            old_joint_tol = float(robot.config["motion"]["joint_reached_tolerance_rad"])
+            try:
+                robot.config["motion"]["joint_reached_tolerance_rad"] = max(
+                    old_joint_tol, CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD
+                )
+                kin_cfg["position_tolerance_m"] = CAMERA_CLEAR_ESCAPE_POSITION_TOLERANCE_M
+                kin_cfg["orientation_tolerance_rad"] = 0.04
+                kin_cfg["max_seed_delta_rad"] = 2.5
+                kin_cfg["max_iterations"] = 180
+                target = _reachable_image_clear_pose(robot, floor_m=floor_m)
+                move_tcp_segmented(
+                    robot, target, speed_scale=float(speed_scale),
+                    max_translation_step_m=0.08,
+                    max_orientation_step_rad=0.10,
+                    min_tcp_z_m=floor_m,
+                )
+                return robot.get_tcp_pose()
+            finally:
+                robot.config["motion"]["joint_reached_tolerance_rad"] = old_joint_tol
+                kin_cfg.clear()
+                kin_cfg.update(old_kin)
+        raise RuntimeError(f"right_camera_clear preset is invalid: {exc}") from exc
+    current_q = robot._read_joint_positions()
+    delta = preset_max_delta(current_q, target_q)
+    max_delta = float(robot.config["motion"]["max_total_delta_rad"])
+    if delta > max_delta:
+        raise RuntimeError(
+            "RIGHT_CAMERA_CLEAR is too far from the live joint state for a "
+            f"validated joint move ({delta:.3f} rad > {max_delta:.3f} rad); "
+            "manually place the arm at RIGHT_READY or RIGHT_CAMERA_CLEAR and rerun"
         )
-        actual = robot.get_tcp_pose()
-        print(
-            "CAMERA IMAGE CLEAR: REACHED ->",
-            tuple(round(float(v), 4) for v in actual.position_m),
-            flush=True,
-        )
-        return actual
-    finally:
-        robot.config["motion"]["joint_reached_tolerance_rad"] = old_joint_tol
-        kin_cfg.clear()
-        kin_cfg.update(old_kin)
+    if float(measured_pose.position_m[2]) < floor_m:
+        raise RuntimeError("configured RIGHT_CAMERA_CLEAR pose is below the TCP floor")
+    print(
+        "CAMERA IMAGE CLEAR: MEASURED JOINT PRESET ->",
+        tuple(round(float(v), 6) for v in target_q),
+        flush=True,
+    )
+    robot.move_joints(target_q, speed_scale=float(speed_scale))
+    actual = robot.get_tcp_pose()
+    print(
+        "CAMERA IMAGE CLEAR: REACHED ->",
+        tuple(round(float(v), 4) for v in actual.position_m),
+        flush=True,
+    )
+    return actual
 
 
 def move_verticalize_after_image(
@@ -367,6 +431,33 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
         tuple(round(float(v), 4) for v in current.position_m),
         flush=True,
     )
+
+    if "joint_presets" in robot.config:
+        try:
+            target_q, measured_pose = configured_right_preset(
+                robot.config, "right_camera_clear"
+            )
+        except (KeyError, ValueError) as exc:
+            raise RuntimeError(f"right_camera_clear preset is invalid: {exc}") from exc
+        if float(measured_pose.position_m[2]) < floor_m:
+            raise RuntimeError("configured RIGHT_CAMERA_CLEAR pose is below the TCP floor")
+        delta = preset_max_delta(robot._read_joint_positions(), target_q)
+        max_delta = float(robot.config["motion"]["max_total_delta_rad"])
+        if delta > max_delta:
+            raise RuntimeError(
+                "RIGHT_CAMERA_CLEAR is too far from the live joint state for a "
+                f"validated joint move ({delta:.3f} rad > {max_delta:.3f} rad); "
+                "manually place the arm at RIGHT_READY or RIGHT_CAMERA_CLEAR and rerun"
+            )
+        print("CAMERA CLEAR: MEASURED JOINT PRESET ->", list(target_q), flush=True)
+        robot.move_joints(target_q, speed_scale=speed_scale)
+        actual = robot.get_tcp_pose()
+        print(
+            "CAMERA CLEAR: REACHED ->",
+            tuple(round(float(v), 4) for v in actual.position_m),
+            flush=True,
+        )
+        return actual
 
     kin_cfg = robot._kinematics.config
     old_kin = dict(kin_cfg)
@@ -503,4 +594,3 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
         robot.config["motion"]["joint_reached_tolerance_rad"] = old_joint_tol
         kin_cfg.clear()
         kin_cfg.update(old_kin)
-

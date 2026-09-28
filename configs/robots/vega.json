@@ -99,6 +99,48 @@
     "joint_reached_tolerance_rad": 0.005,
     "joint_timeout_s": 30
   },
+  "joint_presets": {
+    "right_ready": {
+      "joint_names": [
+        "R_arm_j1", "R_arm_j2", "R_arm_j3", "R_arm_j4",
+        "R_arm_j5", "R_arm_j6", "R_arm_j7"
+      ],
+      "joint_positions_rad": [
+        0.21463710069656372,
+        -0.3935612738132477,
+        -1.8070772886276245,
+        -1.646824598312378,
+        1.711227297782898,
+        -1.385257363319397,
+        0.0025394540280103683
+      ],
+      "tip_r_pose": {
+        "position_m": [0.44780069372494935, -0.057527080297007635, 0.6050230329337706],
+        "quaternion_wxyz": [0.8158175491223725, 0.052638024999248696, 0.0714430131564337, 0.5714602879809529]
+      },
+      "source": "operator_measured_RIGHT_READY_2026-09-28"
+    },
+    "right_camera_clear": {
+      "joint_names": [
+        "R_arm_j1", "R_arm_j2", "R_arm_j3", "R_arm_j4",
+        "R_arm_j5", "R_arm_j6", "R_arm_j7"
+      ],
+      "joint_positions_rad": [
+        0.21482908725738525,
+        -1.1214107275009155,
+        -1.807173252105713,
+        -1.6464650630950928,
+        1.710747241973877,
+        -1.3857128620147705,
+        0.002204350894317031
+      ],
+      "tip_r_pose": {
+        "position_m": [0.47851481158018394, -0.32143913038768884, 0.6046640830811985],
+        "quaternion_wxyz": [0.966066449652513, 0.0705496694727629, 0.050575168727761306, 0.24327044888607202]
+      },
+      "source": "operator_measured_RIGHT_CAMERA_CLEAR_2026-09-28"
+    }
+  },
   "kinematics": {
     "backend": "pinocchio",
     "ee_frame": "tip_r",

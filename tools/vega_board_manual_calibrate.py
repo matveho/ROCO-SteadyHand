@@ -52,6 +52,7 @@ from steadyhand.vega_camera_clear import (
     move_camera_clear_for_image,
     move_verticalize_after_image,
 )
+from steadyhand.vega_presets import configured_right_preset, preset_max_delta
 from tools.vega_scene_perception import _ensure_publisher
 
 
@@ -65,7 +66,9 @@ MEASURED_NEAR_CLAW_HEIGHT_MM = 39.0
 MEASURED_FAR_CLAW_HEIGHT_MM = 61.0
 MEASURED_FORWARD_SPAN_MM = 383.0
 ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M = 0.30
-RIGHT_READY_MIN_ABOVE_FLOOR_M = 0.30
+# The measured competition RIGHT_READY is a board-working pose about 0.15 m
+# above the provisional floor, rather than the earlier high image-clear pose.
+RIGHT_READY_MIN_ABOVE_FLOOR_M = 0.10
 
 DEFAULT_FORWARD_RISE_ANGLE_DEG = math.degrees(
     math.atan(
@@ -256,8 +259,8 @@ def _capture_current_right_ready(robot, *, floor):
     print("", flush=True)
     print("=== MANUAL RIGHT_READY ===", flush=True)
     print(
-        "Using manual robot control, place the RIGHT claw high in free space "
-        "with the physical jaws/approach axis pointing down toward the board.",
+        "Using manual robot control, place the RIGHT claw in the measured "
+        "board-ready pose with the physical jaws/approach axis pointing down.",
         flush=True,
     )
     print(
@@ -280,6 +283,35 @@ def _capture_current_right_ready(robot, *, floor):
             f"the required high-pose minimum {minimum_z:.6f} m"
         )
 
+    print("RIGHT_READY JOINTS =", list(joints), flush=True)
+    _print_pose("RIGHT_READY TIP_R", pose)
+    return joints, pose
+
+
+def _move_configured_right_ready(robot, *, floor, speed_scale=0.45):
+    """Move to the operator-measured RIGHT_READY endpoint without IK."""
+    try:
+        target_q, measured_pose = configured_right_preset(robot.config, "right_ready")
+    except (KeyError, ValueError) as exc:
+        raise RuntimeError(f"right_ready preset is invalid: {exc}") from exc
+    if float(measured_pose.position_m[2]) < float(floor):
+        raise RuntimeError("configured RIGHT_READY pose is below the TCP floor")
+    current_q = robot._read_joint_positions()
+    delta = preset_max_delta(current_q, target_q)
+    max_delta = float(robot.config["motion"]["max_total_delta_rad"])
+    if delta > max_delta:
+        raise RuntimeError(
+            "RIGHT_READY is too far from the live joint state for a validated "
+            f"joint move ({delta:.3f} rad > {max_delta:.3f} rad); manually "
+            "place the arm at RIGHT_READY and rerun"
+        )
+    print("RIGHT_READY TARGET Q =", list(target_q), flush=True)
+    input("Press Enter to move to measured RIGHT_READY; type anything to cancel: ")
+    robot.move_joints(target_q, speed_scale=float(speed_scale))
+    joints = tuple(float(v) for v in robot._read_joint_positions())
+    pose = robot.get_tcp_pose()
+    if pose is None or float(pose.position_m[2]) < float(floor):
+        raise RuntimeError("measured RIGHT_READY move did not produce a valid TCP pose")
     print("RIGHT_READY JOINTS =", list(joints), flush=True)
     _print_pose("RIGHT_READY TIP_R", pose)
     return joints, pose
@@ -445,6 +477,14 @@ def main(argv=None):
             "pose and skip automatic post-image verticalization"
         ),
     )
+    p.add_argument(
+        "--use-configured-right-ready",
+        action="store_true",
+        help=(
+            "after the head image, move to the measured RIGHT_READY joint "
+            "preset without invoking Cartesian IK"
+        ),
+    )
     p.add_argument("--settle-s", type=float, default=0.5)
     p.add_argument("--publisher-log", default="~/head_camera.log")
     p.add_argument("--output", default="calibration/vega_board_manual.json")
@@ -453,6 +493,8 @@ def main(argv=None):
 
     if not args.confirm_physical_motion:
         p.error("--confirm-physical-motion is required")
+    if args.use_current_right_ready and args.use_configured_right_ready:
+        p.error("choose only one RIGHT_READY mode")
     if not 0.05 <= float(args.offset_m) <= 0.12:
         p.error("--offset-m must be 0.05..0.12 m")
     if not 0.45 <= float(args.coarse_speed_scale) <= 1.0:
@@ -570,7 +612,18 @@ def main(argv=None):
 
         print("HEAD IMAGE CAPTURE COMPLETE", flush=True)
         right_ready_joints = None
-        if args.use_current_right_ready:
+        if args.use_configured_right_ready:
+            right_ready_joints, coarse_orientation_pose = _move_configured_right_ready(
+                robot,
+                floor=floor,
+                speed_scale=0.45,
+            )
+            orientation_status = (
+                "OPERATOR_MEASURED_RIGHT_READY_PRESET; "
+                "automatic post-image verticalization skipped; "
+                "physical claw orientation is operator-verified"
+            )
+        elif args.use_current_right_ready:
             right_ready_joints, coarse_orientation_pose = _capture_current_right_ready(
                 robot,
                 floor=floor,

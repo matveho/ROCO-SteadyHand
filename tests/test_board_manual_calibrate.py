@@ -17,7 +17,7 @@ from tools.vega_board_manual_calibrate import (
 class BoardManualCalibrationTests(unittest.TestCase):
     def test_orientation_teach_clearance_matches_camera_clear_fallback(self):
         self.assertAlmostEqual(ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M, 0.30)
-        self.assertAlmostEqual(RIGHT_READY_MIN_ABOVE_FLOOR_M, 0.30)
+        self.assertAlmostEqual(RIGHT_READY_MIN_ABOVE_FLOOR_M, 0.10)
 
     def test_manual_right_ready_records_live_joints_and_tip_pose(self):
         class FakeRobot:
@@ -39,7 +39,7 @@ class BoardManualCalibrationTests(unittest.TestCase):
                 return (0.0,) * 7
 
             def get_tcp_pose(self):
-                return Pose((0.40, -0.20, 0.70), (1.0, 0.0, 0.0, 0.0))
+                return Pose((0.40, -0.20, 0.50), (1.0, 0.0, 0.0, 0.0))
 
         with mock.patch("builtins.input", return_value=""):
             with self.assertRaisesRegex(RuntimeError, "below"):

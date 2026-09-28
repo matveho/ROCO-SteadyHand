@@ -45,7 +45,7 @@ Pull, then run on the robot:
 
 ```bash
 python3 tools/vega_board_manual_calibrate.py \
-  --use-current-right-ready \
+  --use-configured-right-ready \
   --forward-rise-angle-deg 0 \
   --confirm-physical-motion
 ```
@@ -54,3 +54,16 @@ The output `calibration/vega_board_manual.json` contains a `right_ready` record
 with `joint_names`, `joint_positions_rad`, and the `tip_r` pose. The zero rise
 angle keeps the historical slope compensation disabled until a right-arm
 board-parallel measurement is made.
+
+The measured endpoints are also stored in `configs/robots/vega.json` as
+`right_ready` and `right_camera_clear` joint presets. The camera-image-clear
+phase uses `right_camera_clear` directly, avoiding Cartesian IK. To use the
+measured ready endpoint after the head image, add:
+
+```bash
+--use-configured-right-ready
+```
+
+The preset move is still gated by the adapter's joint limits and maximum delta;
+if the live state is too far away, the tool stops and asks for manual recovery
+instead of inventing an IK path.
