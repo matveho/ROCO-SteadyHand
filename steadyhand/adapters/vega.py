@@ -161,15 +161,11 @@ class VegaAdapter(RobotAdapter):
         """Validate local settings and load IK before Robot() can move the head."""
         self._validate_motion_config()
         kin = dict(self.config["kinematics"])
-        joint_names = (
-            kin["left_arm_joint_names"]
-            if self.config["working_arm"] == "left"
-            else kin["right_arm_joint_names"]
-        )
+        joint_names = kin["right_arm_joint_names"]
         self._joint_names = tuple(joint_names)
         self._joint_limits = tuple(
             tuple(float(x) for x in bound)
-            for bound in self.config["arm_joint_limits_rad"][self.config["working_arm"]]
+            for bound in self.config["arm_joint_limits_rad"]["right"]
         )
         kin["joint_limits_rad"] = self._joint_limits
         urdf_path = Path(self.config["urdf_path"]).expanduser()
@@ -189,10 +185,9 @@ class VegaAdapter(RobotAdapter):
         if not cfg.get("driver_path"):
             cfg["driver_path"] = self.config.get("gripper_driver_path")
         if not cfg.get("scope"):
-            # A physical board run currently uses one arm. The organizer's
-            # competition driver exposes independent g.left/g.right motors, so
-            # default the gripper side to the selected working arm.
-            cfg["scope"] = self.config.get("working_arm")
+            cfg["scope"] = "right"
+        if cfg.get("scope") != "right":
+            raise ValueError("competition Vega manipulation is locked to the right gripper")
         gripper = VegaCanGripper(cfg)
         gripper.connect()
         self._gripper = gripper
@@ -478,8 +473,8 @@ class VegaAdapter(RobotAdapter):
     # ------------------------------------------------------------------
 
     def _validate_motion_config(self):
-        if self.config.get("working_arm") not in ("left", "right"):
-            raise ValueError("vega.working_arm must be left or right")
+        if self.config.get("working_arm") != "right":
+            raise ValueError("competition Vega manipulation is locked to working_arm='right'")
         if not self.config.get("urdf_path"):
             raise ValueError("vega.urdf_path is required for physical IK")
         motion = self.config.get("motion") or {}
@@ -593,7 +588,7 @@ class VegaAdapter(RobotAdapter):
             time.sleep(0.01)
 
     def _select_arm(self, robot):
-        return robot.left_arm if self.config["working_arm"] == "left" else robot.right_arm
+        return robot.right_arm
 
     def _require_robot(self):
         if self._robot is None or self._arm is None or self._kinematics is None:
