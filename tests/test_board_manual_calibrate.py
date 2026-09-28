@@ -1,10 +1,17 @@
 import math
 import unittest
 
-from tools.vega_board_manual_calibrate import _board_parallel_jog_delta
+from tools.vega_board_manual_calibrate import (
+    DEFAULT_FORWARD_RISE_ANGLE_DEG,
+    _board_parallel_jog_delta,
+)
 
 
 class BoardManualCalibrationTests(unittest.TestCase):
+    def test_default_plane_angle_uses_measured_39_61_over_383(self):
+        expected = math.degrees(math.atan((61.0 - 39.0) / 383.0))
+        self.assertAlmostEqual(DEFAULT_FORWARD_RISE_ANGLE_DEG, expected, places=9)
+
     def test_forward_rise_compensation_moves_tcp_down(self):
         dx, dy, dz = _board_parallel_jog_delta("forward", 50.0, 10.0)
         self.assertAlmostEqual(dx, 0.050)
