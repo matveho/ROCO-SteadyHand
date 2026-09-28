@@ -39,6 +39,8 @@ def blank_calibration(robot_config):
             "goal_pixel_uv": None,
             "image_size_px": None,
             "source_image": None,
+            "taught_hover_tcp_z_m": None,
+            "taught_tip_quaternion_wxyz": None,
             "source": None,
         },
         "grasp": {
@@ -87,11 +89,23 @@ def load_calibration(path, robot_config, *, floor_m):
         raise ValueError("jaw image_size_px must be positive")
     if not (0 <= goal[0] < width and 0 <= goal[1] < height):
         raise ValueError("jaw goal pixel lies outside the taught image")
-    if jaw.get("source") != "operator_taught":
-        raise ValueError("jaw goal pixel must be explicitly operator_taught")
+    floor = _finite_scalar(floor_m, "task floor")
+    hover_z = _finite_scalar(
+        jaw.get("taught_hover_tcp_z_m"),
+        "jaw taught_hover_tcp_z_m",
+    )
+    hover_quat = _unit_quaternion(
+        jaw.get("taught_tip_quaternion_wxyz"),
+        "jaw taught tip quaternion",
+    )
+    if not floor + 0.060 <= hover_z <= floor + 0.120:
+        raise ValueError("jaw goal pixel must be taught at a 60-120 mm safe hover")
+    if jaw.get("source") != "operator_taught_current_tcp":
+        raise ValueError(
+            "jaw goal pixel must be operator-taught with a measured current TCP"
+        )
 
     grasp_z = _finite_scalar(grasp.get("tcp_z_m"), "grasp tcp_z_m")
-    floor = _finite_scalar(floor_m, "task floor")
     if grasp_z < floor:
         raise ValueError(
             f"taught grasp TCP z={grasp_z:.6f} m is below task floor {floor:.6f} m"
@@ -116,6 +130,8 @@ def load_calibration(path, robot_config, *, floor_m):
     out["jaw_alignment"] = dict(jaw)
     out["jaw_alignment"]["goal_pixel_uv"] = list(goal)
     out["jaw_alignment"]["image_size_px"] = [width, height]
+    out["jaw_alignment"]["taught_hover_tcp_z_m"] = hover_z
+    out["jaw_alignment"]["taught_tip_quaternion_wxyz"] = list(hover_quat)
     out["grasp"] = dict(grasp)
     out["grasp"]["tcp_z_m"] = grasp_z
     out["grasp"]["taught_tip_quaternion_wxyz"] = list(quat)
@@ -156,7 +172,9 @@ def calibration_is_complete(value):
         return (
             jaw.get("goal_pixel_uv") is not None
             and jaw.get("image_size_px") is not None
-            and jaw.get("source") == "operator_taught"
+            and jaw.get("taught_hover_tcp_z_m") is not None
+            and jaw.get("taught_tip_quaternion_wxyz") is not None
+            and jaw.get("source") == "operator_taught_current_tcp"
             and grasp.get("tcp_z_m") is not None
             and grasp.get("taught_tip_quaternion_wxyz") is not None
             and grasp.get("source") == "operator_taught_current_tcp"
