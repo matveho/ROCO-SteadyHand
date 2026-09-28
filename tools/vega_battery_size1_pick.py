@@ -28,6 +28,7 @@ from steadyhand.battery_size1 import (
     VERIFIED_GRIP_SPEED_DPS,
     load_alignment_result,
     load_calibration,
+    require_right_battery_config,
 )
 from steadyhand.config import load_bundle
 from steadyhand.geometry import quaternion_angle
@@ -73,8 +74,7 @@ def main(argv=None):
         )
 
     cfg = load_bundle("vega")["robot"]
-    if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
-        raise ValueError("battery pick requires the right arm / tip_r")
+    require_right_battery_config(cfg)
     grip_cfg = cfg["gripper"]
     if abs(float(grip_cfg["grip_current_a"]) - VERIFIED_GRIP_CURRENT_A) > 1e-12:
         raise ValueError("robot config must retain verified battery grip current 1.0 A")
@@ -97,6 +97,10 @@ def main(argv=None):
 
     run = {
         "part": PART_NAME,
+        "working_arm": "right",
+        "tcp_frame": "tip_r",
+        "wrist_camera": "wrist_a",
+        "gripper_scope": "right",
         "status": "initializing",
         "calibration_file": str(cal_path),
         "alignment_result_file": str(alignment_path),
