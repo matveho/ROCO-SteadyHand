@@ -25,8 +25,9 @@ CAMERA_CLEAR_MIN_Z_ABOVE_FLOOR_M = 0.40
 CAMERA_CLEAR_Z_STEP_M = 0.05
 CAMERA_CLEAR_X_CANDIDATES_M = (0.50, 0.45, 0.40, 0.35)
 CAMERA_CLEAR_SPEED_SCALE = 0.90
-CAMERA_CLEAR_ESCAPE_LIFT_M = 0.10
-CAMERA_CLEAR_VERTICALIZE_ABOVE_FLOOR_M = 0.30
+CAMERA_CLEAR_ESCAPE_LIFT_M = 0.08
+CAMERA_CLEAR_ESCAPE_ONLY_BELOW_FLOOR_PLUS_M = 0.28
+CAMERA_CLEAR_VERTICALIZE_Z_CANDIDATES_ABOVE_FLOOR_M = (0.45, 0.40, 0.35, 0.30)
 CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD = 0.020
 
 
@@ -92,22 +93,52 @@ def _highest_reachable_camera_clear_pose(robot, *, floor_m: float) -> Pose:
     )
 
 
+def _reachable_verticalize_pose(robot, *, floor_m: float) -> Pose:
+    """Choose a conservative vertical-claw waypoint before the high search."""
+    seed = robot._read_joint_positions()
+    quat = vertical_claw_tip_quaternion(0.0)
+    last_error = None
+    for dz in CAMERA_CLEAR_VERTICALIZE_Z_CANDIDATES_ABOVE_FLOOR_M:
+        for x in CAMERA_CLEAR_X_CANDIDATES_M:
+            candidate = Pose(
+                (float(x), CAMERA_CLEAR_Y_M, float(floor_m) + float(dz)),
+                quat,
+            )
+            try:
+                robot._kinematics.solve(candidate, seed)
+            except Exception as exc:
+                last_error = exc
+                continue
+            print(
+                "CAMERA CLEAR: PLANNED VERTICALIZE ->",
+                tuple(round(float(v), 4) for v in candidate.position_m),
+                flush=True,
+            )
+            return candidate
+    raise RuntimeError(
+        "No reachable verticalization waypoint found; "
+        f"last IK error: {last_error}"
+    )
+
+
+def _ik_feasible(robot, pose):
+    """Return True only when the current live seed can solve the pose."""
+    try:
+        robot._kinematics.solve(pose, robot._read_joint_positions())
+    except Exception:
+        return False
+    return True
+
+
 def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEAR_SPEED_SCALE):
-    """Recover from a low/arbitrary wrist pose, then move clear of board view.
+    """Move the left claw out of the head-board view using preplanned stages.
 
-    A previous run can be interrupted mid-orientation. Do not preserve that
-    arbitrary wrist attitude through a large vertical lift. Instead:
-      1. make one short straight-up escape while preserving current attitude;
-      2. at clear height, establish the known vertical-claw orientation;
-      3. move high and centered while holding that orientation.
-
-    This is deliberately coarse free-space repositioning, so it uses a relaxed
-    measured joint endpoint tolerance locally and restores normal task settings
-    before returning.
+    Every coarse stage is IK-checked before it is commanded. A short
+    orientation-preserving escape lift is attempted only when the TCP is truly
+    low; otherwise we go directly to a conservative vertical-claw waypoint.
     """
     floor_m = float(floor_m)
     speed_scale = float(speed_scale)
-    requested_target = camera_clear_pose(floor_m)
     current = robot.get_tcp_pose()
 
     if current is None:
@@ -128,8 +159,6 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
     old_kin = dict(kin_cfg)
     old_joint_tol = float(robot.config["motion"]["joint_reached_tolerance_rad"])
     try:
-        # Coarse free-space preset only. Normal manipulation keeps its original
-        # tighter endpoint requirement after this helper returns.
         robot.config["motion"]["joint_reached_tolerance_rad"] = max(
             old_joint_tol,
             CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD,
@@ -139,48 +168,44 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
         kin_cfg["max_seed_delta_rad"] = 2.5
         kin_cfg["max_iterations"] = 180
 
-        escape_z = min(
-            float(requested_target.position_m[2]),
-            float(current.position_m[2]) + CAMERA_CLEAR_ESCAPE_LIFT_M,
-        )
-        if escape_z > float(current.position_m[2]) + 0.01:
+        # Only try to preserve the current arbitrary wrist orientation when the
+        # TCP is genuinely low. If that straight-up target itself is not
+        # solvable, skip it rather than asserting software E-stop on an IK-only
+        # failure.
+        low_threshold = floor_m + CAMERA_CLEAR_ESCAPE_ONLY_BELOW_FLOOR_PLUS_M
+        if float(current.position_m[2]) < low_threshold:
             escape = Pose(
                 (
                     float(current.position_m[0]),
                     float(current.position_m[1]),
-                    escape_z,
+                    min(
+                        float(current.position_m[2]) + CAMERA_CLEAR_ESCAPE_LIFT_M,
+                        low_threshold,
+                    ),
                 ),
                 tuple(float(v) for v in current.quaternion_wxyz),
             )
-            print(
-                "CAMERA CLEAR: ESCAPE LIFT ->",
-                tuple(round(float(v), 4) for v in escape.position_m),
-                flush=True,
-            )
-            move_tcp_segmented(
-                robot,
-                escape,
-                speed_scale=speed_scale,
-                max_translation_step_m=0.10,
-                max_orientation_step_rad=0.80,
-                min_tcp_z_m=floor_m,
-            )
+            if _ik_feasible(robot, escape):
+                print(
+                    "CAMERA CLEAR: ESCAPE LIFT ->",
+                    tuple(round(float(v), 4) for v in escape.position_m),
+                    flush=True,
+                )
+                move_tcp_segmented(
+                    robot,
+                    escape,
+                    speed_scale=speed_scale,
+                    max_translation_step_m=0.08,
+                    max_orientation_step_rad=0.80,
+                    min_tcp_z_m=floor_m,
+                )
+            else:
+                print(
+                    "CAMERA CLEAR: ESCAPE LIFT skipped (IK infeasible)",
+                    flush=True,
+                )
 
-        verticalize_z = min(
-            float(requested_target.position_m[2]),
-            max(
-                float(robot.get_tcp_pose().position_m[2]),
-                floor_m + CAMERA_CLEAR_VERTICALIZE_ABOVE_FLOOR_M,
-            ),
-        )
-        verticalize = Pose(
-            (
-                CAMERA_CLEAR_X_M,
-                CAMERA_CLEAR_Y_M,
-                verticalize_z,
-            ),
-            vertical_claw_tip_quaternion(0.0),
-        )
+        verticalize = _reachable_verticalize_pose(robot, floor_m=floor_m)
         print(
             "CAMERA CLEAR: VERTICALIZE ->",
             tuple(round(float(v), 4) for v in verticalize.position_m),
@@ -190,16 +215,12 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
             robot,
             verticalize,
             speed_scale=speed_scale,
-            max_translation_step_m=0.15,
-            max_orientation_step_rad=0.55,
+            max_translation_step_m=0.12,
+            max_orientation_step_rad=0.45,
             min_tcp_z_m=floor_m,
         )
 
-        # The literal requested 0.50/0/0.80-above-floor pose is not
-        # guaranteed reachable with a vertical claw. Plan the highest reachable
-        # nearby pose before issuing any command.
         target = _highest_reachable_camera_clear_pose(robot, floor_m=floor_m)
-
         print(
             "CAMERA CLEAR: PRESET ->",
             tuple(round(float(v), 4) for v in target.position_m),
@@ -210,10 +231,11 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
             robot,
             target,
             speed_scale=speed_scale,
-            max_translation_step_m=0.20,
-            max_orientation_step_rad=0.55,
+            max_translation_step_m=0.15,
+            max_orientation_step_rad=0.45,
             min_tcp_z_m=floor_m,
         )
+
         actual = robot.get_tcp_pose()
         print(
             "CAMERA CLEAR: REACHED ->",
