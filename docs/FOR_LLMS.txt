@@ -2908,3 +2908,16 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   reached. The operator observed the hand mid-move and not yet vertical; do not
   treat that interrupted intermediate orientation as endpoint validation.
   The next physical test must verify the completed camera-clear preset visually.
+
+2026-09-28 SOFTWARE E-STOP STARTUP RULE:
+  Onsite operator confirmed software E-stop is redundant for supervised physical
+  tests because a hardware E-stop is in hand. Verified manual release is:
+    r.estop.deactivate()
+  VegaAdapter now supports explicit config opt-in
+    auto_clear_software_estop_on_connect=true
+  Physical test runners enable that flag. On connect they:
+    - still refuse a pressed hardware E-stop;
+    - automatically deactivate software E-stop;
+    - verify software E-stop actually cleared before commanding motion.
+  Actual motion-command failures still use the adapter stop path.
+  This removes the repeated manual software-E-stop-clear step between tests.
