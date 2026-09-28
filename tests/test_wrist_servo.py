@@ -290,7 +290,8 @@ class ImageServoTests(unittest.TestCase):
                     '--output', str(output),
                 ])
             servo.assert_not_called()
-            self.assertTrue(robot.stopped)
+            # A pre-motion validation failure must not assert software E-stop.
+            self.assertFalse(robot.stopped)
 
     def test_repeated_frame_identity_rejected(self):
         frame = types.SimpleNamespace(rgb=self.capture(), frame_id=1, timestamp_ns=9, received_monotonic_ns=10)
