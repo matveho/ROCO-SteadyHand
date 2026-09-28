@@ -325,11 +325,9 @@ def main(argv=None):
         print("WRIST_B FINE CENTER PASS", flush=True)
         return 0
     except BaseException as exc:
-        if robot is not None:
-            try:
-                robot.stop()
-            except BaseException as stop_error:
-                print(f"STOP FAILED: {stop_error}; use physical e-stop", file=sys.stderr)
+        # Do not assert software E-stop for camera/tracking/validation failures.
+        # VegaAdapter.move_tcp() already stops the robot on an actual motion
+        # command failure or interruption.
         record = {"status": "stopped", "reason": str(exc), "exception": type(exc).__name__}
         try:
             (output / "result.json").write_text(
