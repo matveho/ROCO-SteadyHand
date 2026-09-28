@@ -25,13 +25,19 @@
       ],
       "interpretation": "some physical claw geometry first touched the table at this joint state; do not assume modeled tip_l origin equals the operator-defined claw center"
     },
-    "reported_forward_rise_angle_deg": 10.0,
-    "reported_direction": "+base X / away from robot",
+    "forward_rise_measurement": {
+      "near_robot_edge_physical_claw_clearance_m": 0.039,
+      "far_edge_physical_claw_clearance_m": 0.061,
+      "forward_span_m": 0.383,
+      "derived_rise_angle_deg": 3.287596,
+      "direction": "+base X / away from robot",
+      "note": "this measured 39/61 mm over 383 mm result supersedes the earlier visual estimate of about 10 degrees"
+    },
     "board_width_operator_measured_m": 0.383
   },
   "measurement_protocol": [
     "A_REFERENCE: safe hover. Record modeled tip_l pose. Measure physical claw axis in base; also measure a jaw/reference axis if a unique yaw correction is desired. Align physical claw center to a fixed mark used by C and D.",
-    "B_FORWARD: keep the same commanded tip quaternion, translate 50-100 mm in +base X, and measure the physical claw-center displacement including height change. Do not use B as a pivot pose.",
+    "B_FORWARD: keep the same commanded tip quaternion, translate 50-100 mm in +base X, and measure the physical claw-center displacement including height change. Do not use B as a pivot pose. This short local repeat is needed to distinguish a true fixed-frame effect from the older long-span 39/61 mm observation.",
     "C_PIVOT_PITCH: return the physical claw center to the exact A mark, change orientation about one horizontal axis by roughly 8-12 deg, and record modeled tip_l pose.",
     "D_PIVOT_ROLL: keep the physical claw center on the same A mark, change orientation about a second nonparallel horizontal axis by roughly 8-12 deg, and record modeled tip_l pose."
   ],
