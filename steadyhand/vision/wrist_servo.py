@@ -247,8 +247,9 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         if math.dist(pose.position_m[:2], origin.position_m[:2]) > max_radius_m + 0.003:
             raise RuntimeError("Measured TCP left the local servo radius")
 
-    def move(pose):
-        check_pose(robot.get_tcp_pose())
+    def move(pose, *, label):
+        before = robot.get_tcp_pose()
+        check_pose(before)
         if math.dist(pose.position_m[:2], origin.position_m[:2]) > max_radius_m + 1e-9:
             raise RuntimeError("Requested XY exceeds local servo radius; coarse approach needed")
         move_tcp_segmented(robot, pose, speed_scale=speed_scale,
@@ -256,7 +257,17 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
                            min_tcp_z_m=floor_m)
         actual = robot.get_tcp_pose()
         check_pose(actual)
-        if math.dist(actual.position_m, pose.position_m) > 0.003:
+        position_error = math.dist(actual.position_m, pose.position_m)
+        orientation_error = quaternion_angle(actual.quaternion_wxyz, pose.quaternion_wxyz)
+        report(
+            "motion",
+            label=label,
+            requested_tcp=pose.position_m,
+            measured_tcp=actual.position_m,
+            position_error_m=position_error,
+            orientation_error_rad=orientation_error,
+        )
+        if position_error > 0.003:
             raise RuntimeError("TCP missed servo waypoint by >3 mm")
         return actual
 
@@ -285,11 +296,11 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
             robot._kinematics.solve(pose, seed)
     probe_uvs, probe_xys = [], []
     for label, pose in (("probe_x", target(probe_m, 0)), ("probe_y", target(0, probe_m))):
-        move(pose)
+        move(pose, label=label)
         uv, actual = observe(label)
         probe_uvs.append(uv)
         probe_xys.append(actual.position_m[:2])
-        move(origin)
+        move(origin, label=f"return_after_{label}")
         returned_uv, _ = observe("return_reference")
         if math.dist(returned_uv, uv0) > 8:
             raise RuntimeError("Feature did not return within 8 px; check tracking / scene motion")
@@ -319,6 +330,17 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         if iteration == max_iterations:
             raise RuntimeError(f"Not centered after {max_iterations} corrections: {magnitude:.1f} px")
         dx, dy = jacobian.base_delta_for_pixel_error(error, gain=gain, max_step_m=max_step_m)
-        report("correction", dx_m=dx, dy_m=dy)
-        move(Pose((actual.position_m[0]+dx, actual.position_m[1]+dy, z), quat))
+        correction_target = Pose(
+            (actual.position_m[0]+dx, actual.position_m[1]+dy, z),
+            quat,
+        )
+        report(
+            "correction",
+            iteration=iteration,
+            dx_m=dx,
+            dy_m=dy,
+            measured_tcp=actual.position_m,
+            requested_tcp=correction_target.position_m,
+        )
+        move(correction_target, label=f"correction_{iteration}")
         previous_error = magnitude
