@@ -4,6 +4,14 @@ import unittest
 import numpy as np
 
 from tools.vega_tool_frame_calibration import (
+    EXPECTED_BASE_FRAME,
+    EXPECTED_JOINT_NAMES,
+    EXPECTED_RECORDER_MODE,
+    EXPECTED_RECORDER_TOOL,
+    EXPECTED_ROBOT_NAME,
+    EXPECTED_TCP_FRAME,
+    EXPECTED_WORKING_ARM,
+    analyze,
     corrected_vertical_tip_quaternion,
     matrix_to_quat,
     quat_to_matrix,
@@ -21,7 +29,120 @@ def pose(position, rotation):
     }
 
 
+def right_payload(observations=None):
+    if observations is None:
+        observations = [
+            {
+                "label": "A",
+                "modeled_tip_pose": pose((0.5, 0.0, 0.6), np.eye(3)),
+            }
+        ]
+    return {
+        "schema_version": 1,
+        "recorder": {
+            "tool": EXPECTED_RECORDER_TOOL,
+            "mode": EXPECTED_RECORDER_MODE,
+            "robot_name": EXPECTED_ROBOT_NAME,
+            "base_frame": EXPECTED_BASE_FRAME,
+            "working_arm": EXPECTED_WORKING_ARM,
+            "tcp_frame": EXPECTED_TCP_FRAME,
+            "joint_names": list(EXPECTED_JOINT_NAMES),
+        },
+        "observations": observations,
+        "translation_checks": [],
+    }
+
+
 class VegaToolFrameCalibrationTests(unittest.TestCase):
+    def test_analyzer_rejects_missing_provenance(self):
+        data = {
+            "observations": [
+                {
+                    "label": "legacy",
+                    "modeled_tip_pose": pose((0.5, 0.0, 0.6), np.eye(3)),
+                }
+            ]
+        }
+        with self.assertRaisesRegex(ValueError, "missing recorder provenance"):
+            analyze(data)
+
+    def test_analyzer_rejects_old_left_arm_observation_json(self):
+        data = right_payload()
+        data["recorder"].update({
+            "working_arm": "left",
+            "tcp_frame": "tip_l",
+            "joint_names": [f"L_arm_j{i}" for i in range(1, 8)],
+        })
+        with self.assertRaisesRegex(ValueError, "working_arm"):
+            analyze(data)
+
+    def test_analyzer_rejects_wrong_tcp_frame(self):
+        data = right_payload()
+        data["recorder"]["tcp_frame"] = "tip_l"
+        with self.assertRaisesRegex(ValueError, "tcp_frame"):
+            analyze(data)
+
+    def test_analyzer_rejects_wrong_right_joint_list(self):
+        data = right_payload()
+        data["recorder"]["joint_names"] = list(EXPECTED_JOINT_NAMES[:-1]) + ["R_arm_j8"]
+        with self.assertRaisesRegex(ValueError, "joint_names"):
+            analyze(data)
+
+    def test_analyzer_rejects_missing_joint_list(self):
+        data = right_payload()
+        del data["recorder"]["joint_names"]
+        with self.assertRaisesRegex(ValueError, "joint_names"):
+            analyze(data)
+
+    def test_analyzer_rejects_wrong_robot_or_base_identity(self):
+        data = right_payload()
+        data["recorder"]["robot_name"] = "dm/another-robot"
+        with self.assertRaisesRegex(ValueError, "robot_name"):
+            analyze(data)
+
+        data = right_payload()
+        data["recorder"]["base_frame"] = "other_base"
+        with self.assertRaisesRegex(ValueError, "base_frame"):
+            analyze(data)
+
+    def test_historical_left_contact_and_slope_do_not_enter_solution(self):
+        offset = np.asarray([0.021, -0.012, 0.181])
+        pivot = np.asarray([0.54, 0.08, 0.49])
+        rotations = [
+            np.eye(3),
+            rpy_matrix((math.radians(10), 0, 0)),
+            rpy_matrix((0, math.radians(-9), 0)),
+        ]
+        observations = []
+        for index, rotation in enumerate(rotations):
+            tip_position = pivot - rotation @ offset
+            observations.append({
+                "label": f"P{index}",
+                "pivot_group": "center_mark",
+                "modeled_tip_pose": pose(tip_position, rotation),
+            })
+
+        data = right_payload(observations)
+        data["historical_context"] = {
+            "measured_table_light_contact": {
+                "historical_modeled_tip_l_position_base_m": [999, 999, -999],
+            },
+            "forward_rise_measurement": {
+                "derived_rise_angle_deg": 89.9,
+            },
+        }
+        result = analyze(data)
+        np.testing.assert_allclose(
+            result["offset_solution"]["translation_tip_to_claw_center_m"],
+            offset,
+            atol=1e-10,
+        )
+        self.assertEqual(
+            result["validated_provenance"]["joint_names"],
+            list(EXPECTED_JOINT_NAMES),
+        )
+        self.assertNotIn("historical_context", result)
+
     def test_same_pivot_recovers_tip_to_physical_center_offset(self):
         offset = np.asarray([0.021, -0.012, 0.181])
         pivot = np.asarray([0.54, 0.08, 0.49])
