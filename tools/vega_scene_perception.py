@@ -88,6 +88,37 @@ def _connect_camera_with_retry(log_path):
     raise RuntimeError(f"head camera did not become ready; see {log_path}: {last}")
 
 
+def _aim_head_down(robot, target_head, *, settle_s):
+    """Explicitly enable/command all three head joints and verify readback."""
+    import numpy as np
+
+    if not robot.has_component("head"):
+        raise RuntimeError("Robot reports no head component")
+
+    head = robot.head
+    before = np.asarray(head.get_joint_pos(), dtype=float)
+    print("HEAD BEFORE =", before.tolist(), flush=True)
+
+    # Command all 3 joints; do not inherit arbitrary J2/J3 state.
+    head.set_joint_pos(
+        np.asarray(target_head, dtype=float),
+        wait_time=1.5,
+        exit_on_reach=True,
+        exit_on_reach_kwargs={"tolerance": 0.02},
+    )
+    time.sleep(float(settle_s))
+
+    after = np.asarray(head.get_joint_pos(), dtype=float)
+    print("HEAD AFTER  =", after.tolist(), flush=True)
+    err = np.max(np.abs(after - np.asarray(target_head, dtype=float)))
+    if not np.all(np.isfinite(after)) or err > 0.05:
+        raise RuntimeError(
+            f"Head did not reach requested pose {np.asarray(target_head).tolist()}; "
+            f"readback={after.tolist()}, max_error={float(err):.4f} rad"
+        )
+    return after
+
+
 def _save_frame(output, index, frame, scene):
     import cv2
     import numpy as np
@@ -180,20 +211,29 @@ def main(argv=None):
         target_head = np.asarray(
             [args.head_j1, args.head_j2, args.head_j3], dtype=float
         )
-        robot.head.set_joint_pos(
+        head_q = _aim_head_down(
+            robot,
             target_head,
-            wait_time=1.2,
-            exit_on_reach=True,
-            exit_on_reach_kwargs={"tolerance": 0.02},
+            settle_s=max(float(args.settle_s), 1.0),
         )
-        time.sleep(float(args.settle_s))
-        head_q = np.asarray(robot.head.get_joint_pos(), dtype=float)
-        print("HEAD Q =", head_q.tolist(), flush=True)
 
+        # Only connect/read the camera after verified head readback.
         camera = _connect_camera_with_retry(args.publisher_log)
         index = 0
         while args.frames == 0 or index < args.frames:
             frame = camera.read(include_depth=False)
+            # Refuse to run board CV on an obviously dead/black head stream.
+            frame_mean = float(np.asarray(frame.left_rgb).mean())
+            frame_std = float(np.asarray(frame.left_rgb).std())
+            if frame_mean < 5.0 or frame_std < 3.0:
+                raise RuntimeError(
+                    f"Head RGB looks unpowered/invalid "
+                    f"(mean={frame_mean:.2f}, std={frame_std:.2f})"
+                )
+            print(
+                f"HEAD RGB STATS mean={frame_mean:.1f} std={frame_std:.1f}",
+                flush=True,
+            )
             # Read back each frame so repeated perception remains consistent
             # if another process has moved the head.
             head_q = np.asarray(robot.head.get_joint_pos(), dtype=float)
