@@ -9,7 +9,7 @@
   },
   "historical_context": {
     "measured_table_light_contact": {
-      "left_joints_rad": [
+      "historical_left_arm_joints_rad": [
         0.3743644059,
         0.8141838908,
         1.5522208214,
@@ -18,12 +18,12 @@
         0.453961879,
         -0.5846381783
       ],
-      "modeled_tip_r_position_base_m": [
+      "historical_modeled_tip_l_position_base_m": [
         0.6531807699,
         0.2234521549,
         0.4460002717
       ],
-      "interpretation": "some physical claw geometry first touched the table at this joint state; do not assume modeled tip_r origin equals the operator-defined claw center"
+      "interpretation": "HISTORICAL LEFT-ARM EVIDENCE ONLY: some physical left-claw geometry first touched the table at this joint state; do not use this as a measured tip_r/right-claw floor or tool-frame calibration"
     },
     "forward_rise_measurement": {
       "near_robot_edge_physical_claw_clearance_m": 0.039,
@@ -31,7 +31,8 @@
       "forward_span_m": 0.383,
       "derived_rise_angle_deg": 3.287529,
       "direction": "+base X / away from robot",
-      "note": "this measured 39/61 mm over 383 mm result supersedes the earlier visual estimate of about 10 degrees",\n      "identifiability": "clearance is claw-center minus board-surface height; by itself it cannot distinguish claw-path slope from board-plane slope"
+      "note": "this measured 39/61 mm over 383 mm result supersedes the earlier visual estimate of about 10 degrees",
+      "identifiability": "clearance is claw-center minus board-surface height; by itself it cannot distinguish claw-path slope from board-plane slope"
     },
     "board_width_operator_measured_m": 0.383
   },
