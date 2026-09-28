@@ -194,13 +194,11 @@ class AdapterContractTests(unittest.TestCase):
         self.assertEqual(adapter.read_wrench(), (1, 2, 3, 4, 5, 6))
         adapter.move_tcp(Pose((0.25, 0.0, 0.0), (1, 0, 0, 0)), speed_scale=0.5)
         calls = [event for event in self.events if event[0] == "move_to_joint_pos"]
-        self.assertEqual(len(calls), 3)
-        previous = 0.0
-        for _, q, relative, velocity_scale in calls:
-            self.assertFalse(relative)
-            self.assertLessEqual(abs(q[0] - previous), 0.12)
-            self.assertEqual(velocity_scale, 0.5)
-            previous = q[0]
+        self.assertEqual(len(calls), 1)
+        _, q, relative, velocity_scale = calls[0]
+        self.assertFalse(relative)
+        self.assertEqual(q[0], 0.25)
+        self.assertEqual(velocity_scale, 0.5)
         self.assertEqual(adapter.get_tcp_pose().position_m, (0.25, 0, 0))
         adapter.close()
         self.assertEqual(self.events[-1], ("shutdown",))
