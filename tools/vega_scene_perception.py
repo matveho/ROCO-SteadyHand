@@ -251,6 +251,7 @@ def main(argv=None):
     adapter = None
     try:
         cfg["allow_robot_init_head_motion"] = True
+        cfg["auto_clear_software_estop_on_connect"] = True
         cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
         adapter = VegaAdapter(cfg)
         adapter.connect()
