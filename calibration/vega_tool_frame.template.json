@@ -31,7 +31,7 @@
       "forward_span_m": 0.383,
       "derived_rise_angle_deg": 3.287529,
       "direction": "+base X / away from robot",
-      "note": "this measured 39/61 mm over 383 mm result supersedes the earlier visual estimate of about 10 degrees"
+      "note": "this measured 39/61 mm over 383 mm result supersedes the earlier visual estimate of about 10 degrees",\n      "identifiability": "clearance is claw-center minus board-surface height; by itself it cannot distinguish claw-path slope from board-plane slope"
     },
     "board_width_operator_measured_m": 0.383
   },
