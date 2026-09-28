@@ -79,6 +79,15 @@ class OnsiteTests(unittest.TestCase):
         self.assertEqual(wrists["api_labels"], ["wrist_a", "wrist_b"])
         self.assertEqual(wrists["api_label_to_physical_mount"], {"wrist_a": "right_wrist", "wrist_b": "left_wrist"})
 
+    def test_vega_default_working_side_is_right(self):
+        robot = load_bundle("vega")["robot"]
+        calibration = load_bundle("vega")["calibration"]
+        self.assertEqual(robot["working_arm"], "right")
+        self.assertEqual(robot["kinematics"]["ee_frame"], "tip_r")
+        self.assertEqual(robot["gripper"]["scope"], "right")
+        self.assertEqual(calibration["wrist_frame"], "R_ee")
+        self.assertEqual(calibration["tcp_frame"], "tip_r")
+
     def test_runtime_camera_intrinsics_parser(self):
         self.assertEqual(
             intrinsics_from_camera_info(
