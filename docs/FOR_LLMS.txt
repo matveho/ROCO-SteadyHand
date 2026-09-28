@@ -1,4 +1,133 @@
 ===============================================================================
+SIDE AGENT 2 UPDATE — 2026-09-28 ~12:48 EDT — BATTERY SOURCE BRIDGE READY
+===============================================================================
+
+This update supersedes older assumptions that source-part identity can be
+derived from final-layout ordering or a fixed 9-part board state.
+
+New physical facts from operator:
+  - measured board width = 383 mm;
+  - initial/intermediate board state can be arbitrary;
+  - parts may be missing;
+  - gears may be separated;
+  - part count must NEVER gate execution;
+  - final-layout ordering must NOT identify source parts.
+
+New battery-specific source-localization code:
+  7e8a996f5bac14b13174e583c1edae0fdc03c8a6
+    steadyhand/battery_size1_source.py
+    Validates manual board calibration and implements explicit four-corner
+    homography -> metric board offset -> corrected base XY.
+  bce1c3cd3bb5f311a8ea822cf0ec0dc1e4915032
+    tools/vega_battery_size1_source_localize.py
+    No-motion operator-explicit source localization tool.
+  a86c359e39219b9e3c058e04f2340555663b4859
+    tests/test_battery_size1_source.py
+  087be80cfb816c61dc1470aa3b7921ce01feed13
+    docs/VEGA_BATTERY_SIZE1_SOURCE.md
+
+CI for the code/test head:
+  a86c359e39219b9e3c058e04f2340555663b4859
+  SUCCESS: 134 tests, 0 failures, 11 skipped.
+
+SOURCE LOCALIZATION DESIGN:
+  Do NOT use head depth/extrinsics for first battery acquisition.
+  Do NOT use shared part count/order.
+  Do NOT use FINAL_LAYOUT_ORDER.
+
+Preferred first-bring-up mapping:
+  operator-selected battery_size1 head pixel
+    + operator-selected four physical board corners in the same image
+    -> explicit planar homography
+    -> normalized board fractions
+    -> explicit physical board dimensions
+    -> metric offset from manually calibrated board center
+    -> manual corrected board +X/+Y axes
+    -> coarse base-frame XY
+
+This is intentionally independent of head intrinsics, depth, head kinematics and
+inherited camera extrinsics.
+
+Measured physical width:
+  383 mm
+The tool defaults board width to 383 mm, NOT 400 mm.
+It does NOT invent the second dimension.
+Homography mode requires:
+  --width-axis x|y
+  --other-dimension-mm <measured value>
+
+If the second board dimension is not yet available, a fallback exists:
+  board-offset mode
+The operator supplies battery center offset from board center directly in mm
+along manual board +X/+Y. The selected head pixel is still recorded for
+identity/audit. This mode requires no board dimension guess.
+
+Manual calibration validation:
+  - robot_name must match competition robot;
+  - base_frame and tcp_frame must match current config;
+  - corrected center/+X/+Y vectors and reference distances must be sane;
+  - generated_at_utc must be present and not stale (default limit 720 min);
+  - operator must explicitly confirm the board has not physically moved since
+    calibration with --confirm-board-unchanged-since-calibration.
+
+No-motion capture:
+  python3 tools/vega_battery_size1_source_localize.py capture \
+    --output runs/battery_source_head
+
+Preferred homography localization:
+  python3 tools/vega_battery_size1_source_localize.py homography \
+    --manual-calibration calibration/vega_board_manual.json \
+    --image runs/battery_source_head/head_source.png \
+    --battery-pixel BAT_U BAT_V \
+    --corner-xm-ym U1 V1 \
+    --corner-xp-ym U2 V2 \
+    --corner-xp-yp U3 V3 \
+    --corner-xm-yp U4 V4 \
+    --width-axis x \
+    --other-dimension-mm MEASURED_OTHER_DIM_MM \
+    --confirm-board-unchanged-since-calibration
+
+Corner names are PHYSICAL board-axis signs, not screen TL/TR/BR/BL.
+
+Output:
+  BATTERY_SIZE1 COARSE BASE XY = X Y
+  CENTER ARGUMENT = --coarse-xy X Y
+plus localization.json containing:
+  source image/path/hash,
+  operator-selected battery pixel,
+  manual calibration path/hash,
+  selected corner pixels,
+  physical board dimensions,
+  normalized board coordinates,
+  metric board offset,
+  coarse base XY.
+
+IMPORTANT MOTION HANDOFF:
+  source-localize performs NO ARM MOTION.
+  tools/vega_battery_size1_center.py --coarse-xy is also a gate, not a coarse
+  navigation command. The main motion path must first move the left TCP to an
+  established safe low hover at the resulting base XY, preserving vertical
+  claw orientation.
+  Only then run battery_size1_center with that measured hover XY.
+
+The --feature U V for vega_battery_size1_center.py is a pixel in the INITIAL
+wrist_b image after coarse hover. It is NOT the head-image battery pixel.
+
+Remaining blockers before first autonomous battery acquisition:
+  - manual board calibration must finish successfully;
+  - if homography mode is used, the second board dimension must be measured and
+    the operator must explicitly establish whether 383 mm is board +X span or
+    board +Y span;
+  - main motion path still has to establish the coarse hover at source-localizer
+    output XY;
+  - battery jaw-goal pixel and grasp Z must be taught using the already accepted
+    battery calibration tooling before actual descent/pick.
+
+===============================================================================
+END SIDE AGENT 2 BATTERY SOURCE UPDATE
+===============================================================================
+
+===============================================================================
 SIDE AGENT 2 UPDATE — 2026-09-28 ~12:03 EDT — WRIST FINE-CENTER READY
 ===============================================================================
 
