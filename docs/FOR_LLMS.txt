@@ -2921,3 +2921,22 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
     - verify software E-stop actually cleared before commanding motion.
   Actual motion-command failures still use the adapter stop path.
   This removes the repeated manual software-E-stop-clear step between tests.
+
+2026-09-28 BOARD STATE MUST NEVER GATE BOARD LOCALIZATION/CALIBRATION:
+  Operator encountered:
+    RuntimeError: Found 8 components but largest component does not look like the expected touching-gear cluster
+  This was invalid behavior because the competition initial/intermediate board can
+  have missing/moved parts and separated gears. Shared part segmentation is now
+  count-agnostic:
+    - no expected_parts requirement;
+    - no count-triggered touching-gear split;
+    - no exception for 8/9/10/etc components;
+    - final-layout naming is advisory only and leaves detections unlabeled when
+      the exact final-layout count is not present.
+  Board localization/calibration must proceed independently of part count/layout.
+
+  VERIFIED physical measurement from operator:
+    board width = 383 mm
+  Do not silently continue treating that measured width as 400 mm in future
+  geometry work. Only width was supplied in this measurement; do not invent the
+  second dimension.
