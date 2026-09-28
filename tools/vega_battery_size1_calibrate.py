@@ -173,7 +173,6 @@ def main(argv=None):
         if not (0 <= u < w and 0 <= v < h):
             raise ValueError(f"goal pixel {(u, v)} is outside image {w}x{h}")
 
-        value = _load_initialized(path, cfg)
         floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
         cfg["allow_robot_init_head_motion"] = True
         robot = VegaAdapter(cfg)
@@ -210,6 +209,7 @@ def main(argv=None):
     if args.command == "record-grasp-z":
         if not args.confirm_read_current_tcp:
             p.error("record-grasp-z requires --confirm-read-current-tcp")
+        value = _load_initialized(path, cfg)
         floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
         cfg["allow_robot_init_head_motion"] = True
         robot = VegaAdapter(cfg)
