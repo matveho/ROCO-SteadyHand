@@ -37,6 +37,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.config import load_bundle
 from steadyhand.kinematics import PinocchioArmKinematics
+from tools.vega_tool_frame_calibration import (
+    EXPECTED_BASE_FRAME,
+    EXPECTED_JOINT_NAMES,
+    EXPECTED_RECORDER_MODE,
+    EXPECTED_RECORDER_TOOL,
+    EXPECTED_ROBOT_NAME,
+    EXPECTED_TCP_FRAME,
+    EXPECTED_WORKING_ARM,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -218,47 +227,48 @@ def _fallback_context():
                 "required only to resolve yaw/full frame"
             ),
         },
-        "historical_context": {
-            "forward_rise_measurement": {
-                "near_robot_edge_physical_claw_clearance_m": 0.039,
-                "far_edge_physical_claw_clearance_m": 0.061,
-                "forward_span_m": 0.383,
-                "derived_rise_angle_deg": math.degrees(
-                    math.atan((0.061 - 0.039) / 0.383)
-                ),
-                "direction": "+base X / away from robot",
-                "identifiability": (
-                    "clearance is claw-center minus board-surface height; "
-                    "by itself it cannot distinguish claw-path slope from "
-                    "board-plane slope"
-                ),
-            },
-            "board_width_operator_measured_m": 0.383,
-        },
         "measurement_protocol": [instruction for _, instruction in STAGES],
     }
 
 
 def _load_template_context():
+    """Load only calibration instructions, never historical numeric evidence."""
     fallback = _fallback_context()
     if not TEMPLATE_PATH.is_file():
         return fallback
     try:
         data = json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        # The recorder must still emit analyzer-ready JSON if the optional
-        # human-facing template is absent or malformed.  The analyzer itself
-        # does not require this context.
         return fallback
     return {
         key: deepcopy(data.get(key, fallback[key]))
         for key in (
             "purpose",
             "frame_convention",
-            "historical_context",
             "measurement_protocol",
         )
     }
+
+
+def _validate_runtime_identity(cfg):
+    kin = cfg.get("kinematics") or {}
+    checks = (
+        ("robot_name", cfg.get("robot_name"), EXPECTED_ROBOT_NAME),
+        ("working_arm", cfg.get("working_arm"), EXPECTED_WORKING_ARM),
+        ("base_frame", kin.get("base_frame"), EXPECTED_BASE_FRAME),
+        ("tcp_frame", kin.get("ee_frame"), EXPECTED_TCP_FRAME),
+    )
+    for field, actual, expected in checks:
+        if actual != expected:
+            raise ValueError(
+                f"tool-frame recorder {field}={actual!r}, expected {expected!r}"
+            )
+    joint_names = tuple(kin.get("right_arm_joint_names") or ())
+    if joint_names != EXPECTED_JOINT_NAMES:
+        raise ValueError(
+            "tool-frame recorder right_arm_joint_names do not match the "
+            f"required order {EXPECTED_JOINT_NAMES!r}"
+        )
 
 
 def build_analyzer_payload(
@@ -266,7 +276,7 @@ def build_analyzer_payload(
     *,
     explicit_ab_delta_m=None,
     translation_tolerance_m=0.003,
-    robot_name=None,
+    robot_name=EXPECTED_ROBOT_NAME,
 ):
     if not observations:
         raise ValueError("at least one captured observation is required")
@@ -274,15 +284,23 @@ def build_analyzer_payload(
     if any(not label for label in labels) or len(labels) != len(set(labels)):
         raise ValueError("captured observations require unique labels")
 
+    if robot_name != EXPECTED_ROBOT_NAME:
+        raise ValueError(
+            f"tool-frame recorder robot_name={robot_name!r}, "
+            f"expected {EXPECTED_ROBOT_NAME!r}"
+        )
+
     payload = {
         "schema_version": 1,
         **_load_template_context(),
         "recorder": {
-            "tool": "tools/vega_tool_frame_record.py",
-            "mode": "READ_ONLY_NO_MOTION_COMMANDS",
-            "robot_name": robot_name,
-            "base_frame": "vega_1u_base_link",
-            "tcp_frame": "tip_r",
+            "tool": EXPECTED_RECORDER_TOOL,
+            "mode": EXPECTED_RECORDER_MODE,
+            "robot_name": EXPECTED_ROBOT_NAME,
+            "base_frame": EXPECTED_BASE_FRAME,
+            "working_arm": EXPECTED_WORKING_ARM,
+            "tcp_frame": EXPECTED_TCP_FRAME,
+            "joint_names": list(EXPECTED_JOINT_NAMES),
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "note": (
                 "Robot repositioning between observations was external to this "
@@ -404,9 +422,10 @@ class ReadOnlyVegaTipReader:
                 "because this recorder must remain no-motion."
             )
 
-        working_arm = self.cfg.get("working_arm")
-        if working_arm != "right":
-            raise RuntimeError("tool-frame recorder is locked to working_arm='right'")
+        try:
+            _validate_runtime_identity(self.cfg)
+        except ValueError as exc:
+            raise RuntimeError(str(exc)) from exc
         component_name = "right_arm"
 
         kin_cfg = dict(self.cfg["kinematics"])
@@ -629,10 +648,10 @@ def main(argv=None):
         parser.error("--fresh-timeout-s must be finite and > 0")
 
     cfg = load_bundle("vega")["robot"]
-    if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
-        parser.error(
-            "tool-frame recorder currently requires working_arm=right and ee_frame=tip_r"
-        )
+    try:
+        _validate_runtime_identity(cfg)
+    except ValueError as exc:
+        parser.error(str(exc))
 
     length_scale = 0.001 if args.external_length_unit == "mm" else 1.0
     tolerance_m = float(args.translation_tolerance_mm) / 1000.0
