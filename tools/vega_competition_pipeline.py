@@ -26,6 +26,7 @@ from tools.vega_board_five_point_calibrate import main as run_five_point_calibra
 from tools.vega_task_coordinate_reachability import (
     DEFAULT_POINTS,
     _finite_vector,
+    calibrated_surface_z,
     _live_pose,
     _load_manual,
     _resolve_point,
@@ -62,8 +63,7 @@ def _load_runtime():
 
 
 def _surface_z(x, y, plane):
-    a, b, c = plane
-    return float(a) * float(x) + float(b) * float(y) + float(c)
+    return calibrated_surface_z(x, y, plane)
 
 
 def _board_targets(runtime, clearance_m):

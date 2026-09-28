@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from steadyhand.models import Pose
-from tools.vega_task_coordinate_reachability import _live_pose, _resolve_point
+from tools.vega_task_coordinate_reachability import calibrated_surface_z, _live_pose, _resolve_point
 
 
 class TaskCoordinateReachabilityTests(unittest.TestCase):
@@ -32,6 +32,13 @@ class TaskCoordinateReachabilityTests(unittest.TestCase):
         for name in ("rod_16mm.connect", "gear_20teeth.grade"):
             _, _, xyz = _resolve_point(name, self.data)
             self.assertEqual(len(xyz), 3)
+
+    def test_surface_residual_correction_hits_measured_anchor(self):
+        model = {
+            "coefficients": (0.0, 0.0, 0.50),
+            "anchors": [{"x_m": 0.1, "y_m": -0.2, "residual_m": 0.004}],
+        }
+        self.assertAlmostEqual(calibrated_surface_z(0.1, -0.2, model), 0.504)
 
 
 if __name__ == "__main__":

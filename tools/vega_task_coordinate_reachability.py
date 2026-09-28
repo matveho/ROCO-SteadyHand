@@ -63,7 +63,48 @@ def _load_manual(path, cfg):
     a, b, c = (float(coefficients.get(key)) for key in ("a", "b", "c"))
     if not all(math.isfinite(v) for v in (a, b, c)):
         raise ValueError("five-point calibration lacks a finite board surface plane")
-    return center, ux, uy, (a, b, c)
+    anchors = []
+    samples = raw.get("samples") or {}
+    for label in ("CENTER", "TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT"):
+        sample = samples.get(label) or {}
+        pose = sample.get("tip_r_pose") or {}
+        position = pose.get("position_m") or []
+        measured_mm = sample.get("measured_surface_z_mm")
+        if len(position) == 3 and measured_mm is not None:
+            x, y = float(position[0]), float(position[1])
+            measured_z = float(measured_mm) / 1000.0
+            plane_z = a * x + b * y + c
+            if all(math.isfinite(v) for v in (x, y, measured_z, plane_z)):
+                anchors.append({"label": label, "x_m": x, "y_m": y,
+                                "residual_m": measured_z - plane_z})
+    return center, ux, uy, {"coefficients": (a, b, c), "anchors": anchors}
+
+
+def calibrated_surface_z(x, y, surface_model):
+    """Evaluate the fitted board plane plus measured local residual correction."""
+    if isinstance(surface_model, dict):
+        a, b, c = surface_model["coefficients"]
+        anchors = surface_model.get("anchors") or []
+    else:
+        a, b, c = surface_model
+        anchors = []
+    base = float(a) * float(x) + float(b) * float(y) + float(c)
+    if not anchors:
+        return base
+    distances = [
+        (float(anchor["x_m"]) - float(x)) ** 2
+        + (float(anchor["y_m"]) - float(y)) ** 2
+        for anchor in anchors
+    ]
+    nearest = min(distances)
+    if nearest < 1e-12:
+        return base + float(anchors[distances.index(nearest)]["residual_m"])
+    weights = [1.0 / distance for distance in distances]
+    correction = sum(
+        weight * float(anchor["residual_m"])
+        for weight, anchor in zip(weights, anchors)
+    ) / sum(weights)
+    return base + correction
 
 
 def _resolve_point(name, task_data):
@@ -78,13 +119,11 @@ def _resolve_point(name, task_data):
 def _live_pose(source_xyz, *, source_center, live_center, ux, uy, surface_plane, clearance_m, quat):
     dx = float(source_xyz[0]) - float(source_center[0])
     dy = float(source_xyz[1]) - float(source_center[1])
-    a, b, c = surface_plane
-    surface_z = a * (live_center[0] + ux[0] * dx + uy[0] * dy) + b * (
-        live_center[1] + ux[1] * dx + uy[1] * dy
-    ) + c
+    live_x = live_center[0] + ux[0] * dx + uy[0] * dy
+    live_y = live_center[1] + ux[1] * dx + uy[1] * dy
+    surface_z = calibrated_surface_z(live_x, live_y, surface_plane)
     return Pose(
-        (live_center[0] + ux[0] * dx + uy[0] * dy,
-         live_center[1] + ux[1] * dx + uy[1] * dy,
+        (live_x, live_y,
          float(surface_z + clearance_m)),
         tuple(quat),
     )
