@@ -29,7 +29,8 @@ CAMERA_CLEAR_ESCAPE_LIFT_M = 0.08
 CAMERA_CLEAR_ESCAPE_ONLY_BELOW_FLOOR_PLUS_M = 0.28
 CAMERA_CLEAR_VERTICALIZE_Z_CANDIDATES_ABOVE_FLOOR_M = (0.45, 0.40, 0.35, 0.30)
 CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD = 0.020
-CAMERA_CLEAR_RETAIN_HIGH_POSE_ABOVE_FLOOR_M = 0.40
+CAMERA_CLEAR_RETAIN_HIGH_POSE_ABOVE_FLOOR_M = 0.30
+CAMERA_CLEAR_ESCAPE_POSITION_TOLERANCE_M = 0.002
 
 
 def vertical_claw_tip_quaternion(yaw_rad: float = 0.0):
@@ -192,26 +193,52 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
                 (
                     float(current.position_m[0]),
                     float(current.position_m[1]),
-                    min(
-                        float(current.position_m[2]) + CAMERA_CLEAR_ESCAPE_LIFT_M,
-                        low_threshold,
-                    ),
+                    float(current.position_m[2]) + CAMERA_CLEAR_ESCAPE_LIFT_M,
                 ),
                 tuple(float(v) for v in current.quaternion_wxyz),
             )
-            if _ik_feasible(robot, escape):
+
+            old_position_tol = float(kin_cfg["position_tolerance_m"])
+            kin_cfg["position_tolerance_m"] = min(
+                old_position_tol,
+                CAMERA_CLEAR_ESCAPE_POSITION_TOLERANCE_M,
+            )
+            try:
+                feasible = _ik_feasible(robot, escape)
+            finally:
+                kin_cfg["position_tolerance_m"] = old_position_tol
+
+            if feasible:
                 print(
                     "CAMERA CLEAR: ESCAPE LIFT ->",
                     tuple(round(float(v), 4) for v in escape.position_m),
                     flush=True,
                 )
-                move_tcp_segmented(
-                    robot,
-                    escape,
-                    speed_scale=speed_scale,
-                    max_translation_step_m=0.08,
-                    max_orientation_step_rad=0.80,
-                    min_tcp_z_m=floor_m,
+                old_position_tol = float(kin_cfg["position_tolerance_m"])
+                kin_cfg["position_tolerance_m"] = min(
+                    old_position_tol,
+                    CAMERA_CLEAR_ESCAPE_POSITION_TOLERANCE_M,
+                )
+                try:
+                    move_tcp_segmented(
+                        robot,
+                        escape,
+                        speed_scale=speed_scale,
+                        max_translation_step_m=0.04,
+                        max_orientation_step_rad=0.80,
+                        min_tcp_z_m=floor_m,
+                    )
+                finally:
+                    kin_cfg["position_tolerance_m"] = old_position_tol
+                current = robot.get_tcp_pose()
+                if current is None:
+                    raise RuntimeError(
+                        "camera-clear escape completed but current TCP pose is unavailable"
+                    )
+                print(
+                    "CAMERA CLEAR: AFTER ESCAPE ->",
+                    tuple(round(float(v), 4) for v in current.position_m),
+                    flush=True,
                 )
             else:
                 print(
@@ -222,6 +249,11 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
         try:
             verticalize = _reachable_verticalize_pose(robot, floor_m=floor_m)
         except RuntimeError as exc:
+            current = robot.get_tcp_pose()
+            if current is None:
+                raise RuntimeError(
+                    "verticalization failed and current TCP pose is unavailable"
+                ) from exc
             if _can_retain_high_pose(current, floor_m=floor_m):
                 print(
                     "CAMERA CLEAR: VERTICALIZE unavailable from current seed; "
