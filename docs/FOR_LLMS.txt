@@ -2265,3 +2265,29 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
     the two gears touch/overlap in the dark binary mask and normally appear as
     one connected component; detector handles the 8-components-for-9-parts case
     by splitting the largest wide component at its column occupancy valley.
+
+
+2026-09-28 WRIST CAMERA LIVE BLOCKER (SECONDARY ROBOT INSPECTION):
+  Live SSH inspection found no usable wrist-camera capture path on the assigned
+  competition Vega:
+    - tools/vega_wrists_probe.py fails to import wrist_cameras in BOTH system
+      Python and Conda Python;
+    - only the two head ZED video devices are exposed;
+    - documented wrist runtime/install directories are absent;
+    - vendor ZED X One examples/config are NOT evidence that the documented
+      Sony ISX031 wrists are wired/supported on this unit.
+  No robot motion, service changes, driver installation, or module changes were
+  performed during this inspection.
+  Required external resolution:
+    confirm wrist capture-board wiring/power and supported Sony driver/API with
+    supplier/organizer, then verify left/right by covering a lens.
+  Engineering should NOT block on this. Continue head-camera board + part
+  localization and board->base integration. Wrist fine centering remains the
+  preferred precision layer if/when the hardware path is restored.
+
+2026-09-28 REAL-IMAGE DETECTION VISUAL CHECK:
+  Current repo algorithm was independently replayed on the prior competition
+  head image. It draws the 400x400 mm board boundary correctly and returns nine
+  dark part boxes after perspective rectification. The touching gear pair is the
+  only merged connected-component case and is split board-locally. This supports
+  the planned deterministic identity-by-board-region approach.
