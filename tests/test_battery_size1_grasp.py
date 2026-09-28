@@ -54,7 +54,7 @@ def alignment_result(path, calibration_path, *, pose=None, goal=(800.0, 700.0)):
     value = {
         "status": "converged",
         "part": "battery_size1",
-        "wrist_camera": "wrist_b",
+        "wrist_camera": "wrist_a",
         "calibration_sha256": hashlib.sha256(Path(calibration_path).read_bytes()).hexdigest(),
         "goal_uv": list(goal),
         "tcp_position_m": list(pose.position_m),
@@ -296,7 +296,7 @@ class CenterToolTests(unittest.TestCase):
                 }
 
             with patch("tools.vega_battery_size1_center.VegaWristCameras", return_value=Cameras()), \
-                    patch("tools.vega_battery_size1_center.WristBOnlyCapture", Capture), \
+                    patch("tools.vega_battery_size1_center.WristAOnlyCapture", Capture), \
                     patch("tools.vega_battery_size1_center.VegaAdapter", Robot), \
                     patch("tools.vega_battery_size1_center.run_xy_servo", side_effect=servo):
                 code = center_main(
@@ -312,7 +312,7 @@ class CenterToolTests(unittest.TestCase):
             self.assertEqual(seen["goal"], (810.0, 710.0))
             result = json.loads((out / "result.json").read_text())
             self.assertEqual(result["part"], "battery_size1")
-            self.assertEqual(result["wrist_camera"], "wrist_b")
+            self.assertEqual(result["wrist_camera"], "wrist_a")
             self.assertEqual(result["alignment_goal"], "operator_taught_jaw_pixel")
             self.assertEqual(
                 result["calibration_sha256"],
