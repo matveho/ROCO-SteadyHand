@@ -19,6 +19,8 @@ from steadyhand.vega_camera_clear import vertical_claw_tip_quaternion
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--q', nargs=7, type=float, required=True)
+    parser.add_argument('--bounded-restarts', type=int, default=0,
+                        help='additional deterministic numerical seeds; no motion')
     args = parser.parse_args()
     import numpy as np
     try:
@@ -35,6 +37,9 @@ def main():
     kin = PinocchioArmKinematics(cfg['urdf_path'], 'tip_r', kc['right_arm_joint_names'], kc)
     pin = kin.pin
     seed = np.asarray(args.q)
+    if not 0 <= args.bounded_restarts <= 20:
+        parser.error('--bounded-restarts must be 0..20')
+    rng = np.random.default_rng(20260928)
     current = kin.forward(seed)
     print('NO ROBOT CONNECTION OR MOTION', flush=True)
     print('CURRENT', current, flush=True)
@@ -72,6 +77,13 @@ def main():
                 lower = np.maximum(kin._lower, seed-2.5)
                 upper = np.minimum(kin._upper, seed+2.5)
                 fit = least_squares(error, seed, args=(goal,), bounds=(lower, upper), max_nfev=400)
+                for _ in range(args.bounded_restarts):
+                    if np.linalg.norm(fit.fun) < 1e-5:
+                        break
+                    alternative = least_squares(error, rng.uniform(lower, upper),
+                                                args=(goal,), bounds=(lower, upper), max_nfev=250)
+                    if np.linalg.norm(alternative.fun) < np.linalg.norm(fit.fun):
+                        fit = alternative
                 actual = kin.forward(fit.x)
                 row['bounded'] = {
                     'position_error_m': float(np.linalg.norm(np.array(actual.position_m)-xyz)),
