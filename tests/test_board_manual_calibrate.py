@@ -1,11 +1,14 @@
 import math
 import unittest
+from unittest import mock
 
 from steadyhand.models import Pose
 from tools.vega_board_manual_calibrate import (
     DEFAULT_FORWARD_RISE_ANGLE_DEG,
     ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M,
+    RIGHT_READY_MIN_ABOVE_FLOOR_M,
     _board_parallel_jog_delta,
+    _capture_current_right_ready,
     _coarse_target_preserving_orientation,
     _rotate_quaternion_in_base,
 )
@@ -14,6 +17,33 @@ from tools.vega_board_manual_calibrate import (
 class BoardManualCalibrationTests(unittest.TestCase):
     def test_orientation_teach_clearance_matches_camera_clear_fallback(self):
         self.assertAlmostEqual(ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M, 0.30)
+        self.assertAlmostEqual(RIGHT_READY_MIN_ABOVE_FLOOR_M, 0.30)
+
+    def test_manual_right_ready_records_live_joints_and_tip_pose(self):
+        class FakeRobot:
+            def _read_joint_positions(self):
+                return (-2.1, -0.1, 0.2, -1.4, 0.3, 0.7, -0.2)
+
+            def get_tcp_pose(self):
+                return Pose((0.40, -0.20, 0.90), (0.5, 0.5, -0.5, 0.5))
+
+        with mock.patch("builtins.input", return_value=""):
+            joints, pose = _capture_current_right_ready(FakeRobot(), floor=0.456)
+
+        self.assertEqual(joints, (-2.1, -0.1, 0.2, -1.4, 0.3, 0.7, -0.2))
+        self.assertEqual(pose.position_m, (0.40, -0.20, 0.90))
+
+    def test_manual_right_ready_rejects_low_pose(self):
+        class FakeRobot:
+            def _read_joint_positions(self):
+                return (0.0,) * 7
+
+            def get_tcp_pose(self):
+                return Pose((0.40, -0.20, 0.70), (1.0, 0.0, 0.0, 0.0))
+
+        with mock.patch("builtins.input", return_value=""):
+            with self.assertRaisesRegex(RuntimeError, "below"):
+                _capture_current_right_ready(FakeRobot(), floor=0.456)
 
     def test_coarse_target_preserves_taught_orientation(self):
         current = Pose(

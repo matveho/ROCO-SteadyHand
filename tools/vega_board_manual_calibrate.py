@@ -23,6 +23,12 @@ The operator measured the physical claw-center clearance as 39 mm at the near
 measured forward-rise slope is used for forward/back Z compensation. A visibly
 angled claw is still reported, not silently treated as a calibrated vertical
 orientation.
+
+With --use-current-right-ready, the post-image automatic verticalization is
+skipped. The operator manually establishes a high, downward-facing RIGHT_READY
+pose, then the live seven right-arm joints and modeled tip_r pose are recorded
+as provenance for the calibration. This is the preferred route when the robot
+starts in the folded near-limit configuration.
 """
 
 import argparse
@@ -59,6 +65,7 @@ MEASURED_NEAR_CLAW_HEIGHT_MM = 39.0
 MEASURED_FAR_CLAW_HEIGHT_MM = 61.0
 MEASURED_FORWARD_SPAN_MM = 383.0
 ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M = 0.30
+RIGHT_READY_MIN_ABOVE_FLOOR_M = 0.30
 
 DEFAULT_FORWARD_RISE_ANGLE_DEG = math.degrees(
     math.atan(
@@ -237,6 +244,47 @@ def _interactive_teach_orientation(robot, *, floor, speed_scale=0.60, max_step_d
         _print_pose("MEASURED", robot.get_tcp_pose())
 
 
+def _capture_current_right_ready(robot, *, floor):
+    """Accept an operator-taught ready pose without commanding a reorientation.
+
+    The robot is under manual control while this prompt is active. Reading the
+    joints only after the operator confirms avoids recording a stale shoulder
+    step or an intermediate pose. This helper deliberately validates height and
+    finite state but does not infer physical claw orientation from the URDF.
+    """
+    minimum_z = float(floor) + RIGHT_READY_MIN_ABOVE_FLOOR_M
+    print("", flush=True)
+    print("=== MANUAL RIGHT_READY ===", flush=True)
+    print(
+        "Using manual robot control, place the RIGHT claw high in free space "
+        "with the physical jaws/approach axis pointing down toward the board.",
+        flush=True,
+    )
+    print(
+        f"Keep the TCP at or above z={minimum_z:.3f} m, leave comfortable joint "
+        "margins, and keep the board visible. No arm motion will be commanded "
+        "by this step.",
+        flush=True,
+    )
+    input("When RIGHT_READY is physically established, press Enter to record it: ")
+
+    joints = tuple(float(v) for v in robot._read_joint_positions())
+    if len(joints) != 7 or any(not math.isfinite(v) for v in joints):
+        raise RuntimeError("RIGHT_READY requires seven finite measured right-arm joints")
+    pose = robot.get_tcp_pose()
+    if pose is None:
+        raise RuntimeError("RIGHT_READY requires a measured tip_r pose")
+    if float(pose.position_m[2]) < minimum_z:
+        raise RuntimeError(
+            f"RIGHT_READY TCP z={float(pose.position_m[2]):.6f} m is below "
+            f"the required high-pose minimum {minimum_z:.6f} m"
+        )
+
+    print("RIGHT_READY JOINTS =", list(joints), flush=True)
+    _print_pose("RIGHT_READY TIP_R", pose)
+    return joints, pose
+
+
 def _board_parallel_jog_delta(command, mm, forward_rise_angle_deg):
     """Return commanded base-frame dx,dy,dz for a board-parallel claw-center jog.
 
@@ -389,6 +437,14 @@ def main(argv=None):
         default=0.0,
         help="legacy compatibility option; board calibration preserves live TCP orientation",
     )
+    p.add_argument(
+        "--use-current-right-ready",
+        action="store_true",
+        help=(
+            "after the head image, pause for a manually taught high RIGHT_READY "
+            "pose and skip automatic post-image verticalization"
+        ),
+    )
     p.add_argument("--settle-s", type=float, default=0.5)
     p.add_argument("--publisher-log", default="~/head_camera.log")
     p.add_argument("--output", default="calibration/vega_board_manual.json")
@@ -512,21 +568,43 @@ def main(argv=None):
         print("HEAD PREDICTED +X UNIT =", tuple(round(float(v), 6) for v in bx), flush=True)
         print("HEAD PREDICTED +Y UNIT =", tuple(round(float(v), 6) for v in by), flush=True)
 
-        print("HEAD IMAGE CAPTURE COMPLETE; VERTICALIZING ARM", flush=True)
-        coarse_orientation_pose = move_verticalize_after_image(
-            robot,
-            floor_m=floor,
-            speed_scale=0.90,
-        )
-        print(
-            "COARSE ORIENTATION: using restored post-image verticalized quaternion =",
-            tuple(round(float(v), 7) for v in coarse_orientation_pose.quaternion_wxyz),
-            flush=True,
-        )
+        print("HEAD IMAGE CAPTURE COMPLETE", flush=True)
+        right_ready_joints = None
+        if args.use_current_right_ready:
+            right_ready_joints, coarse_orientation_pose = _capture_current_right_ready(
+                robot,
+                floor=floor,
+            )
+            orientation_status = (
+                "OPERATOR_ACCEPTED_MANUAL_RIGHT_READY; "
+                "automatic post-image verticalization skipped; "
+                "physical claw orientation is operator-verified"
+            )
+            print(
+                "COARSE ORIENTATION: preserving manually accepted RIGHT_READY tip_r quaternion =",
+                tuple(round(float(v), 7) for v in coarse_orientation_pose.quaternion_wxyz),
+                flush=True,
+            )
+        else:
+            print("VERTICALIZING ARM", flush=True)
+            coarse_orientation_pose = move_verticalize_after_image(
+                robot,
+                floor_m=floor,
+                speed_scale=0.90,
+            )
+            orientation_status = (
+                "RESTORED_POST_IMAGE_VERTICALIZATION_SEQUENCE; "
+                "uses the previously successful Vega verticalization routine"
+            )
+            print(
+                "COARSE ORIENTATION: using restored post-image verticalized quaternion =",
+                tuple(round(float(v), 7) for v in coarse_orientation_pose.quaternion_wxyz),
+                flush=True,
+            )
         if abs(float(args.claw_yaw_deg)) > 1e-12:
             print(
                 "NOTE: --claw-yaw-deg is ignored during board calibration; "
-                "restored post-image verticalized orientation is used",
+                "the accepted working orientation is used",
                 flush=True,
             )
 
@@ -593,6 +671,11 @@ def main(argv=None):
                 "forward_rise_angle_deg": float(args.forward_rise_angle_deg),
                 "model": "dz_commanded=-dx_base*tan(angle)",
                 "applies_to": "manual forward/back jogs only",
+                "status": (
+                    "DISABLED_UNVERIFIED_FOR_RIGHT_ARM"
+                    if abs(float(args.forward_rise_angle_deg)) <= 1e-12
+                    else "OPERATOR_SELECTED_CALIBRATION_VALUE"
+                ),
                 "source_measurements_mm": {
                     "near_robot_edge_claw_height": MEASURED_NEAR_CLAW_HEIGHT_MM,
                     "far_edge_claw_height": MEASURED_FAR_CLAW_HEIGHT_MM,
@@ -618,15 +701,19 @@ def main(argv=None):
                 "x_reference_distance_m": float(np.linalg.norm(dx)),
                 "y_reference_distance_m": float(np.linalg.norm(dy)),
             },
-            "orientation_status": (
-                "RESTORED_POST_IMAGE_VERTICALIZATION_SEQUENCE; "
-                "uses the previously successful Vega verticalization routine"
-            ),
+            "orientation_status": orientation_status,
             "coarse_preserved_quaternion_wxyz": [
                 float(v) for v in coarse_orientation_pose.quaternion_wxyz
             ],
             "jogs": events,
         }
+        if right_ready_joints is not None:
+            record["right_ready"] = {
+                "joint_names": list(cfg["kinematics"]["right_arm_joint_names"]),
+                "joint_positions_rad": list(right_ready_joints),
+                "tip_r": _pose_record(coarse_orientation_pose),
+                "source": "operator_taught_current_pose_after_head_image",
+            }
 
         out = Path(args.output)
         if not out.is_absolute():

@@ -1,5 +1,10 @@
 > **Current working-side override (2026-09-28):** active competition control has moved to the **right arm**, using `tip_r`, right gripper scope, and `wrist_a` for the verified physical-right wrist camera. Historical left-arm validation records below are preserved as evidence, not current defaults.
 
+The small positive right-shoulder preparation step has since been physically
+validated against the tracked `tip_r` FK. See
+[VEGA_RIGHT_READY.md](VEGA_RIGHT_READY.md) for the measured before/after state
+and the supervised manual `RIGHT_READY` board-calibration command.
+
 # Vega live path
 
 This document tracks the competition Vega actually assigned to Team SteadyHand.
