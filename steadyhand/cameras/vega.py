@@ -13,7 +13,7 @@ Head:
 Wrists:
 - two Sony ISX031 cameras
 - local WristCameras API returns wrist_a / wrist_b
-- physical left/right mapping must be verified onsite
+- VERIFIED_ON_COMP_ROBOT 2026-09-28: wrist_a=RIGHT, wrist_b=LEFT
 - wrist timestamps are not synchronized to head timestamps
 """
 
