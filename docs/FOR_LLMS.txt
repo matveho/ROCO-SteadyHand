@@ -2070,3 +2070,11 @@ Current competition-network workflow:
     after which pixel target-centering maps directly to robot XY corrections.
   This avoids requiring accurate wrist camera intrinsics/extrinsics for fine XY
   centering and is the preferred route to rapid onsite policy testing.
+
+
+2026-09-27 FAST BOARD-REGISTRATION REUSE:
+  tools/vega_board_benchmark.py now supports --reuse-registration. Once
+  calibration/vega_board_live.json exists and the physical board has not moved,
+  this skips head motion/capture/detection and goes directly to the vertical-claw
+  reach plan. Use this for rapid policy iteration; only refresh the registration
+  after the board moves.
