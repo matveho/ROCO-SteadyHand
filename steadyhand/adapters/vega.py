@@ -312,43 +312,35 @@ class VegaAdapter(RobotAdapter):
                 f"limit is {max_total:.3f} rad"
             )
 
-        max_step = float(motion["max_step_rad"])
-        tolerance = float(motion["joint_reached_tolerance_rad"])
         timeout = float(motion["joint_timeout_s"])
-        # Reserve the tracking tolerance so measured-to-next-target steps also
-        # remain bounded, not only consecutive planned targets.
-        steps = max(1, int(math.ceil(worst / (max_step - tolerance))))
+        stamp = self._state_timestamp()
 
-        for index in range(1, steps + 1):
-            alpha = index / steps
-            waypoint = [
-                float(a + alpha * d)
-                for a, d in zip(current, delta)
-            ]
-            measured = self._read_joint_positions()
-            distance = max(abs(a - b) for a, b in zip(measured, waypoint))
-            if distance > max_step + 1e-12:
-                raise RuntimeError("Measured joint tracking would exceed motion.max_step_rad")
-            stamp = self._state_timestamp()
-
-            # Competition Vega dexcontrol 0.5.0 provides a robot-server motion
-            # plugin. Prefer that controller-managed trajectory path over the
-            # deprecated client-side set_joint_pos(wait_time>0) interpolation
-            # and over raw wait_time=0 command streaming.
-            handle = self._arm.move_to_joint_pos(
-                waypoint,
-                relative=False,
-                velocity_scale=float(speed_scale),
+        # IMPORTANT: move_to_joint_pos() is itself a complete, smoothed
+        # robot-server trajectory. Do not subdivide one goal into a sequence of
+        # blocking motion-plugin goals here. Every MotionHandle converges to a
+        # terminal waypoint before returning; waiting for "finished" at each
+        # artificial joint chunk forces the arm to decelerate to zero, pause,
+        # then accelerate again. That was the source of the visible stop/start
+        # motion during onsite Cartesian tests.
+        #
+        # Safety is enforced by the absolute joint limits and max_total_delta
+        # above, then by independent measured endpoint validation below. The
+        # server owns interpolation/smoothing/gravity compensation for the
+        # entire move.
+        handle = self._arm.move_to_joint_pos(
+            target,
+            relative=False,
+            velocity_scale=float(speed_scale),
+        )
+        self._active_motion_handle = handle
+        state = handle.wait(timeout=timeout)
+        if state != "finished":
+            raise RuntimeError(
+                f"Vega motion plugin ended target in state {state!r}: "
+                f"{getattr(handle, 'message', '')}"
             )
-            self._active_motion_handle = handle
-            state = handle.wait(timeout=timeout)
-            if state != "finished":
-                raise RuntimeError(
-                    f"Vega motion plugin ended waypoint in state {state!r}: "
-                    f"{getattr(handle, 'message', '')}"
-                )
-            self._active_motion_handle = None
-            self._wait_for_joint_state(target=waypoint, newer_than=stamp)
+        self._active_motion_handle = None
+        self._wait_for_joint_state(target=target, newer_than=stamp)
 
     def move_tcp(self, pose, *, speed_scale: float = 1.0) -> None:
         try:
