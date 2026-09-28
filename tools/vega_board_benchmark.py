@@ -94,41 +94,74 @@ def _pose_at(point, z, quat):
     )
 
 
-def _select_vertical_yaw(robot, points, hover_z):
-    """Choose a vertical-claw yaw for which the entire benchmark path has IK."""
+def _select_vertical_pose(robot, points, preferred_hover_z):
+    """Find one fixed vertical-claw yaw + hover Z that reaches all board points."""
     import numpy as np
 
-    candidates = (0.0, math.pi / 2, -math.pi / 2, math.pi)
+    # This is a coarse board-navigation benchmark, not precision insertion.
+    # The normal task solver uses 2 mm / 0.02 rad. Give the benchmark enough
+    # tolerance to avoid rejecting physically useful poses by a few mm while
+    # still preserving a fixed vertical tool orientation.
+    robot._kinematics.config["position_tolerance_m"] = 0.006
+    robot._kinematics.config["orientation_tolerance_rad"] = 0.08
+    robot._kinematics.config["max_seed_delta_rad"] = 2.2
+
+    # Search several safe hover heights automatically. Lower heights generally
+    # improve reach at the far board edge; all remain well above the hard floor.
+    heights = []
+    for z in (
+        preferred_hover_z,
+        preferred_hover_z - 0.04,
+        preferred_hover_z + 0.04,
+        preferred_hover_z - 0.08,
+        preferred_hover_z + 0.08,
+    ):
+        if z not in heights:
+            heights.append(float(z))
+
+    # Tool yaw is free while the claw axis stays vertical. Search every 45 deg.
+    yaws = tuple(k * math.pi / 4.0 for k in range(-4, 4))
     initial_seed = robot._read_joint_positions()
     feasible = []
 
-    for yaw in candidates:
-        quat = _yaw_quat(yaw)
-        seed = initial_seed
-        cost = 0.0
-        solved = []
-        try:
-            for _, point in points:
-                target = _pose_at(point, hover_z, quat)
-                answer = robot._kinematics.solve(target, seed)
-                cost += float(np.linalg.norm(np.asarray(answer) - np.asarray(seed)))
-                solved.append(answer)
-                seed = answer
-        except Exception as exc:
-            print(f"vertical yaw {math.degrees(yaw):+.0f} deg: no ({exc})")
-            continue
-        print(f"vertical yaw {math.degrees(yaw):+.0f} deg: IK OK")
-        feasible.append((cost, yaw, quat, solved))
+    unique_points = []
+    seen = set()
+    for label, point in points:
+        key = tuple(round(float(x), 5) for x in point[:2])
+        if key not in seen:
+            unique_points.append((label, point))
+            seen.add(key)
+
+    for z in heights:
+        for yaw in yaws:
+            quat = _yaw_quat(yaw)
+            seed = initial_seed
+            cost = 0.0
+            try:
+                for _, point in unique_points:
+                    target = _pose_at(point, z, quat)
+                    answer = robot._kinematics.solve(target, seed)
+                    cost += float(np.linalg.norm(
+                        np.asarray(answer, dtype=float) - np.asarray(seed, dtype=float)
+                    ))
+                    seed = answer
+            except Exception:
+                continue
+            feasible.append((cost, z, yaw, quat))
 
     if not feasible:
         raise RuntimeError(
-            "No tested vertical-claw yaw reaches center + all four board corners "
-            "at the requested hover Z"
+            "No fixed vertical-claw pose reached center + all four corners "
+            "across the automatic hover-height/yaw search"
         )
+
     feasible.sort(key=lambda item: item[0])
-    _, yaw, quat, _ = feasible[0]
-    print(f"SELECTED VERTICAL YAW = {math.degrees(yaw):+.0f} deg")
-    return quat
+    _, z, yaw, quat = feasible[0]
+    print(
+        f"SELECTED VERTICAL CLAW: hover_z={z:.3f} m, "
+        f"yaw={math.degrees(yaw):+.0f} deg"
+    )
+    return float(z), quat
 
 
 def main(argv=None):
@@ -137,7 +170,7 @@ def main(argv=None):
                    help="downward-looking head_j1; onsite +0.55 looks down")
     p.add_argument("--plane-z", type=float, default=None,
                    help="board/table plane Z in base frame; defaults to measured task floor")
-    p.add_argument("--hover-z", type=float, default=0.62,
+    p.add_argument("--hover-z", type=float, default=0.64,
                    help="TCP benchmark height in base frame")
     p.add_argument("--speed-scale", type=float, default=0.90)
     p.add_argument("--output", default="calibration/vega_board_live.json")
@@ -250,7 +283,9 @@ def main(argv=None):
             ("bl", corners_base[3]),
             ("center", center),
         ]
-        quat = _select_vertical_yaw(robot, points, float(args.hover_z))
+        selected_hover_z, quat = _select_vertical_pose(
+            robot, points, float(args.hover_z)
+        )
 
         # First create clearance straight upward at current XY/orientation.
         current = robot.get_tcp_pose()
@@ -258,7 +293,7 @@ def main(argv=None):
             (
                 float(current.position_m[0]),
                 float(current.position_m[1]),
-                max(float(current.position_m[2]), float(args.hover_z)),
+                max(float(current.position_m[2]), selected_hover_z),
             ),
             current.quaternion_wxyz,
         )
@@ -274,7 +309,7 @@ def main(argv=None):
             )
 
         for label, point in points:
-            target = _pose_at(point, float(args.hover_z), quat)
+            target = _pose_at(point, selected_hover_z, quat)
             print(
                 f"MOVE {label.upper()} ->",
                 tuple(round(float(x), 4) for x in target.position_m),
