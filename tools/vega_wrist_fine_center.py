@@ -264,6 +264,7 @@ def main(argv=None):
         capture()
 
         cfg["allow_robot_init_head_motion"] = True
+        cfg["auto_clear_software_estop_on_connect"] = True
         robot = VegaAdapter(cfg)
         robot.connect()
 
