@@ -15,6 +15,7 @@ from steadyhand.vision.wrist_servo import (
     jacobian_from_probes, run_xy_servo,
 )
 from tools.vega_wrist_servo import WristCapture, main
+from tools.vega_wrist_fine_center import WristBOnlyCapture, main as fine_main
 
 try:
     import numpy as np
@@ -45,6 +46,14 @@ class JacobianTests(unittest.TestCase):
     def test_execute_gate_precedes_hardware_import(self):
         with self.assertRaises(SystemExit) as cm:
             main(['--execute'])
+        self.assertEqual(cm.exception.code, 2)
+
+    def test_fine_tool_requires_confirmation_and_explicit_coarse_xy(self):
+        with self.assertRaises(SystemExit) as cm:
+            fine_main(['--coarse-xy', '.56', '0'])
+        self.assertEqual(cm.exception.code, 2)
+        with self.assertRaises(SystemExit) as cm:
+            fine_main(['--confirm-physical-motion'])
         self.assertEqual(cm.exception.code, 2)
 
 
@@ -152,6 +161,136 @@ class ImageServoTests(unittest.TestCase):
                 self.run_servo()
         self.assertEqual(self.frames, 0)
         self.assertEqual(self.robot.moves, [])
+
+    def test_fine_servo_logs_every_motion_and_correction(self):
+        events = []
+        result = self.run_servo(
+            event=lambda kind, fields: events.append((kind, fields))
+        )
+        self.assertEqual(result['status'], 'converged')
+        motions = [fields for kind, fields in events if kind == 'motion']
+        self.assertGreaterEqual(len(motions), 4)
+        for fields in motions:
+            self.assertIn('requested_tcp', fields)
+            self.assertIn('measured_tcp', fields)
+            self.assertIn('position_error_m', fields)
+        calibrated = [fields for kind, fields in events if kind == 'calibrated']
+        self.assertEqual(len(calibrated), 1)
+        self.assertIn('jacobian_px_per_m', calibrated[0])
+        corrections = [fields for kind, fields in events if kind == 'correction']
+        self.assertGreaterEqual(len(corrections), 1)
+        for fields in corrections:
+            self.assertIn('measured_tcp', fields)
+            self.assertIn('requested_tcp', fields)
+
+    def test_wrist_b_only_capture_retries_black_and_ignores_right_black(self):
+        good = self.capture()
+        black = np.zeros_like(good)
+        calls = 0
+
+        def read(**kwargs):
+            nonlocal calls
+            calls += 1
+            left = black if calls == 1 else good
+            frame_b = types.SimpleNamespace(
+                rgb=left, frame_id=calls, timestamp_ns=calls * 10,
+                received_monotonic_ns=calls * 100,
+            )
+            frame_a = types.SimpleNamespace(
+                rgb=black, frame_id=calls, timestamp_ns=calls * 10,
+                received_monotonic_ns=calls * 100,
+            )
+            return types.SimpleNamespace(wrist_a=frame_a, wrist_b=frame_b)
+
+        cameras = types.SimpleNamespace(read=read)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory)
+            capture = WristBOnlyCapture(
+                cameras, output, settle_s=0, warmup_attempts=2
+            )
+            image = capture()
+            self.assertEqual(image.shape, good.shape)
+            self.assertTrue((output / '000_wrist_b.png').is_file())
+            self.assertFalse((output / '000_wrist_a.png').exists())
+            records = [
+                json.loads(line)
+                for line in (output / 'capture_events.jsonl').read_text().splitlines()
+            ]
+            self.assertEqual([record['accepted'] for record in records], [False, True])
+
+    def test_wrist_b_only_capture_rejects_stale_identity(self):
+        image = self.capture()
+        frame = types.SimpleNamespace(
+            rgb=image, frame_id=7, timestamp_ns=99, received_monotonic_ns=101
+        )
+        cameras = types.SimpleNamespace(
+            read=lambda **kwargs: types.SimpleNamespace(wrist_a=frame, wrist_b=frame)
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            capture = WristBOnlyCapture(
+                cameras, Path(directory), settle_s=0, warmup_attempts=2
+            )
+            capture()
+            with self.assertRaisesRegex(RuntimeError, 'stale'):
+                capture()
+
+    def test_fine_tool_rejects_wrong_start_xy_before_servo(self):
+        from steadyhand.config import load_bundle
+
+        good = self.capture()
+        frame_id = 0
+
+        def read(**kwargs):
+            nonlocal frame_id
+            frame_id += 1
+            frame = types.SimpleNamespace(
+                rgb=good, frame_id=frame_id, timestamp_ns=frame_id * 10,
+                received_monotonic_ns=frame_id * 100,
+            )
+            return types.SimpleNamespace(wrist_a=frame, wrist_b=frame)
+
+        cameras = types.SimpleNamespace(
+            connect=lambda: None, close=lambda: None, read=read
+        )
+
+        class FineRobot:
+            def __init__(self):
+                self.config = load_bundle('vega')['robot']
+                self._kinematics = types.SimpleNamespace(
+                    config=dict(self.config['kinematics'])
+                )
+                self.stopped = False
+
+            def connect(self):
+                pass
+
+            def get_tcp_pose(self):
+                return Pose(
+                    (.56, 0., .55),
+                    (math.sqrt(.5), 0., 0., -math.sqrt(.5)),
+                )
+
+            def stop(self):
+                self.stopped = True
+
+            def close(self):
+                pass
+
+        robot = FineRobot()
+        with tempfile.TemporaryDirectory() as directory, \
+                patch('tools.vega_wrist_fine_center.VegaWristCameras', return_value=cameras), \
+                patch('tools.vega_wrist_fine_center.VegaAdapter', return_value=robot), \
+                patch('tools.vega_wrist_fine_center.run_xy_servo') as servo, \
+                patch('tools.vega_wrist_fine_center.time.sleep'):
+            output = Path(directory) / 'fine'
+            with self.assertRaisesRegex(RuntimeError, 'establish the coarse hover'):
+                fine_main([
+                    '--coarse-xy', '.60', '0',
+                    '--confirm-physical-motion',
+                    '--output', str(output),
+                ])
+            servo.assert_not_called()
+            self.assertTrue(robot.stopped)
 
     def test_repeated_frame_identity_rejected(self):
         frame = types.SimpleNamespace(rgb=self.capture(), frame_id=1, timestamp_ns=9, received_monotonic_ns=10)
