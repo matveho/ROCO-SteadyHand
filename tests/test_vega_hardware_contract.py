@@ -252,6 +252,27 @@ class AdapterContractTests(unittest.TestCase):
         self.assertIn(("estop",), self.events)
         self.assertIn(("shutdown",), self.events)
 
+    def test_startup_can_explicitly_clear_software_estop(self):
+        self.robot.stopped = True
+        self.adapter.config["auto_clear_software_estop_on_connect"] = True
+        self.adapter.connect()
+        self.assertFalse(self.robot.stopped)
+        self.assertIsNotNone(self.adapter._robot)
+
+    def test_startup_never_clears_pressed_hardware_estop(self):
+        self.robot.stopped = True
+        original = self.robot.estop.get_state
+        def pressed_state():
+            state = original()
+            state["left_base_estop_enabled"] = True
+            return state
+        self.robot.estop.get_state = pressed_state
+        self.adapter.config["auto_clear_software_estop_on_connect"] = True
+        with self.assertRaisesRegex(RuntimeError, "Physical e-stop"):
+            self.adapter.connect()
+        self.assertTrue(self.robot.stopped)
+        self.assertIn(("shutdown",), self.events)
+
     def test_joint_limits_are_asymmetric(self):
         adapter = self.connect()
         target = [0.0] * 7
