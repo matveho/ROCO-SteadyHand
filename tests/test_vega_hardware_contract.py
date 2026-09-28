@@ -276,7 +276,7 @@ class AdapterContractTests(unittest.TestCase):
     def test_joint_limits_are_asymmetric(self):
         adapter = self.connect()
         target = [0.0] * 7
-        target[1] = -0.41
+        target[1] = 0.41
         with self.assertRaisesRegex(ValueError, "Joint 2"):
             adapter.move_joints(target)
         self.assertFalse(any(item[0] == "move_to_joint_pos" for item in self.events))
