@@ -169,10 +169,13 @@
         "wrist_a",
         "wrist_b"
       ],
-      "api_label_to_physical_mount": null,
+      "api_label_to_physical_mount": {
+        "wrist_a": "right_wrist",
+        "wrist_b": "left_wrist"
+      },
       "rgb_width": 1920,
       "rgb_height": 1536,
-      "notes": "Both wrist cameras are enabled onsite. Verify wrist_a/wrist_b physical left-right mapping on the actual robot."
+      "notes": "VERIFIED_ON_COMP_ROBOT 2026-09-28: wrist_a=RIGHT, wrist_b=LEFT by displayed-image occlusion/visual confirmation. First startup frames may be black; warm up and validate image content before use."
     }
   },
   "notes": "Competition Vega dm/vgfcb66075ea-1u. Sep 27 physical verification: dexcontrol 0.5.0 move_to_joint_pos() moves joints bidirectionally; Pinocchio tip_l Cartesian -20 mm Z command moved physically down 20 mm. Working arm is left. Tracked compact FK/IK URDF reproduces the organizer competition arm/base/tip kinematics from dexmate-setup pinned commit 4be4d16140b25f730673d664b49c58280b07ef46; it intentionally contains no collision meshes. Fixed Lift=0 and torso_flip=0.22689280275926285 are organizer source-robot assumptions and must be rechecked if geometry changes. Gripper driver is vendored from the same organizer commit; Organizer object-grip default is 0.6 A at 60 deg/s; onsite battery bring-up raised grip to 1.0 A at 240 deg/s after 0.6 A produced a loose grasp. Table TCP floor is recorded in configs/skills/vega.json. No general collision checking is implemented.",
