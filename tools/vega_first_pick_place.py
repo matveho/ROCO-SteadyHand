@@ -2,8 +2,8 @@
 
 This intentionally bypasses uncalibrated object->TCP perception for the first
 physical end-to-end test. The operator places battery_size1 under the already
-open left jaw at the current TCP pose. The robot then:
-  hover -> descend -> current-limited grip -> lift -> +Y transfer -> place
+open right jaw at the current TCP pose. The robot then:
+  hover -> descend -> current-limited grip -> lift -> base-Y transfer -> place
   -> open -> retract.
 
 Normal competition execution should return to runtime object poses plus a
@@ -34,8 +34,8 @@ def verify(stage, name):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--transfer-y", type=float, default=0.08,
-                   help="metres in +base-Y; default moves left arm outward 8 cm")
+    p.add_argument("--transfer-y", type=float, default=-0.08,
+                   help="signed metres in base-Y; default -0.08 moves right arm outward 8 cm")
     p.add_argument("--speed-scale", type=float, default=0.45)
     args = p.parse_args(argv)
 
@@ -58,7 +58,7 @@ def main(argv=None):
         print("Connecting robot...")
         robot.connect()
 
-        print("Homing configured left gripper, then opening...")
+        print("Homing configured right gripper, then opening...")
         robot.connect_gripper()
         robot.open_gripper("battery_size1")
 
@@ -86,7 +86,7 @@ def main(argv=None):
         print()
         answer = input(
             "Place battery_size1 resting on the table and centered between the "
-            "OPEN left jaws at the current pose. Clear the 8 cm +Y destination "
+            "OPEN right jaws at the current pose. Clear the 8 cm -Y destination "
             "and the vertical path. Type yes to run the full pick/place: "
         ).strip().lower()
         if answer != "yes":
