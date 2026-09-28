@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def _publisher_running():
     try:
         result = subprocess.run(
-            ["pgrep", "-f", "[d]exsensor launch --sensor head_camera"],
+            ["pgrep", "-f", "[d]exsensor.*head_camera"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             check=False,
@@ -43,20 +43,41 @@ def _publisher_running():
         return False
 
 
-def _ensure_publisher(log_path):
-    """Start dexsensor only when the known head publisher is absent."""
+def _ensure_publisher(
+    log_path,
+    *,
+    robot_name,
+    config_path="/etc/dexmate/dexsensor/default.toml",
+):
+    """Start the verified competition head publisher if it is absent.
+
+    This robot has no installed dexsensor.service, and its system TOML has
+    historically carried robot.name="default". Always force the real robot
+    namespace so subscribers and the camera-info service land under the same
+    dm/... prefix.
+    """
     if _publisher_running():
         print("HEAD CAMERA PUBLISHER already running", flush=True)
         return False
     executable = shutil.which("dexsensor")
     if executable is None:
         raise RuntimeError("dexsensor executable not found")
+    config_path = str(Path(config_path).expanduser())
+    if not Path(config_path).is_file():
+        raise RuntimeError(f"dexsensor config not found: {config_path}")
     log_path = Path(log_path).expanduser()
     log_path.parent.mkdir(parents=True, exist_ok=True)
     stream = log_path.open("ab", buffering=0)
     try:
         subprocess.Popen(
-            [executable, "launch", "--sensor", "head_camera"],
+            [
+                executable,
+                "-v", "info",
+                "launch",
+                "--config", config_path,
+                "--robot", str(robot_name),
+                "--sensor", "head_camera",
+            ],
             stdout=stream,
             stderr=subprocess.STDOUT,
             start_new_session=True,
@@ -64,7 +85,13 @@ def _ensure_publisher(log_path):
         )
     finally:
         stream.close()
-    print("STARTED HEAD CAMERA PUBLISHER; log =", log_path, flush=True)
+    print(
+        "STARTED HEAD CAMERA PUBLISHER for",
+        robot_name,
+        "; log =",
+        log_path,
+        flush=True,
+    )
     time.sleep(3.0)
     return True
 
@@ -219,7 +246,10 @@ def main(argv=None):
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
     output = Path(args.output) if args.output else ROOT / "runs" / f"scene_{stamp}"
 
-    _ensure_publisher(args.publisher_log)
+    _ensure_publisher(
+        args.publisher_log,
+        robot_name=cfg["robot_name"],
+    )
     camera = None
     robot = None
     try:
