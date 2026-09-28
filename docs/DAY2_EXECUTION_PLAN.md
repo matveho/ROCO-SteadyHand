@@ -45,7 +45,9 @@ Questions live in `docs/COMPETITION_QUESTIONS.md`.
 Do not stop engineering work while waiting.
 
 ### 2. Identify the board in head RGB
-Goal: robustly recover TL/TR/BR/BL from a saved downward-looking image.
+Status: PRIOR REAL IMAGE PASSES; fresh-image robustness check next.
+
+Goal: robustly recover TL/TR/BR/BL and the nine dark task parts from a saved downward-looking image.
 
 Procedure:
 1. Capture one fresh downward head RGB snapshot on the robot.
@@ -60,9 +62,15 @@ Existing detector:
 Offline inspection tool:
 `tools/identify_board_snapshot.py`.
 
+Current prior-image result:
+- board corners: TL=(421,366), TR=(575,366), BR=(621,517), BL=(377,518);
+- all 9 visible dark parts detected after rectification;
+- touching gears require one board-specific merged-component split.
+
 Exit criterion:
 - all four corners visually land on the physical board boundary in several
   saved images;
+- all nine task parts are boxed without false positives;
 - no arm motion is required during detector tuning.
 
 ### 3. Join board coordinates to arm/base coordinates
