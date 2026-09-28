@@ -77,6 +77,8 @@ separate paths:
 Start with docs/VEGA_LIVE.md. The single-part runner is
 tools/vega_run_part.py; tools/vega_run_sequence.py is for later multi-part use.
 
-The remaining major Vega gap is automatic perception/target generation. A
-physical run therefore requires a current runtime_targets.json file until that
-layer is implemented onsite.
+The Vega lower stack is physically proven through a real battery pick/place.
+Current development is the perception/control layer: coarse head-camera board
+registration plus fine left-wrist XY visual servo with a low, vertical claw.
+See docs/VEGA_WRIST_SERVO.md for the current next-step workflow. Manual
+runtime_targets.json remains a fallback, not the preferred competition path.
