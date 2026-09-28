@@ -77,7 +77,7 @@ class OnsiteTests(unittest.TestCase):
         self.assertFalse(head["native_point_cloud"])
         self.assertEqual(wrists["model"], "Sony ISX031")
         self.assertEqual(wrists["api_labels"], ["wrist_a", "wrist_b"])
-        self.assertIsNone(wrists["api_label_to_physical_mount"])
+        self.assertEqual(wrists["api_label_to_physical_mount"], {"wrist_a": "right_wrist", "wrist_b": "left_wrist"})
 
     def test_runtime_camera_intrinsics_parser(self):
         self.assertEqual(
