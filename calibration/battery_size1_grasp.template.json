@@ -1,8 +1,11 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
+  "calibration_generation": "right_arm_tip_r_wrist_a_clean_v1",
   "part": "battery_size1",
   "robot_name": "dm/vgfcb66075ea-1u",
   "base_frame": "vega_1u_base_link",
+  "working_arm": "right",
+  "tcp_frame": "tip_r",
   "wrist_camera": "wrist_a",
   "jaw_alignment": {
     "goal_pixel_uv": null,
@@ -19,7 +22,8 @@
   },
   "gripper": {
     "current_a": 1,
-    "speed_dps": 240
+    "speed_dps": 240,
+    "scope": "right"
   },
   "calibration_complete": false
 }
