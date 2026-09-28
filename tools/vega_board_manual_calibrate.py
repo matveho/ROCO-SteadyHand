@@ -42,7 +42,10 @@ from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vision.scene import detect_head_task_scene
-from steadyhand.vega_camera_clear import move_camera_clear
+from steadyhand.vega_camera_clear import (
+    move_camera_clear_for_image,
+    move_verticalize_after_image,
+)
 from tools.vega_scene_perception import _ensure_publisher
 
 
@@ -443,7 +446,7 @@ def main(argv=None):
             f"angle={DEFAULT_FORWARD_RISE_ANGLE_DEG:.3f} deg",
             flush=True,
         )
-        move_camera_clear(robot, floor_m=floor, speed_scale=0.90)
+        move_camera_clear_for_image(robot, floor_m=floor, speed_scale=0.90)
 
         target_head = np.asarray([0.55, 0.0, 0.0], dtype=float)
         print("HEAD BEFORE =", robot._robot.head.get_joint_pos(), flush=True)
@@ -509,21 +512,21 @@ def main(argv=None):
         print("HEAD PREDICTED +X UNIT =", tuple(round(float(v), 6) for v in bx), flush=True)
         print("HEAD PREDICTED +Y UNIT =", tuple(round(float(v), 6) for v in by), flush=True)
 
-        coarse_orientation_pose = _interactive_teach_orientation(
+        print("HEAD IMAGE CAPTURE COMPLETE; VERTICALIZING ARM", flush=True)
+        coarse_orientation_pose = move_verticalize_after_image(
             robot,
-            floor=floor,
-            speed_scale=0.60,
-            max_step_deg=10.0,
+            floor_m=floor,
+            speed_scale=0.90,
         )
         print(
-            "COARSE ORIENTATION: using operator-taught high-pose quaternion =",
+            "COARSE ORIENTATION: using restored post-image verticalized quaternion =",
             tuple(round(float(v), 7) for v in coarse_orientation_pose.quaternion_wxyz),
             flush=True,
         )
         if abs(float(args.claw_yaw_deg)) > 1e-12:
             print(
                 "NOTE: --claw-yaw-deg is ignored during board calibration; "
-                "operator-taught orientation is used",
+                "restored post-image verticalized orientation is used",
                 flush=True,
             )
 
@@ -616,8 +619,8 @@ def main(argv=None):
                 "y_reference_distance_m": float(np.linalg.norm(dy)),
             },
             "orientation_status": (
-                "OPERATOR_TAUGHT_HIGH_POSE_BOARD_WORKING_ORIENTATION; "
-                "physical verticality is operator-verified, not inferred from URDF"
+                "RESTORED_POST_IMAGE_VERTICALIZATION_SEQUENCE; "
+                "uses the previously successful Vega verticalization routine"
             ),
             "coarse_preserved_quaternion_wxyz": [
                 float(v) for v in coarse_orientation_pose.quaternion_wxyz
