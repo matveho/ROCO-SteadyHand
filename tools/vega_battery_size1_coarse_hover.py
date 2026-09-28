@@ -113,9 +113,9 @@ def main(argv=None):
         p.error("--speed-scale must be 0.45..0.90")
 
     cfg = load_bundle("vega")["robot"]
-    if cfg.get("working_arm") != "left":
+    if cfg.get("working_arm") != "right":
         raise RuntimeError(
-            "battery_size1 coarse hover requires configured working arm LEFT"
+            "battery_size1 coarse hover requires configured working arm RIGHT"
         )
     floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
 
