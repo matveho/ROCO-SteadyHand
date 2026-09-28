@@ -52,7 +52,9 @@ def _reachable_initial_target(robot, point, center, hover_z, quaternion, label):
     last_error = None
     alphas = (1.0,) if label == "CENTER" else (1.0, 0.96, 0.92, 0.88, 0.84, 0.80)
     for alpha in alphas:
-        xy = center + float(alpha) * (point[:2] - center[:2])
+        # The board target is planar XY; do not add a 2-vector to the
+        # camera-read 3-vector (which also contains the provisional plane Z).
+        xy = center[:2] + float(alpha) * (point[:2] - center[:2])
         candidate = _target(xy, hover_z, quaternion)
         try:
             robot._kinematics.solve(candidate, seed)
