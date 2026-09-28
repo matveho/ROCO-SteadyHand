@@ -27,6 +27,21 @@ class _FakeRobot:
 
 
 class VegaCameraClearTests(unittest.TestCase):
+    def test_already_high_image_clear_requires_no_motion(self):
+        floor = 0.456
+        start = Pose((0.5056, -0.0540, 0.8054), (1.0, 0.0, 0.0, 0.0))
+        robot = _FakeRobot(start)
+
+        with patch(
+            "steadyhand.vega_camera_clear.move_tcp_segmented"
+        ) as move:
+            reached = move_camera_clear_for_image(
+                robot, floor_m=floor, speed_scale=0.90
+            )
+
+        self.assertIs(reached, start)
+        move.assert_not_called()
+
     def test_image_clear_preserves_orientation(self):
         floor = 0.456
         start = Pose((0.49, -0.06, 0.73), (0.91, 0.10, -0.20, 0.35))
