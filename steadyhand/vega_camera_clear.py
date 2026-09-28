@@ -1,7 +1,7 @@
 """Shared camera-clear arm preset for Vega board imaging.
 
-The competition head camera can see the left claw when the arm is working low
-over the board. Before board-level perception, move tip_l to a high centered
+The competition head camera can see the right claw when the arm is working low
+over the board. Before board-level perception, move tip_r to a high centered
 free-space pose so the claw cannot be mistaken for a dark task part.
 
 This preset is operator-requested onsite 2026-09-28:
@@ -37,10 +37,10 @@ CAMERA_IMAGE_CLEAR_X_CANDIDATES_M = (0.35, 0.40, 0.45, 0.50)
 
 
 def vertical_claw_tip_quaternion(yaw_rad: float = 0.0):
-    """tip_l wxyz quaternion for the physical gripper axis vertical/downward.
+    """tip_r wxyz quaternion for the physical gripper axis vertical/downward.
 
     For the tracked competition URDF, a top-down physical gripper maps to a
-    pure base-Z rotation of tip_l: R_base_tip = Rz(yaw - pi/2).
+    pure base-Z rotation of tip_r: R_base_tip = Rz(yaw - pi/2).
     """
     half = (float(yaw_rad) - math.pi / 2.0) / 2.0
     return (math.cos(half), 0.0, 0.0, math.sin(half))
@@ -344,7 +344,7 @@ def move_verticalize_after_image(
 
 
 def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEAR_SPEED_SCALE):
-    """Move the left claw out of the head-board view using preplanned stages.
+    """Move the right claw out of the head-board view using preplanned stages.
 
     Every coarse stage is IK-checked before it is commanded. A short
     orientation-preserving escape lift is attempted only when the TCP is truly
