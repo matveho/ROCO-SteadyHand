@@ -37,7 +37,7 @@ def main(argv=None):
     p.add_argument("--urdf", required=True)
     p.add_argument("--ee-frame", required=True)
     p.add_argument("--base-frame", required=True)
-    p.add_argument("--arm", choices=("left", "right"), required=True)
+    p.add_argument("--arm", choices=("right",), default="right")
     p.add_argument("--fixed", action="append", type=fixed_pair, default=[])
     p.add_argument("--q", nargs=7, type=float, required=True)
     p.add_argument("--dx", type=float, default=0.0)
@@ -53,11 +53,7 @@ def main(argv=None):
     cfg["base_frame"] = args.base_frame
     robot_cfg = load_bundle("vega")["robot"]
     cfg["joint_limits_rad"] = robot_cfg["arm_joint_limits_rad"][args.arm]
-    names = (
-        cfg["left_arm_joint_names"]
-        if args.arm == "left"
-        else cfg["right_arm_joint_names"]
-    )
+    names = cfg["right_arm_joint_names"]
 
     kin = PinocchioArmKinematics(
         args.urdf,
