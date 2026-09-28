@@ -2,8 +2,8 @@
 
 Preconditions:
 - battery calibration JSON contains an operator-taught jaw goal pixel and grasp Z;
-- a battery_size1 wrist_b alignment run has converged to that exact goal pixel;
-- the left TCP is still at the aligned safe hover.
+- a battery_size1 wrist_a alignment run has converged to that exact goal pixel;
+- the right TCP is still at the aligned safe hover.
 
 Sequence only:
   open -> vertical approach -> slow final descent -> 1.0 A / 240 deg/s grip -> lift
@@ -73,8 +73,8 @@ def main(argv=None):
         )
 
     cfg = load_bundle("vega")["robot"]
-    if cfg["working_arm"] != "left" or cfg["kinematics"]["ee_frame"] != "tip_l":
-        raise ValueError("battery pick requires the left arm / tip_l")
+    if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
+        raise ValueError("battery pick requires the right arm / tip_r")
     grip_cfg = cfg["gripper"]
     if abs(float(grip_cfg["grip_current_a"]) - VERIFIED_GRIP_CURRENT_A) > 1e-12:
         raise ValueError("robot config must retain verified battery grip current 1.0 A")
