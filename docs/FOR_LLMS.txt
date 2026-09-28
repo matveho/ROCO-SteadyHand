@@ -2190,3 +2190,39 @@ The earlier manual-feature CLI was superseded during this merge.
   Board execution now restores ALL THREE head_q_rad values from the successful
   saved board registration. Missing/non-finite saved pose fails before connection.
   SSH reset prevented further live verification; rerun center-only after deploy.
+
+
+===============================================================================
+2026-09-28 DAY 2 EXECUTION MODE
+===============================================================================
+
+Competition representatives were not present at the start of the onsite session,
+so procedure/scoring questions are deferred rather than blocking engineering.
+
+Canonical coordination docs now:
+  docs/DAY2_EXECUTION_PLAN.md
+    - scoring-first Vega execution plan
+    - immediate architecture: head board registration -> board-relative ROI ->
+      coarse arm move -> wrist centering -> fixed per-part Z
+    - first autonomous target: one easy/open-release part, currently battery_size1
+  docs/COMPETITION_QUESTIONS.md
+    - unresolved organizer questions covering scoring, trial procedure, human
+      intervention, calibration, randomization, initial state, and execution rules
+
+Step 2 is active now: identify the board robustly from saved head RGB without
+spending robot time tuning vision.
+
+New offline tool:
+  tools/identify_board_snapshot.py
+
+Usage:
+  python tools/identify_board_snapshot.py <snapshot-dir-or-head_left_rgb.npy>
+
+It uses steadyhand.vision.board.detect_white_board_corners and writes:
+  board_detection.json
+  board_overlay.ppm
+
+No dexcontrol / robot access is used by this tool. The workflow should be:
+  robot: acquire fresh downward head RGB once
+  laptop/offline: iterate detector against saved images
+  robot: only return for validation after the overlay is visually correct
