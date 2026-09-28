@@ -182,3 +182,24 @@ search, or contact logic.
 ## Immediate next milestone
 
 **Recover the task-board corners robustly from a fresh saved head image.**
+
+
+## Day-2 wrist-camera blocker
+
+Secondary live robot inspection on 2026-09-28 found no usable wrist-camera
+runtime path:
+- `tools/vega_wrists_probe.py` cannot import `wrist_cameras` in either system
+  or Conda Python;
+- only the two ZED head-camera video devices are exposed;
+- documented wrist runtime/install directories are absent;
+- no driver/service changes were made.
+
+Do not burn robot time guessing at vendor camera setup. Continue head-camera
+board/part localization and arm-frame integration. Ask the supplier/organizer
+to confirm wrist capture-board wiring/power and the supported Sony ISX031
+driver/API installation. Once restored, identify physical left/right by covering
+one lens and capturing again.
+
+Until then, the contingency path is to use head-derived board-relative part
+centroids for coarse pick calibration and keep the wrist-servo interface ready
+to slot in later.
