@@ -112,8 +112,7 @@
     "suggested_clearance_mm": {
       "CENTER": 57.0,
       "TOP_RIGHT": 83.0,
-      "BOTTOM_RIGHT": 14.0,
-      "BOTTOM_LEFT": 16.0
+      "BOTTOM_RIGHT": 14.0
     },
     "source": "operator measured coarse-target residuals CENTER forward 50/right 5 mm, TOP_RIGHT right 30 mm, BOTTOM_RIGHT forward 60/right 25 mm; clearances CENTER 57 mm, TOP_RIGHT 83 mm, BOTTOM_RIGHT 14 mm",
     "status": "active_supervised_board_plane_correction"
