@@ -45,6 +45,29 @@ Questions live in `docs/COMPETITION_QUESTIONS.md`.
 Do not stop engineering work while waiting.
 
 ### 2. Identify the board in head RGB
+
+**Live integration now implemented**
+
+Canonical command:
+```bash
+python3 tools/vega_scene_perception.py
+```
+
+It:
+- ensures the known `dexsensor launch --sensor head_camera` publisher is running;
+- constructs the robot and commands the head to `[head_j1,head_j2,head_j3] = [0.55,0,0]`;
+- reads RGB-only from the ZED left camera;
+- runs the exact same board + dark-part detector as the offline tool;
+- prints board corners/center plus each part center in image pixels, 400-mm board
+  coordinates, and coarse `vega_1u_base_link` coordinates;
+- saves raw RGB, `scene.json`, and an annotated overlay.
+
+Use `--frames 0` for continuous re-identification. Use `--layout final` only
+when the pieces are in the operator-confirmed assembled/final arrangement; the
+pre-pick/source layout will get its own identity map after a fresh source-state
+capture.
+
+
 Status: PRIOR REAL IMAGE PASSES; fresh-image robustness check next.
 
 Goal: robustly recover TL/TR/BR/BL and the nine dark task parts from a saved downward-looking image.
