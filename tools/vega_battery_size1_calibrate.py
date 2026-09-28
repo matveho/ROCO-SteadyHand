@@ -25,6 +25,8 @@ from steadyhand.battery_size1 import (
     WRIST_CAMERA,
     blank_calibration,
     calibration_is_complete,
+    require_right_battery_config,
+    validate_calibration_provenance,
 )
 from steadyhand.cameras.vega import VegaWristCameras
 from steadyhand.config import load_bundle
@@ -40,15 +42,21 @@ def _path(value):
     return p if p.is_absolute() else ROOT / p
 
 
-def _load_or_blank(path, robot_config):
-    if path.exists():
-        value = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(value, dict):
-            raise ValueError("calibration file must contain a JSON object")
-        if value.get("part") not in (None, PART_NAME):
-            raise ValueError("calibration file is for a different part")
-        return value
-    return blank_calibration(robot_config)
+def _load_initialized(path, robot_config):
+    """Load only a clean right-arm calibration epoch created by init."""
+    if not path.exists():
+        raise ValueError(
+            f"{path} does not exist; run battery calibration init first"
+        )
+    value = json.loads(path.read_text(encoding="utf-8"))
+    try:
+        validate_calibration_provenance(value, robot_config)
+    except ValueError as exc:
+        raise ValueError(
+            "existing battery calibration is stale/pre-switch or missing "
+            "right-arm provenance; run init --force before teaching"
+        ) from exc
+    return value
 
 
 def _write(path, value):
@@ -131,6 +139,7 @@ def main(argv=None):
     args = p.parse_args(argv)
     bundle = load_bundle("vega")
     cfg = bundle["robot"]
+    require_right_battery_config(cfg)
     path = _path(args.calibration)
 
     if args.command == "init":
@@ -142,6 +151,7 @@ def main(argv=None):
     if args.command == "capture-goal-image":
         if not 2 <= args.attempts <= 20:
             p.error("--attempts must be 2..20")
+        _load_initialized(path, cfg)
         output = _path(args.output)
         _capture_wrist_a(output, attempts=args.attempts)
         return 0
@@ -151,6 +161,7 @@ def main(argv=None):
 
         if not args.confirm_read_current_tcp:
             p.error("record-goal-pixel requires --confirm-read-current-tcp")
+        value = _load_initialized(path, cfg)
         source = _path(args.source_image)
         image = cv2.imread(str(source))
         if image is None:
@@ -162,6 +173,7 @@ def main(argv=None):
         if not (0 <= u < w and 0 <= v < h):
             raise ValueError(f"goal pixel {(u, v)} is outside image {w}x{h}")
 
+        value = _load_initialized(path, cfg)
         floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
         cfg["allow_robot_init_head_motion"] = True
         robot = VegaAdapter(cfg)
@@ -179,7 +191,6 @@ def main(argv=None):
                     "current tip_r is not within 0.12 rad of the established vertical "
                     "claw family; align it before teaching the jaw goal pixel"
                 )
-            value = _load_or_blank(path, cfg)
             value["jaw_alignment"] = {
                 "goal_pixel_uv": [u, v],
                 "image_size_px": [int(w), int(h)],
@@ -217,7 +228,6 @@ def main(argv=None):
                     "current tip_r is not within 0.12 rad of the established vertical "
                     "claw family; physically align it before teaching grasp Z"
                 )
-            value = _load_or_blank(path, cfg)
             value["grasp"] = {
                 "tcp_z_m": float(pose.position_m[2]),
                 "taught_tip_quaternion_wxyz": list(pose.quaternion_wxyz),
