@@ -3,7 +3,9 @@
 Flow:
   1. Clear the right claw from the head-board view.
   2. Capture the board exactly like vega_board_axis_benchmark.py.
-  3. Move to the predicted CENTER, BOARD_X_PLUS and BOARD_Y_PLUS hover targets.
+  3. Move to the predicted CENTER and BOARD_X_PLUS hover targets. BOARD_Y_PLUS
+     is derived from the head-predicted axis by default because the far Y reach
+     is not reliably available on this right-arm setup.
   4. At each target, let the operator jog the physical claw center relative to
      the board:
        forward N   (+base X, away from robot)
@@ -149,6 +151,24 @@ def _coarse_target_preserving_orientation(point, hover_z, taught_pose):
     return Pose(
         (float(point[0]), float(point[1]), float(hover_z)),
         tuple(float(v) for v in taught_pose.quaternion_wxyz),
+    )
+
+
+def _predicted_y_reference(center_pose, board_y_unit_base, offset_m):
+    """Synthesize an unvisited Y reference from corrected CENTER + head axis."""
+    c = tuple(float(v) for v in center_pose.position_m)
+    by = tuple(float(v) for v in board_y_unit_base)
+    if len(c) != 3 or len(by) != 3 or not all(math.isfinite(v) for v in (*c, *by)):
+        raise ValueError("Y reference requires finite CENTER and board axis")
+    if abs(float(by[2])) > 1e-6:
+        raise ValueError("board Y reference must be a planar base-frame axis")
+    norm = math.hypot(by[0], by[1])
+    if norm <= 1e-9 or not math.isfinite(float(offset_m)) or float(offset_m) <= 0:
+        raise ValueError("board Y reference requires a nonzero planar axis and offset")
+    ux, uy = by[0] / norm, by[1] / norm
+    return Pose(
+        (c[0] + float(offset_m) * ux, c[1] + float(offset_m) * uy, c[2]),
+        tuple(float(v) for v in center_pose.quaternion_wxyz),
     )
 
 
@@ -497,6 +517,14 @@ def main(argv=None):
             "preset without invoking Cartesian IK"
         ),
     )
+    p.add_argument(
+        "--include-board-y-plus",
+        action="store_true",
+        help=(
+            "physically visit BOARD_Y_PLUS; omitted by default because the "
+            "right arm cannot reliably reach that reference"
+        ),
+    )
     p.add_argument("--settle-s", type=float, default=0.5)
     p.add_argument("--publisher-log", default="~/head_camera.log")
     p.add_argument("--output", default="calibration/vega_board_manual.json")
@@ -674,7 +702,16 @@ def main(argv=None):
             )
 
         corrected = {}
-        for label in ("CENTER", "BOARD_X_PLUS", "BOARD_Y_PLUS"):
+        labels = ["CENTER", "BOARD_X_PLUS"]
+        if args.include_board_y_plus:
+            labels.append("BOARD_Y_PLUS")
+        else:
+            print(
+                "SKIPPING BOARD_Y_PLUS physical jog; using the head-predicted "
+                "planar Y axis from corrected CENTER",
+                flush=True,
+            )
+        for label in labels:
             point = predicted[label]
             target = _coarse_target_preserving_orientation(
                 point, args.hover_z, coarse_orientation_pose
@@ -716,6 +753,10 @@ def main(argv=None):
 
         c = np.asarray(corrected["CENTER"].position_m, dtype=float)
         x = np.asarray(corrected["BOARD_X_PLUS"].position_m, dtype=float)
+        if not args.include_board_y_plus:
+            corrected["BOARD_Y_PLUS"] = _predicted_y_reference(
+                corrected["CENTER"], by, args.offset_m
+            )
         y = np.asarray(corrected["BOARD_Y_PLUS"].position_m, dtype=float)
         dx = x[:2] - c[:2]
         dy = y[:2] - c[:2]
@@ -767,6 +808,11 @@ def main(argv=None):
                 "y_reference_distance_m": float(np.linalg.norm(dy)),
             },
             "orientation_status": orientation_status,
+            "board_y_reference_status": (
+                "PHYSICALLY_VISITED_OPERATOR_CORRECTED"
+                if args.include_board_y_plus
+                else "HEAD_PREDICTED_AXIS_FROM_CORRECTED_CENTER; NOT_PHYSICALLY_VISITED"
+            ),
             "coarse_preserved_quaternion_wxyz": [
                 float(v) for v in coarse_orientation_pose.quaternion_wxyz
             ],

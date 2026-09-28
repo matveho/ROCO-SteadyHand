@@ -50,6 +50,11 @@ python3 tools/vega_board_manual_calibrate.py \
   --confirm-physical-motion
 ```
 
+The calibration now visits CENTER and BOARD_X_PLUS only. BOARD_Y_PLUS is
+derived from the head-predicted planar Y axis and corrected CENTER, so the arm
+does not have to reach the far Y reference. Add `--include-board-y-plus` only
+when that physical reach is known to be safe and useful.
+
 The output `calibration/vega_board_manual.json` contains a `right_ready` record
 with `joint_names`, `joint_positions_rad`, and the `tip_r` pose. The zero rise
 angle keeps the historical slope compensation disabled until a right-arm

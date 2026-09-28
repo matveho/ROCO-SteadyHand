@@ -10,6 +10,7 @@ from tools.vega_board_manual_calibrate import (
     _board_parallel_jog_delta,
     _capture_current_right_ready,
     _coarse_target_preserving_orientation,
+    _predicted_y_reference,
     _rotate_quaternion_in_base,
 )
 
@@ -57,6 +58,12 @@ class BoardManualCalibrationTests(unittest.TestCase):
         )
         self.assertEqual(target.position_m, (0.435, 0.104, 0.55))
         self.assertEqual(target.quaternion_wxyz, current.quaternion_wxyz)
+
+    def test_unvisited_y_reference_uses_corrected_center_and_head_axis(self):
+        center = Pose((0.48, -0.03, 0.55), (1.0, 0.0, 0.0, 0.0))
+        y = _predicted_y_reference(center, (0.0, 1.0, 0.0), 0.1)
+        self.assertEqual(y.position_m, (0.48, 0.07, 0.55))
+        self.assertEqual(y.quaternion_wxyz, center.quaternion_wxyz)
 
     def test_base_axis_rotation_is_normalized_and_changes_orientation(self):
         q = _rotate_quaternion_in_base((1.0, 0.0, 0.0, 0.0), "pitch", 10.0)
