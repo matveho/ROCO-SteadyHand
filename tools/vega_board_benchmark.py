@@ -341,6 +341,7 @@ def main(argv=None):
                 center,
                 float(args.hover_z),
                 floor,
+                fixed_yaw,
             )
             print(
                 f"MOVE {label.upper()} ->",
