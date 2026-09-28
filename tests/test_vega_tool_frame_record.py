@@ -6,6 +6,13 @@ import unittest
 import numpy as np
 
 from tools.vega_tool_frame_calibration import (
+    EXPECTED_BASE_FRAME,
+    EXPECTED_JOINT_NAMES,
+    EXPECTED_RECORDER_MODE,
+    EXPECTED_RECORDER_TOOL,
+    EXPECTED_ROBOT_NAME,
+    EXPECTED_TCP_FRAME,
+    EXPECTED_WORKING_ARM,
     analyze,
     matrix_to_quat,
     rpy_matrix,
@@ -72,7 +79,7 @@ class VegaToolFrameRecordTests(unittest.TestCase):
         payload = build_analyzer_payload(
             observations,
             explicit_ab_delta_m=(0.08, 0.0, 0.0),
-            robot_name="dm/test",
+            robot_name=EXPECTED_ROBOT_NAME,
         )
         result = analyze(payload)
 
@@ -90,6 +97,36 @@ class VegaToolFrameRecordTests(unittest.TestCase):
                 "fixed_tool_transform_explains_within_tolerance"
             ]
         )
+
+    def test_payload_records_exact_right_arm_provenance_only(self):
+        pose = _Pose((0.5, 0.0, 0.6), (1.0, 0.0, 0.0, 0.0))
+        observation = make_observation(
+            "A_REFERENCE",
+            pose=pose,
+            joint_positions_rad=[0.0] * 7,
+            joint_timestamp_ns=1,
+        )
+        payload = build_analyzer_payload([observation])
+        recorder = payload["recorder"]
+        self.assertEqual(recorder["tool"], EXPECTED_RECORDER_TOOL)
+        self.assertEqual(recorder["mode"], EXPECTED_RECORDER_MODE)
+        self.assertEqual(recorder["robot_name"], EXPECTED_ROBOT_NAME)
+        self.assertEqual(recorder["base_frame"], EXPECTED_BASE_FRAME)
+        self.assertEqual(recorder["working_arm"], EXPECTED_WORKING_ARM)
+        self.assertEqual(recorder["tcp_frame"], EXPECTED_TCP_FRAME)
+        self.assertEqual(recorder["joint_names"], list(EXPECTED_JOINT_NAMES))
+        self.assertNotIn("historical_context", payload)
+
+    def test_payload_rejects_noncompetition_robot_identity(self):
+        pose = _Pose((0.5, 0.0, 0.6), (1.0, 0.0, 0.0, 0.0))
+        observation = make_observation(
+            "A_REFERENCE",
+            pose=pose,
+            joint_positions_rad=[0.0] * 7,
+            joint_timestamp_ns=1,
+        )
+        with self.assertRaisesRegex(ValueError, "robot_name"):
+            build_analyzer_payload([observation], robot_name="dm/old-left-robot")
 
     def test_absolute_a_b_centers_derive_translation_check(self):
         pose = _Pose((0.5, 0.0, 0.6), (1.0, 0.0, 0.0, 0.0))
