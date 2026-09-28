@@ -61,8 +61,8 @@ def main(argv=None):
             f"got {float(args.hover_z):.6f}"
         )
 
-    if cfg["working_arm"] != "left" or cfg["kinematics"]["ee_frame"] != "tip_l":
-        raise SystemExit("benchmark requires left arm / tip_l")
+    if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
+        raise SystemExit("benchmark requires right arm / tip_r")
 
     # Robot() is known to move the head. Opt in, then explicitly put the full
     # head pose back into the verified downward view before perception.
