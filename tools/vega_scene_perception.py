@@ -100,12 +100,23 @@ def _aim_head_down(robot, target_head, *, settle_s):
     print("HEAD BEFORE =", before.tolist(), flush=True)
 
     # Command all 3 joints; do not inherit arbitrary J2/J3 state.
-    head.set_joint_pos(
-        np.asarray(target_head, dtype=float),
-        wait_time=1.5,
-        exit_on_reach=True,
-        exit_on_reach_kwargs={"tolerance": 0.02},
-    )
+    target = np.asarray(target_head, dtype=float)
+    move_fn = getattr(head, "move_to_joint_pos", None)
+    if move_fn is not None:
+        handle = move_fn(target, velocity_scale=0.45)
+        # dexcontrol MotionHandle API varies slightly; block when supported.
+        wait_fn = getattr(handle, "wait", None)
+        if callable(wait_fn):
+            wait_fn(timeout=5.0)
+        else:
+            time.sleep(1.5)
+    else:
+        head.set_joint_pos(
+            target,
+            wait_time=1.5,
+            exit_on_reach=True,
+            exit_on_reach_kwargs={"tolerance": 0.02},
+        )
     time.sleep(float(settle_s))
 
     after = np.asarray(head.get_joint_pos(), dtype=float)
@@ -182,6 +193,11 @@ def main(argv=None):
     p.add_argument("--interval-s", type=float, default=0.5)
     p.add_argument("--output")
     p.add_argument("--publisher-log", default="~/head_camera.log")
+    p.add_argument(
+        "--release-software-estop",
+        action="store_true",
+        help="explicitly deactivate the robot software E-stop before head motion",
+    )
     args = p.parse_args(argv)
 
     if args.frames < 0:
@@ -208,6 +224,27 @@ def main(argv=None):
     robot = None
     try:
         robot = Robot()
+
+        # Robot() can connect while the software E-stop remains active. In that
+        # state head commands are silently ineffective. Never proceed to CV
+        # unless control is actually enabled.
+        estop_state = robot.estop.get_state() if robot.has_component("estop") else None
+        print("SOFTWARE ESTOP STATE =", estop_state, flush=True)
+        if estop_state:
+            if not args.release_software_estop:
+                raise RuntimeError(
+                    "Software E-stop is active, so the head cannot move. "
+                    "Re-run with --release-software-estop only after confirming "
+                    "the physical workspace is clear and the physical E-stop is accessible."
+                )
+            print("DEACTIVATING SOFTWARE ESTOP for head positioning", flush=True)
+            robot.estop.deactivate()
+            time.sleep(0.5)
+            estop_after = robot.estop.get_state()
+            print("SOFTWARE ESTOP AFTER =", estop_after, flush=True)
+            if estop_after:
+                raise RuntimeError("Software E-stop remained active after deactivate()")
+
         target_head = np.asarray(
             [args.head_j1, args.head_j2, args.head_j3], dtype=float
         )
