@@ -29,6 +29,7 @@ CAMERA_CLEAR_ESCAPE_LIFT_M = 0.08
 CAMERA_CLEAR_ESCAPE_ONLY_BELOW_FLOOR_PLUS_M = 0.28
 CAMERA_CLEAR_VERTICALIZE_Z_CANDIDATES_ABOVE_FLOOR_M = (0.45, 0.40, 0.35, 0.30)
 CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD = 0.020
+CAMERA_CLEAR_RETAIN_HIGH_POSE_ABOVE_FLOOR_M = 0.40
 
 
 def vertical_claw_tip_quaternion(yaw_rad: float = 0.0):
@@ -130,6 +131,19 @@ def _ik_feasible(robot, pose):
     return True
 
 
+def _can_retain_high_pose(current, *, floor_m: float) -> bool:
+    """True when the current TCP is already safely high for head imaging fallback.
+
+    This fallback is intentionally translation-free: if the model-derived
+    vertical-claw orientation is not reachable from the live seed, retaining an
+    already-high free-space pose is safer than forcing an unvalidated wrist
+    reorientation merely to capture the board image.
+    """
+    return float(current.position_m[2]) >= (
+        float(floor_m) + CAMERA_CLEAR_RETAIN_HIGH_POSE_ABOVE_FLOOR_M
+    )
+
+
 def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEAR_SPEED_SCALE):
     """Move the left claw out of the head-board view using preplanned stages.
 
@@ -205,7 +219,19 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
                     flush=True,
                 )
 
-        verticalize = _reachable_verticalize_pose(robot, floor_m=floor_m)
+        try:
+            verticalize = _reachable_verticalize_pose(robot, floor_m=floor_m)
+        except RuntimeError as exc:
+            if _can_retain_high_pose(current, floor_m=floor_m):
+                print(
+                    "CAMERA CLEAR: VERTICALIZE unavailable from current seed; "
+                    "retaining existing high free-space pose ->",
+                    tuple(round(float(v), 4) for v in current.position_m),
+                    f"({exc})",
+                    flush=True,
+                )
+                return current
+            raise
         print(
             "CAMERA CLEAR: VERTICALIZE ->",
             tuple(round(float(v), 4) for v in verticalize.position_m),
