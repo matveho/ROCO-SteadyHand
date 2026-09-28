@@ -58,6 +58,8 @@ real robot receives the simulator's teleport/fixed-joint success mechanism.
 | steadyhand/adapters/sharpa.py | Sharpa North integration |
 | configs/robots/ | Connection settings, joint order, motion limits |
 | configs/task_board.json | Pinned task metadata and pose placeholders |
+| configs/task_coordinates.json | Organizer task XY/Z data and 386 mm board registration metadata |
+| tools/vega_task_coordinate_reachability.py | Supervised no-gripper reachability test for selected task points |
 | calibration/ | Measured transforms for each robot |
 | runs/ | Generated session snapshots and logs |
 | docs/ARCHITECTURE.md | Shared-code / two-adapter design |

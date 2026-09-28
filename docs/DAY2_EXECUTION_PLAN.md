@@ -122,6 +122,22 @@ Deliverable:
   - release type;
   - initial grasp/place height guesses.
 
+The current organizer coordinate table is in `configs/task_coordinates.json`.
+It remains in `roco_organizer_sim_stage`; the reachability tool registers only
+its XY values through the live manual board calibration. Organizer Z is never
+sent to the robot. The declared physical field width is 0.386 m.
+
+After `calibration/vega_board_manual.json` is present, preflight the first four
+supervised points with:
+
+~~~bash
+python3 tools/vega_task_coordinate_reachability.py --check-only
+~~~
+
+The physical run requires `--confirm-physical-motion` and pauses before every
+move. It uses the measured RIGHT_READY quaternion and the accepted calibrated
+hover height; it does not command the gripper.
+
 ### 5. Identify one piece
 Start with one easy/open-release piece, currently `battery_size1` unless
 competition scoring/procedure indicates a better choice.

@@ -3,6 +3,8 @@
   "position_units": "m",
   "quaternion_order": "wxyz",
   "pose_frame": null,
+  "source_coordinates_file": "configs/task_coordinates.json",
+  "source_pose_frame": "roco_organizer_sim_stage",
   "source": {
     "repository": "rocochallenge/RoCo_TaskBoardAssembly",
     "commit": "45dd6ad6e0792faf3450bdd2f81bb143b11bc43f",
