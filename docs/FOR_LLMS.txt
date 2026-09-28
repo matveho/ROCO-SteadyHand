@@ -1,4 +1,78 @@
 ===============================================================================
+SIDE AGENT 2 UPDATE — 2026-09-28 ~13:35 EDT — BATTERY COARSE-HOVER MOVER READY
+===============================================================================
+
+New battery-specific motion bridge:
+  ab19ad6f981f1642c807061f22a3b7e1abfe5e28
+    steadyhand/battery_size1_hover.py
+    Source-localization provenance validator + accepted-hover/XY-only planner.
+  22962cc60730068c34502b9b876c351d71ebe86e
+    tools/vega_battery_size1_coarse_hover.py
+    Physical left-arm mover from localized source X/Y to coarse hover.
+  f0528a3abd5eb5e6c2ef03cf58276f9c2f142709
+    tests/test_battery_size1_coarse_hover.py
+    Final XY-only contract tests.
+  b5036ca4f819ad10138cfe31517b7dc7e57b8b2f
+    docs/VEGA_BATTERY_SIZE1_COARSE_HOVER.md
+
+CI at final code/test head:
+  f0528a3abd5eb5e6c2ef03cf58276f9c2f142709
+  SUCCESS: 146 tests, 0 failures, 11 skipped.
+
+STRICT MOTION CONTRACT:
+  - consumes source-localizer localization.json; operator does not retype X/Y;
+  - current manual board calibration SHA256 + generated timestamp MUST exactly
+    match the calibration provenance recorded by localization.json;
+  - localization must be battery_size1, current robot/base frame,
+    operator-explicit identity, accepted localization method, non-stale, and
+    contain source-image hash;
+  - operator must confirm board unchanged since localization;
+  - current TCP must ALREADY be at the completed manual calibration's accepted
+    low-hover Z (default tolerance 8 mm) and accepted hover orientation;
+  - motion is BASE-FRAME X/Y ONLY: target preserves exact live Z and exact live
+    quaternion;
+  - there is NO lift and NO descent. If current TCP is high/low instead of at
+    accepted hover, the tool refuses rather than repositioning vertically;
+  - configured hard floor is enforced by the planner and
+    move_tcp_segmented(min_tcp_z_m=floor);
+  - no gripper connection/use, no wrist servo, no grasp descent, no placement,
+    no insertion;
+  - Robot() head-home side effect remains explicit, so --confirm-head-motion is
+    required.
+
+RUN after source localization, with the left TCP already at accepted low hover:
+  python3 tools/vega_battery_size1_coarse_hover.py \
+    --localization runs/<battery_source_run>/localization.json \
+    --confirm-board-unchanged-since-localization \
+    --confirm-head-motion \
+    --confirm-physical-motion
+
+On success it prints:
+  BATTERY_SIZE1 COARSE HOVER PASS
+  MEASURED FINAL XYZ = X Y Z
+  CENTER ARGUMENT = --coarse-xy X Y
+  RESULT FILE = ...
+
+Use the MEASURED final X/Y directly for:
+  python3 tools/vega_battery_size1_center.py \
+    --coarse-xy X Y \
+    --feature WRIST_U WRIST_V \
+    --confirm-physical-motion
+
+WRIST_U/WRIST_V is selected in the initial wrist_b view at the reached coarse
+hover; it is NOT the head-image battery pixel.
+
+IMPORTANT REMAINING PRECONDITION:
+  This mover deliberately does not establish low hover Z. The preceding
+  operator/manual motion stage must leave the arm at the accepted manual
+  calibration hover Z/orientation. This is intentional because the user
+  required NO descent and the mover must not manufacture a vertical transition.
+
+===============================================================================
+END SIDE AGENT 2 BATTERY COARSE-HOVER UPDATE
+===============================================================================
+
+===============================================================================
 SIDE AGENT 2 UPDATE — 2026-09-28 ~12:48 EDT — BATTERY SOURCE BRIDGE READY
 ===============================================================================
 
