@@ -28,6 +28,7 @@ from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
+from steadyhand.vega_camera_clear import move_camera_clear
 from steadyhand.vision.board import (
     board_frame_from_corners,
     detect_white_board_corners,
@@ -49,24 +50,27 @@ def _serializable(value):
     return value
 
 
-def _set_head_and_capture(robot_name, head_j1):
+def _set_head_and_capture(cfg, head_j1, floor):
     import numpy as np
-    from dexcontrol.robot import Robot
 
-    os.environ.setdefault("ROBOT_NAME", robot_name)
-    robot = Robot()
+    cfg["allow_robot_init_head_motion"] = True
+    cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
+    adapter = VegaAdapter(cfg)
     camera = None
     try:
-        q = np.asarray(robot.head.get_joint_pos(), dtype=float)
+        adapter.connect()
+        move_camera_clear(adapter, floor_m=floor, speed_scale=0.90)
+
+        q = np.asarray(adapter._robot.head.get_joint_pos(), dtype=float)
         if head_j1 is not None:
             q[0] = float(head_j1)
-            robot.head.set_joint_pos(
+            adapter._robot.head.set_joint_pos(
                 q,
                 wait_time=1.5,
                 exit_on_reach=True,
                 exit_on_reach_kwargs={"tolerance": 0.02},
             )
-            q = np.asarray(robot.head.get_joint_pos(), dtype=float)
+            q = np.asarray(adapter._robot.head.get_joint_pos(), dtype=float)
 
         camera = VegaHeadCamera()
         camera.connect()
@@ -75,7 +79,7 @@ def _set_head_and_capture(robot_name, head_j1):
     finally:
         if camera is not None:
             camera.close()
-        robot.shutdown()
+        adapter.close()
 
 
 def _yaw_quat(yaw):
@@ -225,7 +229,7 @@ def main(argv=None):
             )
     else:
         print("Capturing downward head view...")
-        head_q, frame = _set_head_and_capture(robot_name, args.head_j1)
+        head_q, frame = _set_head_and_capture(cfg, args.head_j1, floor)
         fx, fy, cx, cy = intrinsics_from_camera_info(frame.camera_info)
 
         pixels = detect_white_board_corners(frame.left_rgb)
