@@ -2305,3 +2305,42 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   Wrist API uses /usr/bin/python3; head capture uses Conda python3.
   No arm motion commanded for this camera validation. Simultaneous sustained
   streaming, wrist calibration and visual servo operation remain unvalidated.
+
+
+2026-09-28 LIVE HEAD SCENE PERCEPTION INTEGRATED:
+  Canonical live stage:
+    tools/vega_scene_perception.py
+
+  On execution it now:
+    1. ensures the known head-camera dexsensor publisher is running, starting
+       'dexsensor launch --sensor head_camera' only if absent;
+    2. constructs Robot() and explicitly points the head to [0.55, 0, 0]
+       (positive head_j1 is onsite-verified downward; j2/j3 zero = forward);
+    3. captures RGB-only from the ZED left camera;
+    4. calls steadyhand.vision.scene.detect_head_task_scene(), which uses the
+       SAME detect_white_board_corners + rectify_board + detect_dark_part_boxes
+       pipeline validated offline against the Sep-27 robot image;
+    5. reports board pixel corners, coarse board/base transform, and for each
+       detected part: image center, 400x400-mm board coordinate, and coarse
+       vega_1u_base_link coordinate;
+    6. saves raw RGB, JSON and annotated overlay. --frames 0 repeats indefinitely
+       for frequent global re-identification while the head view is clear.
+
+  New reusable module:
+    steadyhand/vision/scene.py
+
+  task_parts.py now also projects exact part centers back into the live image.
+  The operator confirmed the Sep-27 FINAL/ASSEMBLED image identities in sorted
+  rectified order:
+    hdmi, rod_16mm, bolt_8mm, usb_a, gear_60teeth, gear_20teeth,
+    battery_size1, battery_size5, pin
+  This mapping is explicitly FINAL-LAYOUT ONLY. Do not apply it to the pre-pick
+  source layout. Capture today's source-state image and build a separate source
+  ROI/name map before autonomous picking.
+
+  Offline replay against the actual Sep-27 frame still detects board corners:
+    TL=(421,366), TR=(575,366), BR=(621,517), BL=(377,518)
+  and all 9 parts. Known-board coordinates are stable and derived from the
+  0.400 x 0.400 m physical board. Base coordinates remain COARSE because the
+  absolute head extrinsic originated on a different organizer Vega serial;
+  wrist servo remains responsible for final grasp alignment.
