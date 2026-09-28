@@ -155,6 +155,14 @@ def main(argv=None):
     cfg["allow_robot_init_head_motion"] = True
     cfg["auto_clear_software_estop_on_connect"] = True
     cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
+    # The measured right-arm endpoint residual during supervised board jogs is
+    # about 0.016 rad.  The competition config's 0.005 rad gate can therefore
+    # report a settled physical move as a timeout and invoke the e-stop path.
+    # This calibration-only tolerance still requires a fresh state sample and
+    # keeps the normal competition tolerance unchanged.
+    cfg["motion"]["joint_reached_tolerance_rad"] = max(
+        float(cfg["motion"]["joint_reached_tolerance_rad"]), 0.020
+    )
     _ensure_publisher(args.publisher_log, robot_name=cfg["robot_name"])
 
     robot = VegaAdapter(cfg)
