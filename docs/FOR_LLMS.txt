@@ -1,3 +1,10 @@
+CURRENT VEGA SIDE OVERRIDE — 2026-09-28
+The active competition working side has been migrated to the RIGHT arm.
+Operational code/config now uses working_arm=right, ee_frame=tip_r, gripper scope=right,
+and wrist_a as the verified physical-right wrist camera. Historical left-arm notes and
+onsite evidence below are retained as chronology only; do not treat them as the current
+motion/camera contract.
+
 ===============================================================================
 SIDE AGENT 2 UPDATE — 2026-09-28 ~13:35 EDT — BATTERY COARSE-HOVER MOVER READY
 ===============================================================================
