@@ -54,6 +54,7 @@ def _set_head_and_capture(cfg, head_j1, floor):
     import numpy as np
 
     cfg["allow_robot_init_head_motion"] = True
+    cfg["auto_clear_software_estop_on_connect"] = True
     cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
     adapter = VegaAdapter(cfg)
     camera = None
