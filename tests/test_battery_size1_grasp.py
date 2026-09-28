@@ -11,16 +11,20 @@ import unittest
 from unittest.mock import patch
 
 from steadyhand.battery_size1 import (
+    CALIBRATION_GENERATION,
+    SCHEMA_VERSION,
     VERIFIED_GRIP_CURRENT_A,
     VERIFIED_GRIP_SPEED_DPS,
     blank_calibration,
     calibration_is_complete,
     load_alignment_result,
     load_calibration,
+    require_right_battery_config,
 )
 from steadyhand.config import load_bundle
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
+from tools.vega_battery_size1_calibrate import _load_initialized
 from tools.vega_battery_size1_center import main as center_main
 from tools.vega_battery_size1_pick import main as pick_main
 
@@ -54,6 +58,8 @@ def alignment_result(path, calibration_path, *, pose=None, goal=(800.0, 700.0)):
     value = {
         "status": "converged",
         "part": "battery_size1",
+        "working_arm": "right",
+        "tcp_frame": "tip_r",
         "wrist_camera": "wrist_a",
         "calibration_sha256": hashlib.sha256(Path(calibration_path).read_bytes()).hexdigest(),
         "goal_uv": list(goal),
@@ -76,6 +82,108 @@ class CalibrationContractTests(unittest.TestCase):
         self.assertIsNone(value["grasp"]["tcp_z_m"])
         self.assertEqual(value["gripper"]["current_a"], VERIFIED_GRIP_CURRENT_A)
         self.assertEqual(value["gripper"]["speed_dps"], VERIFIED_GRIP_SPEED_DPS)
+
+    def test_blank_calibration_records_explicit_right_side_provenance(self):
+        value = blank_calibration(self.cfg)
+        self.assertEqual(value["schema_version"], SCHEMA_VERSION)
+        self.assertEqual(
+            value["calibration_generation"],
+            CALIBRATION_GENERATION,
+        )
+        self.assertEqual(value["working_arm"], "right")
+        self.assertEqual(value["tcp_frame"], "tip_r")
+        self.assertEqual(value["wrist_camera"], "wrist_a")
+        self.assertEqual(value["gripper"]["scope"], "right")
+
+    def test_stale_missing_or_left_provenance_is_rejected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cal.json"
+            base = complete_calibration(path)
+            cases = {}
+
+            missing = copy.deepcopy(base)
+            missing.pop("working_arm")
+            cases["missing working_arm"] = missing
+
+            old_schema = copy.deepcopy(base)
+            old_schema["schema_version"] = 1
+            old_schema.pop("calibration_generation", None)
+            cases["pre-switch schema"] = old_schema
+
+            left_arm = copy.deepcopy(base)
+            left_arm["working_arm"] = "left"
+            cases["left arm"] = left_arm
+
+            left_tcp = copy.deepcopy(base)
+            left_tcp["tcp_frame"] = "tip_l"
+            cases["tip_l"] = left_tcp
+
+            left_wrist = copy.deepcopy(base)
+            left_wrist["wrist_camera"] = "wrist_b"
+            cases["wrist_b"] = left_wrist
+
+            left_gripper = copy.deepcopy(base)
+            left_gripper["gripper"]["scope"] = "left"
+            cases["left gripper"] = left_gripper
+
+            for label, value in cases.items():
+                with self.subTest(label=label):
+                    path.write_text(json.dumps(value))
+                    self.assertFalse(calibration_is_complete(value))
+                    with self.assertRaises(ValueError):
+                        load_calibration(
+                            path,
+                            self.cfg,
+                            floor_m=self.floor,
+                        )
+
+    def test_incremental_teaching_refuses_pre_switch_file_until_clean_init(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "cal.json"
+            legacy = complete_calibration(path)
+            legacy["schema_version"] = 1
+            legacy.pop("calibration_generation", None)
+            legacy.pop("working_arm", None)
+            legacy.pop("tcp_frame", None)
+            legacy["wrist_camera"] = "wrist_b"
+            legacy["gripper"].pop("scope", None)
+            path.write_text(json.dumps(legacy))
+
+            with self.assertRaisesRegex(ValueError, "init --force"):
+                _load_initialized(path, self.cfg)
+
+            fresh = blank_calibration(self.cfg)
+            path.write_text(json.dumps(fresh))
+            loaded = _load_initialized(path, self.cfg)
+            self.assertFalse(calibration_is_complete(loaded))
+            self.assertIsNone(loaded["jaw_alignment"]["goal_pixel_uv"])
+            self.assertIsNone(loaded["grasp"]["tcp_z_m"])
+
+    def test_runtime_config_gate_rejects_left_or_mismatched_stack(self):
+        mutations = []
+
+        cfg = copy.deepcopy(self.cfg)
+        cfg["working_arm"] = "left"
+        mutations.append(("working_arm", cfg))
+
+        cfg = copy.deepcopy(self.cfg)
+        cfg["kinematics"]["ee_frame"] = "tip_l"
+        mutations.append(("tcp_frame", cfg))
+
+        cfg = copy.deepcopy(self.cfg)
+        cfg["cameras"]["wrists"][
+            "api_label_to_physical_mount"
+        ]["wrist_a"] = "left_wrist"
+        mutations.append(("wrist", cfg))
+
+        cfg = copy.deepcopy(self.cfg)
+        cfg["gripper"]["scope"] = "left"
+        mutations.append(("gripper", cfg))
+
+        for label, cfg in mutations:
+            with self.subTest(label=label):
+                with self.assertRaises(ValueError):
+                    require_right_battery_config(cfg)
 
     def test_complete_calibration_requires_operator_values_and_verified_gripper(self):
         with tempfile.TemporaryDirectory() as directory:
