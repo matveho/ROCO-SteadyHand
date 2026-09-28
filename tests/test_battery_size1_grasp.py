@@ -35,7 +35,9 @@ def complete_calibration(path, *, grasp_z=0.480, goal=(800.0, 700.0)):
         "goal_pixel_uv": list(goal),
         "image_size_px": [1920, 1536],
         "source_image": "operator_goal.png",
-        "source": "operator_taught",
+        "taught_hover_tcp_z_m": 0.550,
+        "taught_tip_quaternion_wxyz": list(VERTICAL),
+        "source": "operator_taught_current_tcp",
     }
     value["grasp"] = {
         "tcp_z_m": grasp_z,
