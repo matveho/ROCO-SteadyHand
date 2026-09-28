@@ -166,9 +166,14 @@ def _resolve_point(name, task_data):
     return part, kind, _finite_vector(task_data["parts"][part][kind], 3, name)
 
 
-def _live_pose(source_xyz, *, source_center, live_center, ux, uy, surface_plane, clearance_m, quat):
+def _live_pose(source_xyz, *, source_center, live_center, ux, uy, surface_plane, clearance_m, quat, rotation_deg=0.0):
     dx = float(source_xyz[0]) - float(source_center[0])
     dy = float(source_xyz[1]) - float(source_center[1])
+    angle = math.radians(float(rotation_deg))
+    dx, dy = (
+        dx * math.cos(angle) - dy * math.sin(angle),
+        dx * math.sin(angle) + dy * math.cos(angle),
+    )
     live_x = live_center[0] + ux[0] * dx + uy[0] * dy
     live_y = live_center[1] + ux[1] * dx + uy[1] * dy
     surface_z = calibrated_surface_z(live_x, live_y, surface_plane)
@@ -206,6 +211,7 @@ def main(argv=None):
         raise ValueError("task coordinates must retain the organizer source frame")
     if abs(float(task_data.get("board_width_m")) - 0.386) > 1e-9:
         raise ValueError("task coordinate registration must declare board_width_m=0.386")
+    rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     live_center, ux, uy, surface_plane = _load_manual(args.calibration, cfg)
     _, ready_pose = configured_right_preset(cfg, "right_ready")
@@ -217,7 +223,8 @@ def main(argv=None):
                                   live_center=live_center, ux=ux, uy=uy,
                                   surface_plane=surface_plane,
                                   clearance_m=float(args.hover_clearance_mm) / 1000.0,
-                                  quat=ready_pose.quaternion_wxyz)))
+                                  quat=ready_pose.quaternion_wxyz,
+                                  rotation_deg=rotation_deg)))
 
     safety = load_vega_skills()["safety"]
     floor = float(safety["min_tcp_z_m"])

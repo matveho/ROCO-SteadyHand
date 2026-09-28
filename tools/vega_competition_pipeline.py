@@ -88,6 +88,7 @@ def _board_targets(runtime, clearance_m):
 def _task_targets(runtime, task_data, clearance_m):
     bundle, _, (center, ux, uy, plane), ready_pose = runtime
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
+    rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
     targets = OrderedDict()
     for part in task_data["official_order"]:
         for kind in task_data["parts"][part]:
@@ -99,7 +100,7 @@ def _task_targets(runtime, task_data, clearance_m):
                 source_xyz, source_center=source_center,
                 live_center=center, ux=ux, uy=uy,
                 surface_plane=plane, clearance_m=clearance_m,
-                quat=ready_pose.quaternion_wxyz,
+                quat=ready_pose.quaternion_wxyz, rotation_deg=rotation_deg,
             )
     return targets
 
@@ -166,11 +167,37 @@ def _run_motion_targets(targets, bundle, *, confirm_physical, check_only, speed_
                     # return to the measured ready state for the same targets.
                     move_camera_clear_for_image(robot, floor_m=floor, speed_scale=0.90)
                     head_q = list(robot._robot.head.get_joint_pos())
+                    print("HEAD BEFORE =", head_q, flush=True)
                     head_q[0] = 0.55
-                    robot._robot.head.set_joint_pos(
-                        head_q, wait_time=1.2, exit_on_reach=True,
-                        exit_on_reach_kwargs={"tolerance": 0.02},
-                    )
+                    move_head = getattr(robot._robot.head, "move_to_joint_pos", None)
+                    moved_head = False
+                    if callable(move_head):
+                        try:
+                            handle = move_head(head_q, velocity_scale=0.45)
+                            wait_fn = getattr(handle, "wait", None)
+                            if callable(wait_fn):
+                                wait_fn(timeout=5.0)
+                            else:
+                                time.sleep(1.5)
+                            moved_head = True
+                        except RuntimeError as exc:
+                            print(
+                                f"HEAD MOTION HANDLE FAILED ({exc}); falling back to "
+                                "set_joint_pos",
+                                flush=True,
+                            )
+                    if not moved_head:
+                        robot._robot.head.set_joint_pos(
+                            head_q, wait_time=1.2, exit_on_reach=True,
+                            exit_on_reach_kwargs={"tolerance": 0.02},
+                        )
+                    measured_head_q = list(robot._robot.head.get_joint_pos())
+                    print("HEAD AFTER  =", measured_head_q, flush=True)
+                    if abs(float(measured_head_q[0]) - 0.55) > 0.03:
+                        raise RuntimeError(
+                            f"downward head view was not reached: target=0.55 "
+                            f"measured={measured_head_q[0]}"
+                        )
                     time.sleep(0.5)
                     camera = VegaHeadCamera()
                     try:
@@ -201,7 +228,7 @@ def _run_motion_targets(targets, bundle, *, confirm_physical, check_only, speed_
         except Exception as exc:
             if not any(marker in str(exc) for marker in (
                 "IK did not converge", "initial target is not reachable",
-                "no reachable supervised inset",
+                "no reachable supervised inset", "downward head view was not reached",
             )):
                 raise
             print(f"POSITION IK RETRY {attempt}: {exc}", flush=True)

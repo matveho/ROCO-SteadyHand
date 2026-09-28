@@ -105,9 +105,10 @@ python3 tools/vega_board_five_point_calibrate.py \
 
 This visits CENTER, TOP_RIGHT, BOTTOM_RIGHT, and BOTTOM_LEFT. At each point,
 correct the camera estimate with the forward/back/left/right TCP jog prompt,
-then enter the measured board-surface Z in millimetres in
-`vega_1u_base_link`. The output fits the board surface plane and corrected
-axes. Task-coordinate motion refuses to run until this schema is present.
+then enter the measured TCP-to-board clearance in millimetres. The output
+converts each clearance to the board surface Z, fits the board surface plane,
+and stores corrected axes. Task-coordinate motion refuses to run until this
+schema is present.
 
 ## Operator competition pipeline
 
@@ -156,9 +157,10 @@ can be combined with the test/task actions for local IK preflight without arm
 motion.
 
 Transient IK failures are automatically recovered. The runner closes the
-current motion session, uses the validated camera-clear pose, captures a fresh
-head-camera frame, and retries. Calibration repeats this startup sequence until
-it succeeds or the operator presses Ctrl-C.
+current motion session, uses the validated camera-clear pose, commands the
+downward head view, captures a fresh head-camera frame, and asks whether to
+retry. Calibration never loops silently: answer `yes` to retry or `no` to
+stop.
 
 The final physical five-point result is preserved in
 `calibration/vega_board_manual_fallback.json`. If the live calibration file is

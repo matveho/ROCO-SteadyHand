@@ -3,8 +3,9 @@
 The head camera supplies only initial estimates. The operator then corrects the
 right TCP at CENTER, TOP_RIGHT, BOTTOM_RIGHT, and BOTTOM_LEFT with small
 forward/back/left/right jogs. At each point the operator enters the measured
-board-surface height in millimetres in ``vega_1u_base_link``. The output fits a
-planar board surface and stores the corrected board axes for later task motion.
+TCP-to-board clearance in millimetres; the calibrated TCP pose converts that
+clearance to board surface height. The output fits a planar board surface and
+stores the corrected board axes for later task motion.
 No gripper command or manual claw operation is used.
 """
 
@@ -165,6 +166,8 @@ def _main_once(argv=None):
     forward_rise_angle_deg = configured_angle if args.forward_rise_angle_deg is None else float(args.forward_rise_angle_deg)
     if not math.isfinite(forward_rise_angle_deg) or not -30.0 <= forward_rise_angle_deg <= 30.0:
         p.error("--forward-rise-angle-deg must be finite and within -30..30 deg")
+    camera_corrections = (cfg.get("board_calibration") or {}).get("camera_target_corrections_m") or {}
+    suggested_clearances = (cfg.get("board_calibration") or {}).get("suggested_clearance_mm") or {}
     safety = dict(load_vega_skills().get("safety") or {})
     floor = float(safety["min_tcp_z_m"])
     hover_z = floor + 0.08 if args.hover_z is None else float(args.hover_z)
@@ -190,13 +193,41 @@ def _main_once(argv=None):
     try:
         robot.connect()
         move_camera_clear_for_image(robot, floor_m=floor, speed_scale=0.90)
+        # +0.55 rad on head_j1 is the verified downward-looking board view.
+        # Use the motion-handle API when available, then read the joints back
+        # so a photo is never silently captured from the old head pose.
         target_head = np.asarray([0.55, 0.0, 0.0], dtype=float)
-        robot._robot.head.set_joint_pos(
-            target_head, wait_time=1.2, exit_on_reach=True,
-            exit_on_reach_kwargs={"tolerance": 0.02},
-        )
+        print("HEAD BEFORE =", robot._robot.head.get_joint_pos(), flush=True)
+        move_head = getattr(robot._robot.head, "move_to_joint_pos", None)
+        moved_head = False
+        if callable(move_head):
+            try:
+                handle = move_head(target_head, velocity_scale=0.45)
+                wait_fn = getattr(handle, "wait", None)
+                if callable(wait_fn):
+                    wait_fn(timeout=5.0)
+                else:
+                    time.sleep(1.5)
+                moved_head = True
+            except RuntimeError as exc:
+                print(
+                    f"HEAD MOTION HANDLE FAILED ({exc}); falling back to "
+                    "set_joint_pos",
+                    flush=True,
+                )
+        if not moved_head:
+            robot._robot.head.set_joint_pos(
+                target_head, wait_time=1.2, exit_on_reach=True,
+                exit_on_reach_kwargs={"tolerance": 0.02},
+            )
         time.sleep(float(args.settle_s))
         head_q = np.asarray(robot._robot.head.get_joint_pos(), dtype=float)
+        print("HEAD AFTER  =", head_q.tolist(), flush=True)
+        if not np.allclose(head_q, target_head, atol=0.03):
+            raise RuntimeError(
+                f"downward head view was not reached: target={target_head.tolist()} "
+                f"measured={head_q.tolist()}"
+            )
         camera = VegaHeadCamera()
         camera.connect()
         frame = camera.read(include_depth=False, timeout_s=15.0)
@@ -213,6 +244,12 @@ def _main_once(argv=None):
             "BOTTOM_RIGHT": np.asarray(coarse["br"], dtype=float),
             "BOTTOM_LEFT": np.asarray(coarse["bl"], dtype=float),
         }
+        for label, point in points.items():
+            correction = camera_corrections.get(label, (0.0, 0.0))
+            if not isinstance(correction, (list, tuple)) or len(correction) != 2:
+                raise ValueError(f"camera correction for {label} must be [dx,dy] metres")
+            point[0] += float(correction[0])
+            point[1] += float(correction[1])
         print("CAMERA BOARD READ:", json.dumps(scene["board"], indent=2), flush=True)
         ready_q, ready_pose = configured_right_preset(cfg, "right_ready")
         _move_configured_right_ready(robot, floor=floor, speed_scale=0.45)
@@ -246,12 +283,14 @@ def _main_once(argv=None):
             all_jogs.extend(point_jogs)
             corrected = robot.get_tcp_pose()
             while True:
+                suggested = suggested_clearances.get(label)
+                suffix = f" [default {float(suggested):g}]" if suggested is not None else ""
                 raw = input(
                     f"Enter measured TCP-to-board CLEARANCE at {label} in mm "
-                    "(positive means TCP is above board): "
+                    f"(positive means TCP is above board){suffix}: "
                 ).strip()
                 try:
-                    surface_mm = float(raw)
+                    surface_mm = float(suggested) if not raw and suggested is not None else float(raw)
                     if not math.isfinite(surface_mm): raise ValueError
                     break
                 except ValueError:
@@ -282,6 +321,7 @@ def _main_once(argv=None):
             "floor_m": floor,
             "initial_hover_z_m": hover_z,
             "forward_rise_angle_deg": forward_rise_angle_deg,
+            "camera_target_corrections_m": camera_corrections,
             "head_q_rad": [float(v) for v in head_q],
             "camera_board_read": scene["board"],
             "manual_corrected": {label: samples[label]["tip_r_pose"] for label in LABELS},
@@ -319,6 +359,7 @@ def _retryable_ik_error(exc):
         "IK did not converge",
         "initial target is not reachable",
         "no reachable supervised inset",
+        "downward head view was not reached",
     ))
 
 

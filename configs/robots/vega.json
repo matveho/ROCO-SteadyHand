@@ -102,7 +102,20 @@
   "board_calibration": {
     "forward_rise_angle_deg": 13.0,
     "fallback_file": "calibration/vega_board_manual_fallback.json",
-    "source": "operator measured TOP_RIGHT 84 mm, CENTER 45 mm, BOTTOM_RIGHT -5 mm over 386 mm forward span",
+    "camera_target_corrections_m": {
+      "CENTER": [0.050, -0.005],
+      "TOP_RIGHT": [0.000, -0.030],
+      "BOTTOM_RIGHT": [0.060, -0.025],
+      "BOTTOM_LEFT": [0.000, 0.000]
+    },
+    "camera_target_correction_convention": "These are the operator forward/right jog vectors needed after the coarse camera target; forward=+base X and right=-base Y.",
+    "suggested_clearance_mm": {
+      "CENTER": 57.0,
+      "TOP_RIGHT": 83.0,
+      "BOTTOM_RIGHT": 14.0,
+      "BOTTOM_LEFT": 16.0
+    },
+    "source": "operator measured coarse-target residuals CENTER forward 50/right 5 mm, TOP_RIGHT right 30 mm, BOTTOM_RIGHT forward 60/right 25 mm; clearances CENTER 57 mm, TOP_RIGHT 83 mm, BOTTOM_RIGHT 14 mm",
     "status": "active_supervised_board_plane_correction"
   },
   "joint_presets": {

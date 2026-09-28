@@ -22,6 +22,19 @@ class TaskCoordinateReachabilityTests(unittest.TestCase):
         )
         self.assertEqual(pose, Pose((0.5, -0.25, 0.55), (1.0, 0.0, 0.0, 0.0)))
 
+    def test_task_rotation_is_ccw_about_source_board_center(self):
+        pose = _live_pose(
+            (0.193 + 0.1, 0.037 - 0.05, 1.04),
+            source_center=(0.193, 0.037), live_center=(0.4, -0.2),
+            ux=(1.0, 0.0), uy=(0.0, 1.0), surface_plane=(0.0, 0.0, 0.50),
+            clearance_m=0.05,
+            quat=(1.0, 0.0, 0.0, 0.0), rotation_deg=90.0,
+        )
+        self.assertAlmostEqual(pose.position_m[0], 0.45)
+        self.assertAlmostEqual(pose.position_m[1], -0.10)
+        self.assertAlmostEqual(pose.position_m[2], 0.55)
+        self.assertEqual(pose.quaternion_wxyz, (1.0, 0.0, 0.0, 0.0))
+
     def test_default_first_points_exist(self):
         for name in ("battery_size1.pick", "usb_a.pick", "rod_16mm.place", "gear_20teeth.place"):
             part, kind, xyz = _resolve_point(name, self.data)
