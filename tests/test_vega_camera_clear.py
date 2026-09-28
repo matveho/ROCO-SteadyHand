@@ -6,6 +6,8 @@ from steadyhand.vega_camera_clear import (
     CAMERA_CLEAR_RETAIN_HIGH_POSE_ABOVE_FLOOR_M,
     _can_retain_high_pose,
     move_camera_clear,
+    move_camera_clear_for_image,
+    move_verticalize_after_image,
 )
 
 
@@ -25,6 +27,59 @@ class _FakeRobot:
 
 
 class VegaCameraClearTests(unittest.TestCase):
+    def test_image_clear_preserves_orientation(self):
+        floor = 0.456
+        start = Pose((0.49, -0.06, 0.73), (0.91, 0.10, -0.20, 0.35))
+        robot = _FakeRobot(start)
+
+        planned = Pose((0.49, -0.06, 1.056), start.quaternion_wxyz)
+
+        def fake_move(_robot, target, **kwargs):
+            robot.pose = target
+
+        with patch(
+            "steadyhand.vega_camera_clear._reachable_image_clear_pose",
+            return_value=planned,
+        ), patch(
+            "steadyhand.vega_camera_clear.move_tcp_segmented",
+            side_effect=fake_move,
+        ):
+            reached = move_camera_clear_for_image(
+                robot, floor_m=floor, speed_scale=0.90
+            )
+
+        self.assertEqual(reached.quaternion_wxyz, start.quaternion_wxyz)
+        self.assertEqual(reached.position_m, planned.position_m)
+
+    def test_post_image_verticalization_runs_restored_two_stage_sequence(self):
+        floor = 0.456
+        start = Pose((0.36, 0.0, 1.056), (1.0, 0.0, 0.0, 0.0))
+        robot = _FakeRobot(start)
+        verticalize = Pose((0.50, 0.0, 0.906), (0.7, 0.0, 0.0, -0.7))
+        preset = Pose((0.35, 0.0, 1.056), verticalize.quaternion_wxyz)
+        calls = []
+
+        def fake_move(_robot, target, **kwargs):
+            calls.append(target)
+            robot.pose = target
+
+        with patch(
+            "steadyhand.vega_camera_clear._reachable_verticalize_pose",
+            return_value=verticalize,
+        ), patch(
+            "steadyhand.vega_camera_clear._highest_reachable_camera_clear_pose",
+            return_value=preset,
+        ), patch(
+            "steadyhand.vega_camera_clear.move_tcp_segmented",
+            side_effect=fake_move,
+        ):
+            reached = move_verticalize_after_image(
+                robot, floor_m=floor, speed_scale=0.90
+            )
+
+        self.assertEqual(calls, [verticalize, preset])
+        self.assertIs(reached, preset)
+
     def test_high_pose_is_eligible_for_no_motion_fallback(self):
         floor = 0.456
         pose = Pose(
