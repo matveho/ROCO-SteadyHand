@@ -2095,3 +2095,17 @@ Current competition-network workflow:
   tools/vega_board_benchmark.py now uses this corrected family. The prior
   'center unreachable' result is invalid as a workspace conclusion because it
   tested the wrong tip_l orientation family.
+
+
+2026-09-27 BOARD BENCHMARK SPEED FIX:
+  A run with corrected tip_l orientation printed exact CENTER and TL plans, then
+  appeared idle for a long time. Cause: benchmark pre-planned every remaining
+  corner with up to hundreds of 500-iteration IK solves before any motion.
+  This was computational delay, not a robot motion hang.
+  tools/vega_board_benchmark.py now:
+    - caps coarse planner IK at 140 iterations;
+    - exact yaw=0 / requested-Z is always the first single solve;
+    - searches only 3 heights x 4 yaws, with 0.9/0.8/0.7 inset fallback;
+    - plans and EXECUTES each waypoint immediately instead of pre-planning all;
+    - flushes progress messages so onsite status is visible.
+  CENTER and TL had already solved at alpha=1.00, z=0.640, yaw=0 in the slow run.
