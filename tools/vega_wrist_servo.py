@@ -1,7 +1,7 @@
-"""Capture wrist views or run one fixed-height left-wrist XY centering benchmark.
+"""Capture wrist views or run one fixed-height right-wrist XY centering benchmark.
 
 Default is camera capture only; Robot() is constructed only with --execute.
-Motion also needs --camera (verified physical left) and --confirm-physical-motion.
+Motion also needs --camera (verified physical right) and --confirm-physical-motion.
 Requires the onboard numpy, OpenCV, wrist_cameras and dexcontrol installations.
 """
 import argparse
@@ -92,8 +92,8 @@ def move_to_board(robot, args, floor):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--camera", choices=("wrist_a", "wrist_b"), default="wrist_b",
-                   help="camera used for servo; competition-unit default wrist_b=LEFT")
+    p.add_argument("--camera", choices=("wrist_a", "wrist_b"), default="wrist_a",
+                   help="camera used for servo; competition-unit default wrist_a=RIGHT")
     p.add_argument("--execute", action="store_true")
     p.add_argument("--confirm-physical-motion", action="store_true", help="also acknowledges Robot() head homing")
     p.add_argument("--move-to-board", action="store_true", help="first move to saved coarse board center")
@@ -164,11 +164,11 @@ def main(argv=None):
         capture = WristCapture(cameras, output, args.camera)
         capture()  # Both views saved before connecting Robot().
         if not args.execute:
-            print("CAPTURE ONLY: view 000_wrist_a.png and 000_wrist_b.png; identify physical left.")
+            print("CAPTURE ONLY: view 000_wrist_a.png and 000_wrist_b.png; identify physical right.")
             return 0
         cfg = load_bundle("vega")["robot"]
-        if cfg["working_arm"] != "left" or cfg["kinematics"]["ee_frame"] != "tip_l":
-            raise ValueError("This benchmark requires the left arm / tip_l")
+        if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
+            raise ValueError("This benchmark requires the right arm / tip_r")
         floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
         if not floor+0.06 <= args.hover_z <= floor+0.10+1e-9:
             raise ValueError("--hover-z must be 60–100 mm above task floor")
