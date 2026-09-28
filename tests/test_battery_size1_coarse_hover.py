@@ -226,66 +226,61 @@ class BatteryCoarseHoverContractTests(unittest.TestCase):
                     floor_m=0.456,
                 )
 
-    def test_hover_plan_preserves_orientation_and_never_descends_below_hover(self):
+    def test_hover_plan_is_strict_xy_only_at_accepted_hover(self):
         q = (
             math.sqrt(0.5),
             0.0,
             0.0,
             -math.sqrt(0.5),
         )
-        current = Pose((0.45, 0.02, 0.620), q)
+        current = Pose((0.45, 0.02, 0.550), q)
         stages = plan_hover_stages(
             current,
             (0.535, 0.080),
             hover_z_m=0.550,
             floor_m=0.456,
         )
-        self.assertEqual(
-            [label for label, _ in stages],
-            [
-                "PLANAR_TO_SOURCE_XY",
-                "LOWER_TO_SAFE_HOVER",
-            ],
-        )
-        self.assertTrue(
-            all(
-                pose.quaternion_wxyz == q
-                for _, pose in stages
-            )
-        )
-        self.assertTrue(
-            all(
-                pose.position_m[2] >= 0.550
-                for _, pose in stages
-            )
-        )
-        self.assertEqual(
-            stages[-1][1].position_m,
-            (0.535, 0.080, 0.550),
-        )
+        self.assertEqual(len(stages), 1)
+        label, target = stages[0]
+        self.assertEqual(label, "PLANAR_TO_SOURCE_XY")
+        self.assertEqual(target.position_m, (0.535, 0.080, 0.550))
+        self.assertEqual(target.quaternion_wxyz, q)
 
-    def test_hover_plan_lifts_before_xy_if_start_is_lower(self):
-        q = (1.0, 0.0, 0.0, 0.0)
-        current = Pose((0.45, 0.02, 0.520), q)
+    def test_hover_plan_preserves_live_z_within_hover_tolerance(self):
+        q = (
+            math.sqrt(0.5),
+            0.0,
+            0.0,
+            -math.sqrt(0.5),
+        )
+        current = Pose((0.45, 0.02, 0.556), q)
         stages = plan_hover_stages(
             current,
             (0.535, 0.080),
             hover_z_m=0.550,
             floor_m=0.456,
+            hover_z_tolerance_m=0.008,
         )
-        self.assertEqual(
-            [label for label, _ in stages],
-            [
-                "LIFT_TO_HOVER",
-                "PLANAR_TO_SOURCE_XY",
-            ],
-        )
-        self.assertTrue(
-            all(
-                pose.position_m[2] >= 0.550
-                for _, pose in stages
-            )
-        )
+        self.assertEqual(len(stages), 1)
+        _, target = stages[0]
+        self.assertEqual(target.position_m, (0.535, 0.080, 0.556))
+        self.assertEqual(target.quaternion_wxyz, q)
+
+    def test_hover_plan_refuses_any_vertical_reposition(self):
+        q = (1.0, 0.0, 0.0, 0.0)
+        for z in (0.620, 0.520):
+            with self.subTest(z=z):
+                current = Pose((0.45, 0.02, z), q)
+                with self.assertRaisesRegex(
+                    ValueError,
+                    "no vertical motion is allowed",
+                ):
+                    plan_hover_stages(
+                        current,
+                        (0.535, 0.080),
+                        hover_z_m=0.550,
+                        floor_m=0.456,
+                    )
 
     def test_hover_plan_refuses_below_floor_start(self):
         current = Pose(
