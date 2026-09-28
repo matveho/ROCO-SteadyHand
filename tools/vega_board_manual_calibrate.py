@@ -20,11 +20,11 @@ Flow:
      points, corrected board axes, TCP quaternions, and every manual jog.
 
 This tool calibrates BOARD POSITION/AXES only. It preserves TCP orientation.
-The operator measured the physical claw-center clearance as 39 mm at the near
-(robot-side) board edge and 61 mm at the far edge, across 383 mm. The resulting
-measured forward-rise slope is used for forward/back Z compensation. A visibly
-angled claw is still reported, not silently treated as a calibrated vertical
-orientation.
+The operator measured the physical claw-center clearance as -5 mm at the
+BOTTOM_RIGHT, 45 mm at CENTER, and 84 mm at TOP_RIGHT across the 386 mm forward
+span. The resulting measured forward-rise slope is used for forward/back Z
+compensation. A visibly angled claw is still reported, not silently treated as
+a calibrated vertical orientation.
 
 With --use-current-right-ready, the post-image automatic verticalization is
 skipped. The operator manually establishes a high, downward-facing RIGHT_READY
@@ -61,12 +61,11 @@ from tools.vega_scene_perception import _ensure_publisher
 ROOT = Path(__file__).resolve().parents[1]
 
 # Operator-measured physical claw-center clearance change across the board.
-# Near edge (robot side): 39 mm
-# Far edge (+base-X / away from robot): 61 mm
-# Span between measurements: measured board width 383 mm
-MEASURED_NEAR_CLAW_HEIGHT_MM = 39.0
-MEASURED_FAR_CLAW_HEIGHT_MM = 61.0
-MEASURED_FORWARD_SPAN_MM = 383.0
+# Active right-arm board-plane correction from the latest supervised survey:
+# TOP_RIGHT=84 mm, CENTER=45 mm, BOTTOM_RIGHT=-5 mm across the 386 mm field.
+MEASURED_NEAR_CLAW_HEIGHT_MM = -5.0
+MEASURED_FAR_CLAW_HEIGHT_MM = 84.0
+MEASURED_FORWARD_SPAN_MM = 386.0
 ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M = 0.30
 # The measured competition RIGHT_READY is a board-working pose about 0.15 m
 # above the provisional floor, rather than the earlier high image-clear pose.
@@ -491,8 +490,8 @@ def main(argv=None):
         default=DEFAULT_FORWARD_RISE_ANGLE_DEG,
         help=(
             "physical claw-center rise angle during +base-X motion; "
-            "default is derived from onsite 39 mm near / 61 mm far over "
-            "383 mm span"
+            "default is derived from onsite -5 mm bottom-right / 84 mm "
+            "top-right over the 386 mm span"
         ),
     )
     p.add_argument(

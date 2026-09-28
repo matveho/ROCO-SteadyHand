@@ -132,6 +132,10 @@ def main(argv=None):
         "--max-jog-mm", type=float, default=float("inf"),
         help="maximum single jog in mm; default is unlimited (IK still preflights)",
     )
+    p.add_argument(
+        "--forward-rise-angle-deg", type=float, default=None,
+        help="board-parallel forward compensation; defaults to the robot config",
+    )
     p.add_argument("--settle-s", type=float, default=0.5)
     p.add_argument("--publisher-log", default="~/head_camera.log")
     p.add_argument("--output", default="calibration/vega_board_manual.json")
@@ -147,6 +151,12 @@ def main(argv=None):
         p.error("--max-jog-mm must be positive; omit it for unlimited jog distance")
 
     cfg = load_bundle("vega")["robot"]
+    configured_angle = float(
+        (cfg.get("board_calibration") or {}).get("forward_rise_angle_deg", 13.0)
+    )
+    forward_rise_angle_deg = configured_angle if args.forward_rise_angle_deg is None else float(args.forward_rise_angle_deg)
+    if not math.isfinite(forward_rise_angle_deg) or not -30.0 <= forward_rise_angle_deg <= 30.0:
+        p.error("--forward-rise-angle-deg must be finite and within -30..30 deg")
     safety = dict(load_vega_skills().get("safety") or {})
     floor = float(safety["min_tcp_z_m"])
     hover_z = floor + 0.08 if args.hover_z is None else float(args.hover_z)
@@ -223,7 +233,7 @@ def main(argv=None):
                 robot, label=label, floor=floor,
                 speed_scale=float(args.jog_speed_scale),
                 max_jog_mm=float(args.max_jog_mm),
-                forward_rise_angle_deg=0.0, events=point_jogs,
+                forward_rise_angle_deg=forward_rise_angle_deg, events=point_jogs,
             )
             all_jogs.extend(point_jogs)
             corrected = robot.get_tcp_pose()
@@ -259,6 +269,7 @@ def main(argv=None):
             "board_width_m_declared": 0.386,
             "floor_m": floor,
             "initial_hover_z_m": hover_z,
+            "forward_rise_angle_deg": forward_rise_angle_deg,
             "head_q_rad": [float(v) for v in head_q],
             "camera_board_read": scene["board"],
             "manual_corrected": {label: samples[label]["tip_r_pose"] for label in LABELS},

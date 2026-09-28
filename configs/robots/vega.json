@@ -99,6 +99,11 @@
     "joint_reached_tolerance_rad": 0.005,
     "joint_timeout_s": 30
   },
+  "board_calibration": {
+    "forward_rise_angle_deg": 13.0,
+    "source": "operator measured TOP_RIGHT 84 mm, CENTER 45 mm, BOTTOM_RIGHT -5 mm over 386 mm forward span",
+    "status": "active_supervised_board_plane_correction"
+  },
   "joint_presets": {
     "right_ready": {
       "joint_names": [
