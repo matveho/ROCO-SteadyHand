@@ -12,7 +12,7 @@ head RGB
   -> board frame in robot base
   -> board-relative source ROI / destination
   -> coarse arm XY
-  -> left wrist camera fine centering
+  -> right wrist camera fine centering
   -> fixed per-part grasp/place Z
   -> grip / transfer / release
 ```
@@ -23,7 +23,7 @@ extrinsics, or literal four-corner reach prerequisites for scoring.
 ## Working assumptions
 
 - Working arm: left.
-- Physical TCP/IK frame: `tip_l`.
+- Physical TCP/IK frame: `tip_r`.
 - Keep the gripper physically vertical, like a 3D-printer nozzle.
 - Normal low working plane should remain roughly 6–10 cm above the configured
   task floor except where a grasp/place descent intentionally goes lower.
@@ -146,7 +146,7 @@ Motion requirements:
 Manual teaching is calibration, not the final method.
 
 For the first piece record:
-- wrist stream corresponding to physical left wrist;
+- wrist stream corresponding to physical right wrist;
 - jaw alignment goal pixel;
 - grasp Z;
 - place Z;
@@ -215,7 +215,7 @@ Verified on the competition Vega after a combined camera boot:
 - both Sony wrist streams produce real 1920x1536 RGB with increasing frame IDs;
 - startup frames may be black, so warm up and validate image content;
 - operator-confirmed mapping: `wrist_a=RIGHT`, `wrist_b=LEFT`;
-- the left wrist view sees the board clearly;
+- the right wrist view sees the board clearly;
 - head RGB-only also works after publisher restart.
 
 Still to validate:
@@ -223,5 +223,5 @@ Still to validate:
 - interpreter/runtime compatibility for wrist camera + arm/IK in one visual-servo run;
 - jaw-alignment goal pixel and height-specific image Jacobian.
 
-Therefore wrist_b is again the preferred fine-centering layer immediately after
+Therefore wrist_a is the preferred fine-centering layer immediately after
 the coarse board->arm mapping benchmark passes.
