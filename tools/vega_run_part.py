@@ -38,7 +38,7 @@ def add_hardware_arguments(p):
     p.add_argument("--joint-tolerance", type=float)
     p.add_argument("--joint-timeout", type=float)
     p.add_argument("--speed-scale", type=float, default=0.15)
-    p.add_argument("--gripper-scope", choices=("left", "right", "both"))
+    p.add_argument("--gripper-scope", choices=("right",))
     p.add_argument("--grip-current", type=float)
     p.add_argument("--force-delta-limit", type=float)
     p.add_argument("--check-only", action="store_true")
@@ -76,7 +76,7 @@ def configured_bundle(args):
     gripper = cfg.setdefault("gripper", {})
     if args.gripper_scope:
         gripper["scope"] = args.gripper_scope
-    elif not gripper.get("scope") and cfg.get("working_arm") in ("left", "right"):
+    elif not gripper.get("scope") and cfg.get("working_arm") == "right":
         gripper["scope"] = cfg["working_arm"]
     if args.grip_current is not None:
         gripper["grip_current_a"] = args.grip_current
@@ -108,7 +108,7 @@ def prepare_inputs(args, bundle, order):
             skill["grip_current_a"] = cfg["gripper"].get("grip_current_a")
         validate_execution(goal, skill, safety, args.speed_scale)
         effective[name] = skill
-    if cfg["gripper"].get("scope") not in ("left", "right"):
+    if cfg["gripper"].get("scope") != "right":
         raise ValueError(
             "Physical part execution requires one gripper scope matching the "
             "working arm; the official driver has no top-level both-grip"
