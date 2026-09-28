@@ -1,9 +1,9 @@
 """Operator-assisted battery_size1 grasp calibration.
 
 This tool records two physical values without inventing either:
-1. wrist_b pixel where the selected battery feature appears when the jaws are
+1. wrist_a pixel where the selected battery feature appears when the jaws are
    mechanically aligned over the battery;
-2. measured tip_l Z at the operator-taught grasp height.
+2. measured tip_r Z at the operator-taught grasp height.
 
 It never commands arm motion. The record-grasp-z mode constructs VegaAdapter
 only to read the live TCP; Robot() initialization may move the head.
@@ -60,7 +60,7 @@ def _write(path, value):
     print("CALIBRATION_COMPLETE =", value["calibration_complete"], flush=True)
 
 
-def _capture_wrist_b(output, *, attempts=8):
+def _capture_wrist_a(output, *, attempts=8):
     import cv2
     import numpy as np
 
@@ -69,15 +69,15 @@ def _capture_wrist_b(output, *, attempts=8):
     try:
         for attempt in range(1, attempts + 1):
             pair = cameras.read(timeout=3.0, fresh=True)
-            frame = pair.wrist_b
+            frame = pair.wrist_a
             rgb = np.asarray(frame.rgb)
             if rgb.ndim != 3 or rgb.shape[2] != 3 or rgb.dtype != np.uint8:
                 raise ValueError(
-                    f"wrist_b expected uint8 HxWx3 RGB, got {rgb.shape}/{rgb.dtype}"
+                    f"wrist_a expected uint8 HxWx3 RGB, got {rgb.shape}/{rgb.dtype}"
                 )
             mean, std = float(rgb.mean()), float(rgb.std())
             print(
-                f"WRIST_B attempt={attempt} frame_id={frame.frame_id} "
+                f"WRIST_A attempt={attempt} frame_id={frame.frame_id} "
                 f"mean={mean:.2f} std={std:.2f}",
                 flush=True,
             )
@@ -103,7 +103,7 @@ def _capture_wrist_b(output, *, attempts=8):
             print("GOAL IMAGE =", output.resolve(), flush=True)
             print("IMAGE SIZE =", metadata["image_size_px"], flush=True)
             return metadata
-        raise RuntimeError("wrist_b remained black/invalid during goal-pixel capture")
+        raise RuntimeError("wrist_a remained black/invalid during goal-pixel capture")
     finally:
         cameras.close()
 
@@ -143,7 +143,7 @@ def main(argv=None):
         if not 2 <= args.attempts <= 20:
             p.error("--attempts must be 2..20")
         output = _path(args.output)
-        _capture_wrist_b(output, attempts=args.attempts)
+        _capture_wrist_a(output, attempts=args.attempts)
         return 0
 
     if args.command == "record-goal-pixel":
@@ -176,7 +176,7 @@ def main(argv=None):
             vertical = quaternion_to_matrix(pose.quaternion_wxyz)[2][2]
             if vertical < math.cos(0.12):
                 raise RuntimeError(
-                    "current tip_l is not within 0.12 rad of the established vertical "
+                    "current tip_r is not within 0.12 rad of the established vertical "
                     "claw family; align it before teaching the jaw goal pixel"
                 )
             value = _load_or_blank(path, cfg)
@@ -214,7 +214,7 @@ def main(argv=None):
             vertical = quaternion_to_matrix(pose.quaternion_wxyz)[2][2]
             if vertical < math.cos(0.12):
                 raise RuntimeError(
-                    "current tip_l is not within 0.12 rad of the established vertical "
+                    "current tip_r is not within 0.12 rad of the established vertical "
                     "claw family; physically align it before teaching grasp Z"
                 )
             value = _load_or_blank(path, cfg)
