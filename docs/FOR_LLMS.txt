@@ -1,4 +1,102 @@
 ===============================================================================
+SIDE AGENT 2 UPDATE — 2026-09-28 ~12:03 EDT — WRIST FINE-CENTER READY
+===============================================================================
+
+This update supersedes older wrist-servo instructions where they conflict.
+
+Current main at time of this documentation update:
+  407281282c4c831d16537d71f05d0a06a60dcd7e
+
+New wrist-only functional commits:
+  c0bf0e2173c14281b4e7cda4851a73c467a83274
+    steadyhand/vision/wrist_servo.py now logs every commanded local motion with
+    requested TCP, measured post-motion TCP, position error and orientation
+    error; correction records include measured source TCP and requested target.
+  9da1f6e63889c2601f535ba72951ba45b6921bac
+    added tools/vega_wrist_fine_center.py.
+  5e24d2853cbc7dd1a9b84052d15e188f3b1e8fef
+    added offline coverage for the new wrist_b-only path, startup-black retry,
+    stale-frame rejection, explicit coarse-XY gate and motion logging.
+  407281282c4c831d16537d71f05d0a06a60dcd7e
+    updated docs/VEGA_WRIST_SERVO.md with the preferred physical procedure.
+
+CI:
+  latest non-doc code head checked after these wrist changes:
+    a45134b386379f32eb2d79e5fdf822e62e0a659e
+  GitHub offline-tests: SUCCESS.
+  The older "CI currently failing" warning below is STALE.
+
+WRIST SERVO AUDIT / DECISION:
+  tools/vega_wrist_servo.py already had the core 2x2 measured-Jacobian loop,
+  returns to reference between probes, bounded correction logic and no
+  descend/grip behavior. However its combined mode is not preferred for the
+  next physical milestone because:
+    - it can perform coarse navigation through saved board registration /
+      board-planner assumptions;
+    - its capture helper validates/saves both wrist cameras even though only
+      wrist_b is required, so an irrelevant wrist_a startup-dark frame can abort
+      a left-wrist run;
+    - image center versus jaw-alignment intent is too easy to conflate.
+  Keep it for general capture/legacy use; use the new focused tool below.
+
+PREFERRED NEXT WRIST PHYSICAL MILESTONE:
+  tools/vega_wrist_fine_center.py
+
+Verified assumptions it enforces:
+  - working arm LEFT / tip_l;
+  - config must say wrist_b -> left_wrist;
+  - the preceding stage has ALREADY established a low safe hover;
+  - caller supplies that coarse base XY explicitly;
+  - measured TCP must be within 15 mm of supplied XY;
+  - measured TCP Z must be 60-120 mm above configured task floor;
+  - current TCP Z/orientation remain fixed during the servo.
+
+Behavior:
+  - no board/global navigation;
+  - no gripper connection;
+  - no descent, release or insertion;
+  - wrist_b feedback only;
+  - startup-dark wrist_b frames are discarded/retried (default up to 8);
+  - repeated frame identity is rejected;
+  - +X and +Y probes default to 8 mm;
+  - returns to original TCP between probes;
+  - Jacobian uses MEASURED TCP displacement;
+  - correction step <=10 mm, local radius <=40 mm, max 6 corrections;
+  - image-center convergence <=5 px;
+  - output logs accepted/rejected capture metadata, feature pixels, every
+    measured motion, Jacobian and corrections.
+
+IMPORTANT:
+  image center is ONLY a servo-validation target. It is NOT the jaw alignment
+  pixel. Do not descend/grasp from this benchmark result. Jaw goal pixel and
+  battery grasp/place Z remain to be taught separately.
+
+After board-axis/coarse motion passes and leaves the arm at the desired hover:
+  python3 tools/vega_wrist_fine_center.py \
+    --coarse-xy X Y \
+    --confirm-physical-motion
+
+Use X Y from the successful coarse target printed by the immediately preceding
+run. If testing a specific visible part feature, append --feature U V from the
+initial wrist view.
+
+Physical validation is still PENDING. Return to main agent:
+  START STATE
+  REFERENCE
+  PROBE_X
+  both RETURN_REFERENCE observations
+  PROBE_Y
+  CALIBRATED
+  every CORRECTION and MOTION
+  COMPLETE / stop reason
+plus whether the motion physically looked like two small perpendicular probes
+with clean returns, followed by bounded smooth centering.
+
+===============================================================================
+END SIDE AGENT 2 WRIST UPDATE
+===============================================================================
+
+===============================================================================
 PRIMARY HANDOFF — 2026-09-28 ~10:53 EDT — READ THIS FIRST
 ===============================================================================
 
