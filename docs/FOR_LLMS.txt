@@ -2042,3 +2042,31 @@ Current competition-network workflow:
       all 4 corners before any physical benchmark move.
   This is for coarse board navigation only; precision wrist-centering still owns
   final XY accuracy.
+
+
+2026-09-27 CRITICAL VERTICAL-CLAW FIX + POLICY DIRECTION:
+  Previous board benchmark used the WRONG vertical TCP quaternion family:
+  pure base-Z yaw leaves tip_l local +Z pointing UP. The task/simulation
+  top-down convention is q=(0,1,0,0), i.e. 180 deg about base X so local +Z
+  points DOWN. Free in-plane claw yaw is now Rz(yaw)*Rx(pi), quaternion:
+    (w,x,y,z) = (0, cos(yaw/2), sin(yaw/2), 0)
+  This likely explains much of the prior vertical-claw IK rejection.
+
+  The benchmark no longer requires one identical yaw/Z for every board point.
+  That constraint was unnecessary for the operator's "vertical claw" concept.
+  It now plans each center/corner waypoint independently while preserving a
+  vertical tool axis:
+    - 12 yaw candidates, 30 deg spacing;
+    - several safe hover heights;
+    - exact corner first;
+    - if the coarse head-camera corner is outside mechanical reach, progressively
+      inset it toward board center and REPORT alpha (1.00 = exact).
+  This prevents a coarse, cross-robot head extrinsic error from blocking policy
+  development.
+
+  Added steadyhand/vision/wrist_servo.py. Preferred fine-control architecture:
+    fixed vertical claw + downward wrist image + locally identified 2x2 image
+    Jacobian. Two small known base-X/base-Y probe motions estimate pixels/metre,
+    after which pixel target-centering maps directly to robot XY corrections.
+  This avoids requiring accurate wrist camera intrinsics/extrinsics for fine XY
+  centering and is the preferred route to rapid onsite policy testing.
