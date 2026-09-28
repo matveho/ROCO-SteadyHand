@@ -160,10 +160,12 @@ def main(argv=None):
 
     import cv2  # Fail before Robot() if the image dependency is missing.
     import numpy as np
-    from dexcontrol.robot import Robot
 
     cfg = load_bundle("vega")["robot"]
     os.environ.setdefault("ROBOT_NAME", cfg["robot_name"])
+    # ROBOT_NAME must be established before importing/constructing Robot().
+    from dexcontrol.robot import Robot
+
     safety = load_vega_skills()["safety"]
     plane_z = float(safety["min_tcp_z_m"] if args.plane_z is None else args.plane_z)
 
