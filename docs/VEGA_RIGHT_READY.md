@@ -79,22 +79,18 @@ the operator to use a smaller inverse jog without terminating calibration.
 
 ## Corner height survey
 
-The board calibration output can show a modeled TCP plane that does not match
-the physical board. To survey two points without adding another IK path, pull
-and run:
+Use the supervised software-motion corner survey after the board calibration
+record exists. It reuses the calibrated CENTER/axis frame, moves the robot to
+TOP_RIGHT and BOTTOM_LEFT through the normal TCP planner, and pauses for the
+operator to enter the measured height. It does not require manual claw control.
 
 ```bash
-python3 tools/vega_board_corner_height_check.py \
+python3 tools/vega_board_corner_height_calibrate.py \
   --measurement-kind board_surface_z_mm \
   --confirm-physical-motion
 ```
 
-Manually place the right claw at `TOP_RIGHT` and `BOTTOM_LEFT`, entering the
-measured board surface height in millimetres at each prompt. The tool records
-the live joints and `tip_r` pose, computes the corner-to-corner difference, and
-writes `calibration/vega_board_corner_heights.json`. It does not modify the
-production floor or global offset; send that output back before applying either.
-
-Use `--measurement-kind claw_clearance_mm` if the measurement is claw-to-board
-clearance rather than board surface height relative to the robot base. That
-mode diagnoses slope but intentionally does not claim a global Z offset.
+The default offsets reuse the measured calibration reference distances. If a
+corner target is outside the arm workspace, rerun with smaller explicit
+`--x-offset-m` and `--y-offset-m` values. The tool preflights each target before
+motion and writes `calibration/vega_board_corner_heights.json`.
