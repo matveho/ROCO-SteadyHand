@@ -304,14 +304,16 @@ def move_verticalize_after_image(
             tuple(round(float(v), 4) for v in verticalize.position_m),
             flush=True,
         )
-        move_tcp_segmented(
-            robot,
-            verticalize,
-            speed_scale=float(speed_scale),
-            max_translation_step_m=0.12,
-            max_orientation_step_rad=0.45,
-            min_tcp_z_m=floor_m,
+
+        # The endpoint was already proven IK-feasible above. Do not Cartesian-
+        # interpolate the large wrist reorientation: intermediate SLERP poses
+        # can be unreachable even though the endpoint is reachable. Execute the
+        # pre-solved endpoint as one server-smoothed joint trajectory.
+        verticalize_q = robot._kinematics.solve(
+            verticalize, robot._read_joint_positions()
         )
+        print("POST-IMAGE VERTICALIZE: DIRECT PRE-SOLVED JOINT MOVE", flush=True)
+        robot.move_joints(verticalize_q, speed_scale=float(speed_scale))
 
         target = _highest_reachable_camera_clear_pose(robot, floor_m=floor_m)
         print(
