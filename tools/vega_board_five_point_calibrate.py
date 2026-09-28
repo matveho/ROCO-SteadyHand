@@ -121,7 +121,7 @@ def _corrected_frame(samples):
     }
 
 
-def main(argv=None):
+def _main_once(argv=None):
     import numpy as np
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--hover-z", type=float, default=None,
@@ -299,6 +299,44 @@ def main(argv=None):
             except BaseException: pass
         try: robot.close()
         except BaseException as exc: print(f"SHUTDOWN WARNING: {exc}", file=sys.stderr)
+
+
+def _retryable_ik_error(exc):
+    text = str(exc)
+    return any(marker in text for marker in (
+        "IK did not converge",
+        "initial target is not reachable",
+        "no reachable supervised inset",
+    ))
+
+
+def main(argv=None):
+    """Retry transient IK failures by restarting the camera/arm sequence.
+
+    A retry deliberately re-enters the complete startup path: the arm is
+    brought through the validated camera-clear preset, a new head-camera frame
+    is captured, and RIGHT_READY plus the board targets are planned again.
+    Ctrl-C is the operator escape for a persistent physical problem.
+    """
+    attempt = 0
+    while True:
+        attempt += 1
+        try:
+            return _main_once(argv)
+        except KeyboardInterrupt:
+            raise
+        except Exception as exc:
+            if not _retryable_ik_error(exc):
+                raise
+            print(
+                f"CALIBRATION IK RETRY {attempt}: {exc}", flush=True,
+            )
+            print(
+                "Re-entering camera-clear recovery, taking a fresh head-camera "
+                "frame, and retrying calibration. Press Ctrl-C to stop.",
+                flush=True,
+            )
+            time.sleep(1.0)
 
 
 if __name__ == "__main__":

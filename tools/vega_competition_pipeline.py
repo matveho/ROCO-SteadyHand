@@ -15,11 +15,13 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters.vega import VegaAdapter
+from steadyhand.cameras.vega import VegaHeadCamera
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
+from steadyhand.vega_camera_clear import move_camera_clear_for_image
 from tools.vega_board_five_point_calibrate import main as run_five_point_calibration
 from tools.vega_task_coordinate_reachability import (
     DEFAULT_POINTS,
@@ -144,34 +146,57 @@ def _run_motion_targets(targets, bundle, *, confirm_physical, check_only, speed_
     cfg = bundle["robot"]
     cfg["allow_robot_init_head_motion"] = bool(confirm_physical)
     cfg["auto_clear_software_estop_on_connect"] = True
-    robot = VegaAdapter(cfg)
-    try:
-        if check_only:
-            robot.prepare()
-        else:
-            robot.connect()
-        ready_q, _ = configured_right_preset(cfg, "right_ready")
-        for name, target in targets.items():
-            robot._kinematics.solve(target, ready_q)
-            print(name, "TARGET =", tuple(round(float(v), 6) for v in target.position_m), flush=True)
-        print("ALL SELECTED TARGETS PREFLIGHTED", flush=True)
-        if check_only:
+    floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
+    attempt = 0
+    while True:
+        attempt += 1
+        robot = VegaAdapter(cfg)
+        try:
+            if check_only:
+                robot.prepare()
+            else:
+                robot.connect()
+                if attempt > 1:
+                    # Recovery is deliberately a fresh physical startup: move
+                    # away from the board, read a new head-camera frame, then
+                    # return to the measured ready state for the same targets.
+                    move_camera_clear_for_image(robot, floor_m=floor, speed_scale=0.90)
+                    camera = VegaHeadCamera()
+                    try:
+                        camera.connect()
+                        camera.read(include_depth=False, timeout_s=15.0)
+                    finally:
+                        camera.close()
+                    print("RECOVERY CAMERA FRAME CAPTURED", flush=True)
+            ready_q, _ = configured_right_preset(cfg, "right_ready")
+            for name, target in targets.items():
+                robot._kinematics.solve(target, ready_q)
+                print(name, "TARGET =", tuple(round(float(v), 6) for v in target.position_m), flush=True)
+            print("ALL SELECTED TARGETS PREFLIGHTED", flush=True)
+            if check_only:
+                return 0
+            input("Press Enter to move to measured RIGHT_READY; type anything to cancel: ")
+            robot.move_joints(ready_q, speed_scale=float(speed_scale))
+            for name, target in targets.items():
+                input(f"Press Enter to move to {name}; type anything to cancel: ")
+                move_tcp_segmented(
+                    robot, target, speed_scale=float(speed_scale),
+                    max_translation_step_m=0.04, max_orientation_step_rad=0.15,
+                    min_tcp_z_m=floor,
+                )
+                actual = robot.get_tcp_pose()
+                print(name, "MEASURED TIP_R =", tuple(round(float(v), 6) for v in actual.position_m), flush=True)
             return 0
-        input("Press Enter to move to measured RIGHT_READY; type anything to cancel: ")
-        robot.move_joints(ready_q, speed_scale=float(speed_scale))
-        floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
-        for name, target in targets.items():
-            input(f"Press Enter to move to {name}; type anything to cancel: ")
-            move_tcp_segmented(
-                robot, target, speed_scale=float(speed_scale),
-                max_translation_step_m=0.04, max_orientation_step_rad=0.15,
-                min_tcp_z_m=floor,
-            )
-            actual = robot.get_tcp_pose()
-            print(name, "MEASURED TIP_R =", tuple(round(float(v), 6) for v in actual.position_m), flush=True)
-        return 0
-    finally:
-        robot.close()
+        except Exception as exc:
+            if not any(marker in str(exc) for marker in (
+                "IK did not converge", "initial target is not reachable",
+                "no reachable supervised inset",
+            )):
+                raise
+            print(f"POSITION IK RETRY {attempt}: {exc}", flush=True)
+            print("Recovering through camera-clear, taking a fresh photo, and retrying.", flush=True)
+        finally:
+            robot.close()
 
 
 def _run_competition_task(name, runtime, task_data, args):
