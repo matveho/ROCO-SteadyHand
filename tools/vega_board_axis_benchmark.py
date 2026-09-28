@@ -25,6 +25,7 @@ from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vision.scene import detect_head_task_scene
 from tools.vega_board_benchmark import _yaw_quat
+from tools.vega_scene_perception import _ensure_publisher
 
 
 def main(argv=None):
@@ -37,6 +38,7 @@ def main(argv=None):
                    help="free-space arm speed")
     p.add_argument("--claw-yaw-deg", type=float, default=0.0)
     p.add_argument("--settle-s", type=float, default=0.5)
+    p.add_argument("--publisher-log", default="~/head_camera.log")
     p.add_argument("--confirm-physical-motion", action="store_true")
     args = p.parse_args(argv)
 
@@ -69,6 +71,11 @@ def main(argv=None):
     # controller stop/start behavior while the server motion plugin still owns
     # trajectory smoothing.
     cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
+
+    _ensure_publisher(
+        args.publisher_log,
+        robot_name=cfg["robot_name"],
+    )
 
     robot = VegaAdapter(cfg)
     camera = None
