@@ -23,6 +23,7 @@ from steadyhand.battery_size1 import (
     WRIST_CAMERA,
     calibration_sha256,
     load_calibration,
+    require_right_battery_config,
 )
 from steadyhand.cameras.vega import VegaWristCameras
 from steadyhand.config import load_bundle
@@ -82,6 +83,7 @@ def main(argv=None):
     import cv2
 
     cfg = load_bundle("vega")["robot"]
+    require_right_battery_config(cfg)
     floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
     cal_path = _resolve(args.calibration)
     calibration = load_calibration(cal_path, cfg, floor_m=floor)
@@ -183,6 +185,8 @@ def main(argv=None):
         result.update(
             {
                 "part": PART_NAME,
+                "working_arm": "right",
+                "tcp_frame": "tip_r",
                 "wrist_camera": WRIST_CAMERA,
                 "calibration_sha256": calibration_sha256(cal_path),
                 "tcp_position_m": list(final_pose.position_m),
