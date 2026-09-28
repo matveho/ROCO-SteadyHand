@@ -154,3 +154,8 @@ python3 tools/vega_competition_pipeline.py \
 Use `--test-positions all` to select every board and task point. `--check-only`
 can be combined with the test/task actions for local IK preflight without arm
 motion.
+
+Transient IK failures are automatically recovered. The runner closes the
+current motion session, uses the validated camera-clear pose, captures a fresh
+head-camera frame, and retries. Calibration repeats this startup sequence until
+it succeeds or the operator presses Ctrl-C.
