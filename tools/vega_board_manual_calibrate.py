@@ -18,10 +18,11 @@ Flow:
      points, corrected board axes, TCP quaternions, and every manual jog.
 
 This tool calibrates BOARD POSITION/AXES only. It preserves TCP orientation.
-The operator reported that a nominal flat +base-X move raises the physical claw
-center by about 10 degrees, so forward/back jogs apply an explicit configurable
-Z compensation. A visibly angled claw is still reported, not silently treated
-as a calibrated vertical orientation.
+The operator measured the physical claw-center clearance as 39 mm at the near
+(robot-side) board edge and 61 mm at the far edge, across 383 mm. The resulting
+measured forward-rise slope is used for forward/back Z compensation. A visibly
+angled claw is still reported, not silently treated as a calibrated vertical
+orientation.
 """
 
 import argparse
@@ -47,6 +48,20 @@ from tools.vega_scene_perception import _ensure_publisher
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Operator-measured physical claw-center clearance change across the board.
+# Near edge (robot side): 39 mm
+# Far edge (+base-X / away from robot): 61 mm
+# Span between measurements: measured board width 383 mm
+MEASURED_NEAR_CLAW_HEIGHT_MM = 39.0
+MEASURED_FAR_CLAW_HEIGHT_MM = 61.0
+MEASURED_FORWARD_SPAN_MM = 383.0
+DEFAULT_FORWARD_RISE_ANGLE_DEG = math.degrees(
+    math.atan(
+        (MEASURED_FAR_CLAW_HEIGHT_MM - MEASURED_NEAR_CLAW_HEIGHT_MM)
+        / MEASURED_FORWARD_SPAN_MM
+    )
+)
 DIRECTIONS = {
     "forward": (1.0, 0.0),
     "f": (1.0, 0.0),
@@ -217,10 +232,11 @@ def main(argv=None):
     p.add_argument(
         "--forward-rise-angle-deg",
         type=float,
-        default=10.0,
+        default=DEFAULT_FORWARD_RISE_ANGLE_DEG,
         help=(
-            "measured physical claw-center rise angle during +base-X motion; "
-            "forward jogs command -Z compensation (default 10 deg)"
+            "physical claw-center rise angle during +base-X motion; "
+            "default is derived from onsite 39 mm near / 61 mm far over "
+            "383 mm span"
         ),
     )
     p.add_argument("--claw-yaw-deg", type=float, default=0.0)
@@ -259,11 +275,11 @@ def main(argv=None):
     cfg["allow_robot_init_head_motion"] = True
     cfg["auto_clear_software_estop_on_connect"] = True
     cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
-    # Operator-supervised calibration showed a stationary endpoint residual of
-    # 0.00657 rad. Accept up to 0.010 rad here only; normal manipulation keeps
-    # its configured tighter threshold.
+    # Operator-supervised calibration showed stationary endpoint residuals up
+    # to 0.013057 rad. Accept 0.015 rad here only; normal manipulation keeps its
+    # configured tighter threshold.
     cfg["motion"]["joint_reached_tolerance_rad"] = max(
-        float(cfg["motion"]["joint_reached_tolerance_rad"]), 0.010
+        float(cfg["motion"]["joint_reached_tolerance_rad"]), 0.015
     )
 
     _ensure_publisher(args.publisher_log, robot_name=cfg["robot_name"])
@@ -273,19 +289,36 @@ def main(argv=None):
     events = []
     try:
         robot.connect()
+        print(
+            "MEASURED BOARD-PARALLEL SLOPE: "
+            f"near={MEASURED_NEAR_CLAW_HEIGHT_MM:.1f} mm, "
+            f"far={MEASURED_FAR_CLAW_HEIGHT_MM:.1f} mm, "
+            f"span={MEASURED_FORWARD_SPAN_MM:.1f} mm, "
+            f"angle={DEFAULT_FORWARD_RISE_ANGLE_DEG:.3f} deg",
+            flush=True,
+        )
         move_camera_clear(robot, floor_m=floor, speed_scale=0.90)
 
         target_head = np.asarray([0.55, 0.0, 0.0], dtype=float)
         print("HEAD BEFORE =", robot._robot.head.get_joint_pos(), flush=True)
         move_head = getattr(robot._robot.head, "move_to_joint_pos", None)
+        moved_head = False
         if callable(move_head):
-            handle = move_head(target_head, velocity_scale=0.45)
-            wait_fn = getattr(handle, "wait", None)
-            if callable(wait_fn):
-                wait_fn(timeout=5.0)
-            else:
-                time.sleep(1.5)
-        else:
+            try:
+                handle = move_head(target_head, velocity_scale=0.45)
+                wait_fn = getattr(handle, "wait", None)
+                if callable(wait_fn):
+                    wait_fn(timeout=5.0)
+                else:
+                    time.sleep(1.5)
+                moved_head = True
+            except RuntimeError as exc:
+                print(
+                    f"HEAD MOTION HANDLE FAILED ({exc}); "
+                    "falling back to verified set_joint_pos path",
+                    flush=True,
+                )
+        if not moved_head:
             robot._robot.head.set_joint_pos(
                 target_head,
                 wait_time=1.2,
@@ -396,6 +429,11 @@ def main(argv=None):
                 "forward_rise_angle_deg": float(args.forward_rise_angle_deg),
                 "model": "dz_commanded=-dx_base*tan(angle)",
                 "applies_to": "manual forward/back jogs only",
+                "source_measurements_mm": {
+                    "near_robot_edge_claw_height": MEASURED_NEAR_CLAW_HEIGHT_MM,
+                    "far_edge_claw_height": MEASURED_FAR_CLAW_HEIGHT_MM,
+                    "forward_span": MEASURED_FORWARD_SPAN_MM,
+                },
             },
             "head_prediction": {
                 "center_base_m": [float(v) for v in center],
