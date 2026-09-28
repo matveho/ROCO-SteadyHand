@@ -204,7 +204,7 @@ search, or contact logic.
 
 ## Immediate next milestone
 
-**Recover the task-board corners robustly from a fresh saved head image.**
+**Physically validate board center, +100 mm board-X, and +100 mm board-Y at low vertical hover.**
 
 
 ## Day-2 wrist-camera blocker
