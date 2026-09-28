@@ -92,12 +92,141 @@ def _print_pose(prefix, pose):
     )
 
 
-def _coarse_target_preserving_orientation(point, hover_z, current_pose):
-    """Build a board-calibration coarse target without imposing tool orientation."""
+def _quat_multiply(a, b):
+    """Hamilton product for normalized-or-near-normalized wxyz quaternions."""
+    aw, ax, ay, az = (float(v) for v in a)
+    bw, bx, by, bz = (float(v) for v in b)
+    q = (
+        aw*bw - ax*bx - ay*by - az*bz,
+        aw*bx + ax*bw + ay*bz - az*by,
+        aw*by - ax*bz + ay*bw + az*bx,
+        aw*bz + ax*by - ay*bx + az*bw,
+    )
+    n = math.sqrt(sum(v*v for v in q))
+    if not math.isfinite(n) or n <= 0:
+        raise ValueError("invalid quaternion product")
+    return tuple(v / n for v in q)
+
+
+def _base_axis_delta_quaternion(axis, degrees):
+    angle = math.radians(float(degrees))
+    half = angle / 2.0
+    s = math.sin(half)
+    if axis == "roll":
+        return (math.cos(half), s, 0.0, 0.0)
+    if axis == "pitch":
+        return (math.cos(half), 0.0, s, 0.0)
+    if axis == "yaw":
+        return (math.cos(half), 0.0, 0.0, s)
+    raise ValueError(f"unknown rotation axis {axis!r}")
+
+
+def _rotate_quaternion_in_base(quaternion_wxyz, axis, degrees):
+    """Apply a small base-frame roll/pitch/yaw rotation to a tip quaternion."""
+    return _quat_multiply(
+        _base_axis_delta_quaternion(axis, degrees),
+        quaternion_wxyz,
+    )
+
+
+def _coarse_target_preserving_orientation(point, hover_z, taught_pose):
+    """Build a board-calibration coarse target using operator-taught orientation."""
     return Pose(
         (float(point[0]), float(point[1]), float(hover_z)),
-        tuple(float(v) for v in current_pose.quaternion_wxyz),
+        tuple(float(v) for v in taught_pose.quaternion_wxyz),
     )
+
+
+def _interactive_teach_orientation(robot, *, floor, speed_scale=0.60, max_step_deg=10.0):
+    """Teach a physically acceptable board-working orientation at a high pose."""
+    current = robot.get_tcp_pose()
+    if current is None:
+        raise RuntimeError("orientation teach requires current TCP pose")
+    min_teach_z = float(floor) + 0.40
+    if float(current.position_m[2]) < min_teach_z:
+        raise RuntimeError(
+            f"orientation teach requires TCP z >= {min_teach_z:.3f} m; "
+            f"current z={float(current.position_m[2]):.3f} m"
+        )
+
+    print("", flush=True)
+    print("=== TEACH BOARD-WORKING CLAW ORIENTATION ===", flush=True)
+    print(
+        "At this HIGH free-space pose, visually rotate the physical claw until "
+        "the jaw/approach axis points downward toward the board.",
+        flush=True,
+    )
+    print(
+        "Commands: roll N | pitch N | yaw N (signed degrees, "
+        f"|N| <= {float(max_step_deg):g}), status, done, abort",
+        flush=True,
+    )
+    print(
+        "Rotations are about BASE axes and hold the modeled tip_l position fixed. "
+        "Use small steps and the hardware e-stop if motion is unexpected.",
+        flush=True,
+    )
+    _print_pose("ORIENTATION START", current)
+
+    while True:
+        raw = input("ORIENTATION> ").strip()
+        if not raw:
+            continue
+        parts = raw.lower().split()
+        cmd = parts[0]
+        if cmd in ("done", "d"):
+            taught = robot.get_tcp_pose()
+            _print_pose("TAUGHT BOARD ORIENTATION", taught)
+            return taught
+        if cmd in ("abort", "quit", "q"):
+            raise KeyboardInterrupt()
+        if cmd in ("status", "s"):
+            _print_pose("CURRENT", robot.get_tcp_pose())
+            continue
+        if cmd not in ("roll", "pitch", "yaw") or len(parts) != 2:
+            print(
+                "INVALID: use e.g. 'pitch 5', 'roll -5', 'yaw 5', "
+                "'status', 'done', or 'abort'",
+                flush=True,
+            )
+            continue
+        try:
+            degrees = float(parts[1])
+        except ValueError:
+            print("INVALID ANGLE: enter signed degrees as a number", flush=True)
+            continue
+        if (
+            not math.isfinite(degrees)
+            or degrees == 0.0
+            or abs(degrees) > float(max_step_deg)
+        ):
+            print(
+                f"INVALID ANGLE: require 0 < |N| <= {float(max_step_deg):g} deg",
+                flush=True,
+            )
+            continue
+
+        current = robot.get_tcp_pose()
+        target = Pose(
+            tuple(float(v) for v in current.position_m),
+            _rotate_quaternion_in_base(
+                current.quaternion_wxyz, cmd, degrees
+            ),
+        )
+        print(
+            f"ORIENTATION {cmd.upper()} {degrees:+g} deg; holding xyz ->",
+            tuple(round(float(v), 6) for v in target.position_m),
+            flush=True,
+        )
+        move_tcp_segmented(
+            robot,
+            target,
+            speed_scale=float(speed_scale),
+            max_translation_step_m=0.02,
+            max_orientation_step_rad=math.radians(5.0),
+            min_tcp_z_m=floor,
+        )
+        _print_pose("MEASURED", robot.get_tcp_pose())
 
 
 def _board_parallel_jog_delta(command, mm, forward_rise_angle_deg):
@@ -375,18 +504,21 @@ def main(argv=None):
         print("HEAD PREDICTED +X UNIT =", tuple(round(float(v), 6) for v in bx), flush=True)
         print("HEAD PREDICTED +Y UNIT =", tuple(round(float(v), 6) for v in by), flush=True)
 
-        coarse_orientation_pose = robot.get_tcp_pose()
-        if coarse_orientation_pose is None:
-            raise RuntimeError("cannot preserve live TCP orientation: no current TCP pose")
+        coarse_orientation_pose = _interactive_teach_orientation(
+            robot,
+            floor=floor,
+            speed_scale=0.60,
+            max_step_deg=10.0,
+        )
         print(
-            "COARSE ORIENTATION: preserving live reachable tip_l quaternion =",
+            "COARSE ORIENTATION: using operator-taught high-pose quaternion =",
             tuple(round(float(v), 7) for v in coarse_orientation_pose.quaternion_wxyz),
             flush=True,
         )
         if abs(float(args.claw_yaw_deg)) > 1e-12:
             print(
                 "NOTE: --claw-yaw-deg is ignored during board calibration; "
-                "live TCP orientation is preserved",
+                "operator-taught orientation is used",
                 flush=True,
             )
 
@@ -479,8 +611,8 @@ def main(argv=None):
                 "y_reference_distance_m": float(np.linalg.norm(dy)),
             },
             "orientation_status": (
-                "LIVE_REACHABLE_TCP_ORIENTATION_PRESERVED; "
-                "NOT_CALIBRATED_VERTICAL; physical claw was reported angled"
+                "OPERATOR_TAUGHT_HIGH_POSE_BOARD_WORKING_ORIENTATION; "
+                "physical verticality is operator-verified, not inferred from URDF"
             ),
             "coarse_preserved_quaternion_wxyz": [
                 float(v) for v in coarse_orientation_pose.quaternion_wxyz
