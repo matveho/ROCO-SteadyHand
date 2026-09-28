@@ -4,6 +4,7 @@ import unittest
 from steadyhand.models import Pose
 from tools.vega_board_manual_calibrate import (
     DEFAULT_FORWARD_RISE_ANGLE_DEG,
+    ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M,
     _board_parallel_jog_delta,
     _coarse_target_preserving_orientation,
     _rotate_quaternion_in_base,
@@ -11,6 +12,9 @@ from tools.vega_board_manual_calibrate import (
 
 
 class BoardManualCalibrationTests(unittest.TestCase):
+    def test_orientation_teach_clearance_matches_camera_clear_fallback(self):
+        self.assertAlmostEqual(ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M, 0.30)
+
     def test_coarse_target_preserves_taught_orientation(self):
         current = Pose(
             (0.72, -0.18, 1.00),
