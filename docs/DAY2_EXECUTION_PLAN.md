@@ -207,22 +207,21 @@ search, or contact logic.
 **Physically validate board center, +100 mm board-X, and +100 mm board-Y at low vertical hover.**
 
 
-## Day-2 wrist-camera blocker
+## Day-2 wrist-camera status
 
-Secondary live robot inspection on 2026-09-28 found no usable wrist-camera
-runtime path:
-- `tools/vega_wrists_probe.py` cannot import `wrist_cameras` in either system
-  or Conda Python;
-- only the two ZED head-camera video devices are exposed;
-- documented wrist runtime/install directories are absent;
-- no driver/service changes were made.
+The earlier wrist-camera blocker is resolved.
 
-Do not burn robot time guessing at vendor camera setup. Continue head-camera
-board/part localization and arm-frame integration. Ask the supplier/organizer
-to confirm wrist capture-board wiring/power and the supported Sony ISX031
-driver/API installation. Once restored, identify physical left/right by covering
-one lens and capturing again.
+Verified on the competition Vega after a combined camera boot:
+- both Sony wrist streams produce real 1920x1536 RGB with increasing frame IDs;
+- startup frames may be black, so warm up and validate image content;
+- operator-confirmed mapping: `wrist_a=RIGHT`, `wrist_b=LEFT`;
+- the left wrist view sees the board clearly;
+- head RGB-only also works after publisher restart.
 
-Until then, the contingency path is to use head-derived board-relative part
-centroids for coarse pick calibration and keep the wrist-servo interface ready
-to slot in later.
+Still to validate:
+- sustained concurrent head+wrist operation;
+- interpreter/runtime compatibility for wrist camera + arm/IK in one visual-servo run;
+- jaw-alignment goal pixel and height-specific image Jacobian.
+
+Therefore wrist_b is again the preferred fine-centering layer immediately after
+the coarse board->arm mapping benchmark passes.
