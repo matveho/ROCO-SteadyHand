@@ -243,10 +243,14 @@ def load_alignment_result(
         raise ValueError(
             "alignment result is not a battery_size1 wrist_a result"
         )
-    if value.get("working_arm") not in (None, WORKING_ARM):
-        raise ValueError("alignment result is not from the right arm")
-    if value.get("tcp_frame") not in (None, TCP_FRAME):
-        raise ValueError("alignment result is not from tip_r")
+    if value.get("working_arm") != WORKING_ARM:
+        raise ValueError(
+            "alignment result lacks explicit working_arm=right provenance"
+        )
+    if value.get("tcp_frame") != TCP_FRAME:
+        raise ValueError(
+            "alignment result lacks explicit tcp_frame=tip_r provenance"
+        )
 
     expected_digest = calibration_sha256(calibration_path)
     if value.get("calibration_sha256") != expected_digest:
