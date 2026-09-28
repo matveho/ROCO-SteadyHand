@@ -15,6 +15,9 @@ class _FakeKinematics:
     def __init__(self):
         self.config = {}
 
+    def solve(self, pose, seed):
+        return tuple(float(i) / 10.0 for i in range(7))
+
 
 class _FakeRobot:
     def __init__(self, pose):
@@ -24,6 +27,12 @@ class _FakeRobot:
 
     def get_tcp_pose(self):
         return self.pose
+
+    def _read_joint_positions(self):
+        return (0.0,) * 7
+
+    def move_joints(self, target, *, speed_scale=1.0):
+        self.last_joint_target = tuple(target)
 
 
 class VegaCameraClearTests(unittest.TestCase):
@@ -81,6 +90,12 @@ class VegaCameraClearTests(unittest.TestCase):
             calls.append(target)
             robot.pose = target
 
+        def fake_joint_move(target, *, speed_scale=1.0):
+            robot.last_joint_target = tuple(target)
+            robot.pose = verticalize
+
+        robot.move_joints = fake_joint_move
+
         with patch(
             "steadyhand.vega_camera_clear._reachable_verticalize_pose",
             return_value=verticalize,
@@ -95,7 +110,8 @@ class VegaCameraClearTests(unittest.TestCase):
                 robot, floor_m=floor, speed_scale=0.90
             )
 
-        self.assertEqual(calls, [verticalize, preset])
+        self.assertEqual(calls, [preset])
+        self.assertEqual(robot.last_joint_target, tuple(float(i) / 10.0 for i in range(7)))
         self.assertIs(reached, preset)
 
     def test_high_pose_is_eligible_for_no_motion_fallback(self):
