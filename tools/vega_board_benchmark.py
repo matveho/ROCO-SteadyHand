@@ -117,80 +117,55 @@ def _vertical_target_for_point(
     preferred_hover_z,
     floor,
 ):
-    """Solve one board waypoint while keeping the claw axis vertical.
-
-    Exact board coordinates are tried first.  If a coarse head-camera corner is
-    mechanically outside the arm envelope, progressively inset that corner
-    toward board center.  This keeps policy development moving while recording
-    how much of the coarse corner estimate is actually reachable.
-    """
+    """Fast exact-first vertical-claw planner for one waypoint."""
     import numpy as np
 
-    # Coarse-navigation tolerances only. Fine wrist servo later owns final XY.
-    robot._kinematics.config["position_tolerance_m"] = 0.008
-    robot._kinematics.config["orientation_tolerance_rad"] = 0.10
+    # Coarse navigation only. Keep this solver fast; wrist servo will own the
+    # final XY millimetres later.
+    robot._kinematics.config["position_tolerance_m"] = 0.010
+    robot._kinematics.config["orientation_tolerance_rad"] = 0.12
     robot._kinematics.config["max_seed_delta_rad"] = 2.4
+    robot._kinematics.config["max_iterations"] = 140
 
     seed = robot._read_joint_positions()
     point = np.asarray(point, dtype=float)
     center = np.asarray(center, dtype=float)
 
-    # Keep at least 7 cm over the hard floor.  Search low first because the
-    # forward board edge is usually the reach-limiting direction.
-    height_candidates = []
-    for dz in (0.0, -0.04, -0.08, +0.04, -0.12, +0.08, +0.12):
-        z = max(float(floor) + 0.07, float(preferred_hover_z) + dz)
-        if all(abs(z - old) > 1e-6 for old in height_candidates):
-            height_candidates.append(z)
+    z0 = max(float(floor) + 0.07, float(preferred_hover_z))
+    dzs = (0.0, -0.04, +0.04)
+    yaws = (0.0, math.pi / 2.0, -math.pi / 2.0, math.pi)
 
-    # Exact point first.  Only corner waypoints are allowed to inset.
-    alphas = (1.0,) if label == "center" else (
-        1.0, 0.97, 0.94, 0.90, 0.85, 0.80, 0.75, 0.70,
-    )
-    yaws = tuple(k * math.pi / 6.0 for k in range(-6, 6))  # 30 deg increments
+    # Exact point first. The common yaw=0,z=z0 solution is intentionally the
+    # very first attempt because CENTER and TL were already observed to solve.
+    alphas = (1.0,) if label == "center" else (1.0, 0.90, 0.80, 0.70)
 
-    candidates = []
+    last_error = None
     for alpha in alphas:
         xy = center + float(alpha) * (point - center)
-        for z in height_candidates:
+        for dz in dzs:
+            z = z0 + dz
+            if z <= float(floor) + 0.06:
+                continue
             for yaw in yaws:
                 quat = _yaw_quat(yaw)
                 target = _pose_at(xy, z, quat)
                 try:
-                    q = robot._kinematics.solve(target, seed)
-                except Exception:
+                    robot._kinematics.solve(target, seed)
+                except Exception as exc:
+                    last_error = exc
                     continue
-                joint_cost = float(np.linalg.norm(
-                    np.asarray(q, dtype=float) - np.asarray(seed, dtype=float)
-                ))
-                # Prefer exact geometry first, then lower joint travel and small
-                # deviation from requested hover height.
-                cost = (
-                    (1.0 - float(alpha)) * 100.0
-                    + joint_cost
-                    + abs(z - float(preferred_hover_z)) * 2.0
+                print(
+                    f"{label.upper()} PLAN: alpha={alpha:.2f}, z={z:.3f} m, "
+                    f"yaw={math.degrees(yaw):+.0f} deg, "
+                    f"xy=({target.position_m[0]:.4f},{target.position_m[1]:.4f})",
+                    flush=True,
                 )
-                candidates.append((cost, alpha, z, yaw, quat, target))
+                return target
 
-        # If exact/near-exact worked, don't waste robot time searching deeper
-        # insets. The large alpha penalty already preserves exact preference.
-        if candidates:
-            break
-
-    if not candidates:
-        raise RuntimeError(
-            f"{label}: no reachable vertical-claw pose found after corrected "
-            "gripper-link->tip_l orientation mapping, height/yaw search, and corner inset"
-        )
-
-    candidates.sort(key=lambda item: item[0])
-    _, alpha, z, yaw, quat, target = candidates[0]
-    print(
-        f"{label.upper()} PLAN: alpha={alpha:.2f}, z={z:.3f} m, "
-        f"yaw={math.degrees(yaw):+.0f} deg, "
-        f"xy=({target.position_m[0]:.4f},{target.position_m[1]:.4f})"
+    raise RuntimeError(
+        f"{label}: no reachable vertical-claw pose in fast search; "
+        f"last IK error: {last_error}"
     )
-    return target
 
 
 def main(argv=None):
@@ -333,28 +308,11 @@ def main(argv=None):
             ("bl", corners_base[3]),
             ("center", center),
         ]
-        # Plan each waypoint independently. Tool yaw may change, but the claw
-        # axis remains vertical and the wrist camera remains downward-facing.
-        planned = []
-        for label, point in points:
-            planned.append((
-                label,
-                _vertical_target_for_point(
-                    robot,
-                    label,
-                    point,
-                    center,
-                    float(args.hover_z),
-                    floor,
-                ),
-            ))
-
-        # First create clearance straight upward at current XY/orientation.
+        # Move to safe clearance first, then plan + execute one waypoint at a
+        # time. Do NOT pre-plan the whole board: exhaustive planning was wasting
+        # tens of seconds per corner and looked like a hang onsite.
         current = robot.get_tcp_pose()
-        clearance_z = max(
-            float(current.position_m[2]),
-            max(float(target.position_m[2]) for _, target in planned),
-        )
+        clearance_z = max(float(current.position_m[2]), float(args.hover_z))
         clearance = Pose(
             (
                 float(current.position_m[0]),
@@ -364,7 +322,7 @@ def main(argv=None):
             current.quaternion_wxyz,
         )
         if float(clearance.position_m[2]) > float(current.position_m[2]) + 1e-4:
-            print("CLEARANCE UP")
+            print("CLEARANCE UP", flush=True)
             move_tcp_segmented(
                 robot,
                 clearance,
@@ -374,10 +332,20 @@ def main(argv=None):
                 min_tcp_z_m=floor,
             )
 
-        for label, target in planned:
+        for label, point in points:
+            print(f"PLANNING {label.upper()}...", flush=True)
+            target = _vertical_target_for_point(
+                robot,
+                label,
+                point,
+                center,
+                float(args.hover_z),
+                floor,
+            )
             print(
                 f"MOVE {label.upper()} ->",
                 tuple(round(float(x), 4) for x in target.position_m),
+                flush=True,
             )
             move_tcp_segmented(
                 robot,
@@ -391,6 +359,7 @@ def main(argv=None):
             print(
                 f"REACHED {label.upper()} =",
                 tuple(round(float(x), 4) for x in actual.position_m),
+                flush=True,
             )
 
         print("BOARD BENCHMARK COMPLETE")
