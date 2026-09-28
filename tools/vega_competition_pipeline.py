@@ -23,6 +23,7 @@ from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
 from steadyhand.vega_camera_clear import move_camera_clear_for_image
+from steadyhand.vision.scene import detect_head_task_scene
 from tools.vega_board_five_point_calibrate import main as run_five_point_calibration
 from tools.vega_task_coordinate_reachability import (
     DEFAULT_POINTS,
@@ -39,7 +40,7 @@ FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
 TASK_COORDINATES = ROOT / "configs" / "task_coordinates.json"
 DEFAULT_TASK_CLEARANCE_MM = 100.0
 DEFAULT_PIPELINE_SPEED_SCALE = 0.38
-POSITION_RECALIBRATE_REQUESTED = 3
+POSITION_RETAKE_IMAGE_REQUESTED = 3
 
 
 COMPETITION_TASKS = OrderedDict([
@@ -72,6 +73,20 @@ def _surface_z(x, y, plane):
 
 def _board_targets(runtime, clearance_m):
     _, _, (center, _, _, plane), ready_pose = runtime
+    dynamic_corners = plane.get("board_corners_xy") if isinstance(plane, dict) else None
+    if dynamic_corners:
+        targets = OrderedDict()
+        targets["board.center"] = Pose(
+            (center[0], center[1], _surface_z(center[0], center[1], plane) + clearance_m),
+            ready_pose.quaternion_wxyz,
+        )
+        for label in ("TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT"):
+            x, y = dynamic_corners[label]
+            targets[f"board.{label.lower()}"] = Pose(
+                (x, y, _surface_z(x, y, plane) + clearance_m),
+                ready_pose.quaternion_wxyz,
+            )
+        return targets
     path = CALIBRATION if CALIBRATION.is_file() else FALLBACK_CALIBRATION
     raw = json.loads(path.read_text(encoding="utf-8"))
     samples = raw.get("samples") or {}
@@ -148,7 +163,7 @@ def _make_test_targets(selected, runtime, task_data, clearance_m):
     return targets
 
 
-def _capture_downward_head_frame(robot, *, floor_m):
+def _capture_downward_head_frame(robot, *, floor_m, bundle):
     """Move the arm/head clear, capture one downward board frame, then return."""
     move_camera_clear_for_image(robot, floor_m=floor_m, speed_scale=0.90)
     head_q = list(robot._robot.head.get_joint_pos())
@@ -186,10 +201,66 @@ def _capture_downward_head_frame(robot, *, floor_m):
     camera = VegaHeadCamera()
     try:
         camera.connect()
-        camera.read(include_depth=False, timeout_s=15.0)
+        frame = camera.read(include_depth=False, timeout_s=15.0)
     finally:
         camera.close()
     print("BOARD CAMERA FRAME CAPTURED", flush=True)
+    cfg = bundle["robot"]
+    return detect_head_task_scene(
+        frame.left_rgb,
+        frame.camera_info,
+        measured_head_q,
+        plane_z_m=float(floor_m),
+        lift_m=float(cfg["kinematics"]["fixed_joint_values"]["Lift"]),
+        torso_flip_rad=float(cfg["kinematics"]["fixed_joint_values"]["torso_flip"]),
+        layout="unlabeled",
+    )
+
+
+def _runtime_from_board_scene(runtime, scene):
+    """Replace only the live XY board registration from a fresh head image."""
+    import numpy as np
+
+    bundle, task_data, (_, _, _, old_plane), ready_pose = runtime
+    board = scene.get("board") or {}
+    matrix = np.asarray(board.get("T_base_board_center"), dtype=float)
+    if matrix.shape != (4, 4) or not np.all(np.isfinite(matrix)):
+        raise RuntimeError("fresh board image did not provide a finite board transform")
+    center = matrix[:3, 3].copy()
+    ux = matrix[:3, 0].copy()
+    uy = matrix[:3, 1].copy()
+    ux[2] = 0.0
+    uy[2] = 0.0
+    ux /= np.linalg.norm(ux[:2])
+    uy /= np.linalg.norm(uy[:2])
+
+    calibration_cfg = (bundle["robot"].get("board_calibration") or {})
+    corrections = calibration_cfg.get("camera_target_corrections_m") or {}
+    center_correction = corrections.get("CENTER", (0.0, 0.0))
+    center[:2] += np.asarray(center_correction, dtype=float)
+
+    plane = {
+        "coefficients": tuple(old_plane["coefficients"]),
+        "anchors": [],
+    }
+    raw_corners = board.get("corners_base_m_coarse") or {}
+    corrected_corners = {}
+    for label, key in (("TOP_RIGHT", "tr"), ("BOTTOM_RIGHT", "br"), ("BOTTOM_LEFT", "bl")):
+        point = raw_corners.get(key)
+        if not isinstance(point, list) or len(point) != 3:
+            raise RuntimeError(f"fresh board image is missing corner {key}")
+        correction = corrections.get(label, (0.0, 0.0))
+        corrected_corners[label] = (
+            float(point[0]) + float(correction[0]),
+            float(point[1]) + float(correction[1]),
+        )
+    plane["board_corners_xy"] = corrected_corners
+    return bundle, task_data, (
+        tuple(float(v) for v in center[:2]),
+        tuple(float(v) for v in ux[:2]),
+        tuple(float(v) for v in uy[:2]),
+        plane,
+    ), ready_pose
 
 
 def _prompt_next_location(current_name, available_targets):
@@ -198,15 +269,15 @@ def _prompt_next_location(current_name, available_targets):
     print(f"\nREACHED {current_name}. Choose the next destination:", flush=True)
     for index, name in enumerate(names, 1):
         print(f"  {index}. {name}", flush=True)
-    print("  r. recalibrate (clear arm, photograph board, rebuild frame)", flush=True)
+    print("  r. retake board image (board may have moved)", flush=True)
     print("  e. exit location testing", flush=True)
     while True:
         raw = input("Next location [number/name/r/e]: ").strip()
         lowered = raw.lower()
         if lowered in ("e", "exit", "q", "quit", "0", "back"):
             return "exit"
-        if lowered in ("r", "recalibrate", "calibration"):
-            return "recalibrate"
+        if lowered in ("r", "retake", "image", "photo"):
+            return "retake_image"
         try:
             index = int(raw)
             if 1 <= index <= len(names):
@@ -215,17 +286,19 @@ def _prompt_next_location(current_name, available_targets):
             pass
         if raw in available_targets:
             return raw
-        print("Choose a listed location, r for recalibrate, or e for exit.", flush=True)
+        print("Choose a listed location, r to retake the board image, or e for exit.", flush=True)
 
 
 def _run_motion_targets(
     targets, bundle, *, confirm_physical, check_only, speed_scale,
-    available_targets=None, interactive_next=False,
+    available_targets=None, interactive_next=False, runtime=None,
+    task_data=None, clearance_m=None, prompt_after_capture=False,
 ):
-    if not targets:
+    if not targets and not prompt_after_capture:
         return 0
     if available_targets is None:
         available_targets = targets
+    available_names = list(available_targets)
     cfg = bundle["robot"]
     cfg["allow_robot_init_head_motion"] = bool(confirm_physical)
     cfg["auto_clear_software_estop_on_connect"] = True
@@ -239,9 +312,32 @@ def _run_motion_targets(
                 robot.prepare()
             else:
                 robot.connect()
+
+                def refresh_board_image():
+                    nonlocal runtime, available_targets, targets
+                    scene = _capture_downward_head_frame(
+                        robot, floor_m=floor, bundle=bundle
+                    )
+                    if runtime is None or task_data is None or clearance_m is None:
+                        return
+                    runtime = _runtime_from_board_scene(runtime, scene)
+                    available_targets = _make_test_targets(
+                        available_names, runtime, task_data, clearance_m
+                    )
+                    selected_names = list(targets)
+                    targets = OrderedDict(
+                        (name, available_targets[name])
+                        for name in selected_names
+                    )
+                    print(
+                        "BOARD FRAME REFRESHED; targets rebuilt from the new image",
+                        flush=True,
+                    )
+
                 # Every physical location session starts with a fresh board
                 # image, then automatically returns to the known RIGHT_READY.
-                _capture_downward_head_frame(robot, floor_m=floor)
+                refresh_board_image()
+
             ready_q, _ = configured_right_preset(cfg, "right_ready")
             for name, target in targets.items():
                 robot._kinematics.solve(target, ready_q)
@@ -251,10 +347,21 @@ def _run_motion_targets(
                 return 0
             print("MOVING TO RIGHT_READY", flush=True)
             robot.move_joints(ready_q, speed_scale=float(speed_scale))
+
             pending = list(targets.items())
+            if prompt_after_capture and not pending:
+                action = _prompt_next_location("BOARD IMAGE", available_targets)
+                while action == "retake_image":
+                    refresh_board_image()
+                    robot.move_joints(ready_q, speed_scale=float(speed_scale))
+                    action = _prompt_next_location("BOARD IMAGE", available_targets)
+                if action == "exit":
+                    return 0
+                pending = [(action, available_targets[action])]
+
             while pending:
                 name, target = pending.pop(0)
-                input(f"Press Enter to move to {name}; type anything to cancel: ")
+                robot._kinematics.solve(target, robot._read_joint_positions())
                 move_tcp_segmented(
                     robot, target, speed_scale=float(speed_scale),
                     max_translation_step_m=0.06, max_orientation_step_rad=0.20,
@@ -264,10 +371,14 @@ def _run_motion_targets(
                 print(name, "MEASURED TIP_R =", tuple(round(float(v), 6) for v in actual.position_m), flush=True)
                 if interactive_next:
                     action = _prompt_next_location(name, available_targets)
+                    while action == "retake_image":
+                        refresh_board_image()
+                        ready_q, _ = configured_right_preset(cfg, "right_ready")
+                        print("MOVING TO RIGHT_READY", flush=True)
+                        robot.move_joints(ready_q, speed_scale=float(speed_scale))
+                        action = _prompt_next_location("BOARD IMAGE", available_targets)
                     if action == "exit":
                         return 0
-                    if action == "recalibrate":
-                        return POSITION_RECALIBRATE_REQUESTED
                     next_target = available_targets[action]
                     robot._kinematics.solve(next_target, robot._read_joint_positions())
                     pending = [(action, next_target)]
@@ -412,23 +523,32 @@ def main(argv=None):
             print("Choose recalibrate first.")
             continue
         if choice == "2":
-            selected = _choose(_available_position_names(runtime, task_data, args.clearance_m),
-                               "CALIBRATED POSITION TESTS", allow_all=True)
-            if selected:
-                try:
-                    available = _available_position_names(runtime, task_data, args.clearance_m)
-                    all_targets = _make_test_targets(list(available), runtime, task_data, args.clearance_m)
+            try:
+                available = _available_position_names(runtime, task_data, args.clearance_m)
+                all_targets = _make_test_targets(
+                    list(available), runtime, task_data, args.clearance_m
+                )
+                if args.check_only:
+                    selected = _choose(available, "CALIBRATED POSITION TESTS", allow_all=True)
                     targets = OrderedDict((name, all_targets[name]) for name in selected)
-                    result = _run_motion_targets(
+                    _run_motion_targets(
                         targets, runtime[0],
                         confirm_physical=args.confirm_physical_motion,
-                        check_only=args.check_only, speed_scale=args.speed_scale,
-                        available_targets=all_targets, interactive_next=True,
+                        check_only=True, speed_scale=args.speed_scale,
                     )
-                    if result == POSITION_RECALIBRATE_REQUESTED:
-                        _recalibrate()
-                except Exception as exc:
-                    print(f"Position test failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+                else:
+                    # The first prompt is intentionally after the fresh image,
+                    # matching the retake-image flow used later in the session.
+                    _run_motion_targets(
+                        OrderedDict(), runtime[0],
+                        confirm_physical=args.confirm_physical_motion,
+                        check_only=False, speed_scale=args.speed_scale,
+                        available_targets=all_targets, interactive_next=True,
+                        runtime=runtime, task_data=task_data,
+                        clearance_m=args.clearance_m, prompt_after_capture=True,
+                    )
+            except Exception as exc:
+                print(f"Position test failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         if choice == "3":
             selected = _choose(COMPETITION_TASKS, "COMPETITION TASK VERSIONS")

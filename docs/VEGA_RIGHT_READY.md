@@ -133,8 +133,10 @@ The **Position tests** menu lists the corrected board references and every
 published task point; selected targets are preflighted together before motion.
 The runner captures a downward head-camera frame and moves to RIGHT_READY
 automatically. After each reached location it lists the next destinations,
-plus `recalibrate` and `exit`; recalibration clears the arm, captures a new
-board frame, and rebuilds the live frame before continuing.
+plus `r` to retake the board image if the board moved and `e` to exit. An
+image retake clears the arm, captures a new board frame, rebuilds the live XY
+registration, and returns to RIGHT_READY; it does not rerun the five-point
+manual calibration.
 The **Competition task versions** menu preserves the battery and all-part
 iterations as named entries. Only the calibrated battery approach-only entry
 currently commands motion; later grasp/place versions remain visible scaffolds
