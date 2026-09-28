@@ -226,7 +226,7 @@ def main(argv=None):
     args = p.parse_args(argv)
 
     if not args.confirm_physical_motion:
-        p.error("--confirm-physical-motion is required because board imaging now moves the left arm to camera-clear")
+        p.error("--confirm-physical-motion is required because board imaging now moves the configured right arm to camera-clear")
     if args.frames < 0:
         p.error("--frames must be >=0")
     if args.interval_s < 0:
