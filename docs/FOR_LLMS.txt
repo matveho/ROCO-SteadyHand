@@ -2768,3 +2768,21 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   Coarse board center stayed near (0.560,-0.013,0.456). Step 2 is complete.
   Next: physically validate board->arm mapping using low fixed vertical-claw
   moves at board center and safe interior offsets, not literal corners.
+
+2026-09-28 HEAD PUBLISHER RECOVERY RE-VERIFIED:
+  Board-axis benchmark was blocked before arm motion because no dexsensor head
+  publisher was running after reboot. Head-only diagnosis confirmed:
+    - no dexsensor.service is installed;
+    - /usr/local/bin/dexsensor is installed;
+    - /etc/dexmate/dexsensor/default.toml may carry robot.name="default";
+    - manual launch with explicit competition namespace works:
+        dexsensor -v info launch \
+          --config /etc/dexmate/dexsensor/default.toml \
+          --robot dm/vgfcb66075ea-1u \
+          --sensor head_camera
+    - camera_info then succeeds and left/right RGB become READY at 960x600;
+    - depth remains NONE under the current RGB-only config and is not required
+      for the board-axis benchmark.
+  tools/vega_scene_perception.py and tools/vega_board_axis_benchmark.py now share
+  the same startup rule: detect an existing head publisher, otherwise launch
+  dexsensor with the explicit config path and robot namespace before connecting.
