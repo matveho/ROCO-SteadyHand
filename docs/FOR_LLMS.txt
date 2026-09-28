@@ -2344,3 +2344,14 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   0.400 x 0.400 m physical board. Base coordinates remain COARSE because the
   absolute head extrinsic originated on a different organizer Vega serial;
   wrist servo remains responsible for final grasp alignment.
+
+
+2026-09-28 STEP 2 COMPLETE — LIVE HEAD SCENE STABLE:
+  Three consecutive live RGB frames at head [0.55,0,0] detected the same board
+  and all 9 parts. Corners were stable to ~1 px:
+    F0 TL=(428,354) TR=(582,354) BR=(629,504) BL=(409,503)
+    F1 TL=(428,354) TR=(582,354) BR=(629,503) BL=(409,503)
+    F2 TL=(428,354) TR=(582,354) BR=(629,503) BL=(409,503)
+  Coarse board center stayed near (0.560,-0.013,0.456). Step 2 is complete.
+  Next: physically validate board->arm mapping using low fixed vertical-claw
+  moves at board center and safe interior offsets, not literal corners.
