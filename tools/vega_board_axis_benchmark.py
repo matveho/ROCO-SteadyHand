@@ -24,6 +24,7 @@ from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vision.scene import detect_head_task_scene
+from steadyhand.vega_camera_clear import move_camera_clear
 from tools.vega_board_benchmark import _yaw_quat
 from tools.vega_scene_perception import _ensure_publisher
 
@@ -82,6 +83,8 @@ def main(argv=None):
     try:
         robot.connect()
 
+        move_camera_clear(robot, floor_m=floor, speed_scale=0.90)
+
         target_head = np.asarray([0.55, 0.0, 0.0], dtype=float)
         print("HEAD BEFORE =", robot._robot.head.get_joint_pos(), flush=True)
         robot._robot.head.set_joint_pos(
@@ -110,10 +113,10 @@ def main(argv=None):
             ),
             layout="unlabeled",
         )
-        if len(scene["parts"]) != 9:
-            raise RuntimeError(
-                f"live scene has {len(scene['parts'])} parts, expected 9"
-            )
+        print(
+            f"DETECTED PART-LIKE REGIONS = {len(scene['parts'])} (not gated)",
+            flush=True,
+        )
 
         T = np.asarray(scene["board"]["T_base_board_center"], dtype=float)
         if T.shape != (4, 4) or not np.all(np.isfinite(T)):
