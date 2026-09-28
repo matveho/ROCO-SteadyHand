@@ -76,3 +76,25 @@ instead of inventing an IK path.
 Manual board jogs also preflight the complete target. An overshoot that is not
 IK-reachable is rejected before motion and returns to the jog prompt, allowing
 the operator to use a smaller inverse jog without terminating calibration.
+
+## Corner height survey
+
+The board calibration output can show a modeled TCP plane that does not match
+the physical board. To survey two points without adding another IK path, pull
+and run:
+
+```bash
+python3 tools/vega_board_corner_height_check.py \
+  --measurement-kind board_surface_z_mm \
+  --confirm-physical-motion
+```
+
+Manually place the right claw at `TOP_RIGHT` and `BOTTOM_LEFT`, entering the
+measured board surface height in millimetres at each prompt. The tool records
+the live joints and `tip_r` pose, computes the corner-to-corner difference, and
+writes `calibration/vega_board_corner_heights.json`. It does not modify the
+production floor or global offset; send that output back before applying either.
+
+Use `--measurement-kind claw_clearance_mm` if the measurement is claw-to-board
+clearance rather than board surface height relative to the robot base. That
+mode diagnoses slope but intentionally does not claim a global Z offset.
