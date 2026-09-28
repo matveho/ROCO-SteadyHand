@@ -31,6 +31,75 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_URDF = ROOT / "configs" / "robots" / "vega_1u_competition_kinematics.urdf"
 
+EXPECTED_RECORDER_TOOL = "tools/vega_tool_frame_record.py"
+EXPECTED_RECORDER_MODE = "READ_ONLY_NO_MOTION_COMMANDS"
+EXPECTED_ROBOT_NAME = "dm/vgfcb66075ea-1u"
+EXPECTED_BASE_FRAME = "vega_1u_base_link"
+EXPECTED_WORKING_ARM = "right"
+EXPECTED_TCP_FRAME = "tip_r"
+EXPECTED_JOINT_NAMES = (
+    "R_arm_j1",
+    "R_arm_j2",
+    "R_arm_j3",
+    "R_arm_j4",
+    "R_arm_j5",
+    "R_arm_j6",
+    "R_arm_j7",
+)
+
+
+def validate_right_arm_provenance(data):
+    """Reject any calibration record not explicitly produced for right tip_r.
+
+    This is a semantic provenance gate, not a cryptographic authenticity check.
+    It prevents old left-arm or provenance-free observation JSON from being
+    silently interpreted as right-arm tool-frame evidence.
+    """
+    if not isinstance(data, dict):
+        raise ValueError("tool-frame calibration input must be a JSON object")
+
+    recorder = data.get("recorder")
+    if not isinstance(recorder, dict):
+        raise ValueError(
+            "missing recorder provenance; refusing to interpret observations as right-arm data"
+        )
+
+    required = {
+        "tool": EXPECTED_RECORDER_TOOL,
+        "mode": EXPECTED_RECORDER_MODE,
+        "robot_name": EXPECTED_ROBOT_NAME,
+        "base_frame": EXPECTED_BASE_FRAME,
+        "working_arm": EXPECTED_WORKING_ARM,
+        "tcp_frame": EXPECTED_TCP_FRAME,
+    }
+    for field, expected in required.items():
+        if field not in recorder:
+            raise ValueError(f"missing recorder provenance field: {field}")
+        actual = recorder.get(field)
+        if actual != expected:
+            raise ValueError(
+                f"recorder provenance {field}={actual!r}, expected {expected!r}"
+            )
+
+    joint_names = recorder.get("joint_names")
+    if not isinstance(joint_names, (list, tuple)):
+        raise ValueError("missing recorder provenance field: joint_names")
+    if tuple(joint_names) != EXPECTED_JOINT_NAMES:
+        raise ValueError(
+            "recorder provenance joint_names do not match the exact right-arm "
+            f"joint order {EXPECTED_JOINT_NAMES!r}"
+        )
+
+    return {
+        "tool": EXPECTED_RECORDER_TOOL,
+        "mode": EXPECTED_RECORDER_MODE,
+        "robot_name": EXPECTED_ROBOT_NAME,
+        "base_frame": EXPECTED_BASE_FRAME,
+        "working_arm": EXPECTED_WORKING_ARM,
+        "tcp_frame": EXPECTED_TCP_FRAME,
+        "joint_names": list(EXPECTED_JOINT_NAMES),
+    }
+
 
 def _vec(value, n, name):
     a = np.asarray(value, dtype=float)
@@ -410,6 +479,7 @@ def translation_checks(data, observations, offset):
 
 
 def analyze(data, urdf_path=DEFAULT_URDF, yaw_deg=0.0):
+    provenance = validate_right_arm_provenance(data)
     observations = data.get("observations")
     if not isinstance(observations, list) or not observations:
         raise ValueError("input must contain a non-empty observations list")
@@ -467,6 +537,7 @@ def analyze(data, urdf_path=DEFAULT_URDF, yaw_deg=0.0):
 
     result = {
         "schema_version": 1,
+        "validated_provenance": provenance,
         "transform_convention": "T_A_B maps B coordinates into A; T_base_claw = T_base_tip @ T_tip_claw",
         "physical_claw_frame_convention": {
             "origin": "operator-defined physical grasp/claw center",
