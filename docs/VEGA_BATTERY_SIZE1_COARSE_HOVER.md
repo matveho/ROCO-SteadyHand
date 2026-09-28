@@ -5,7 +5,7 @@ and `tools/vega_battery_size1_center.py`.
 
 It is intentionally narrow. It consumes a source-localizer `localization.json`,
 revalidates that file against the **same current completed manual board
-calibration**, and moves the left TCP only in base-frame X/Y while preserving
+calibration**, and moves the right TCP only in base-frame X/Y while preserving
 the measured live low-hover Z and quaternion.
 
 ## Safety and provenance contract
@@ -77,7 +77,7 @@ python3 tools/vega_battery_size1_center.py \
   --confirm-physical-motion
 ```
 
-`WRIST_U WRIST_V` is the battery feature in the initial `wrist_b` image after
+`WRIST_U WRIST_V` is the battery feature in the initial `wrist_a` image after
 the coarse-hover move. It is not the head-image battery pixel.
 
 The mover records the localization file/hash, source-image hash, manual
