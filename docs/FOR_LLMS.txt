@@ -3090,3 +3090,21 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
     - stationary endpoint residual max_joint_error=0.006571 rad exceeded the generic
       0.005 rad joint threshold; manual calibration locally accepts 0.010 rad.
       Normal manipulation retains its configured tighter threshold.
+
+2026-09-28 MEASURED BOARD-PARALLEL CLAW-CENTER SLOPE:
+  Operator measured physical claw-center height relative to the board:
+    near/robot-side edge = 39 mm
+    far/forward edge     = 61 mm
+    span between points  = 383 mm (measured board width)
+  Therefore physical forward rise = 22/383 = 0.05744, angle ~= 3.29 deg.
+  Manual board calibration default now derives this value from the measurements
+  rather than the earlier visual ~10 deg estimate:
+    dz_commanded = -dx_base * (22/383)
+  Moving the board farther from the robot does not change this compensation if
+  the board retains the same physical tilt/orientation; live head calibration
+  must still recapture its new XY location.
+
+  Same run showed another stationary calibration endpoint residual:
+    max_joint_error_rad=0.013057, max_abs_joint_velocity_rad_s=0
+  Manual calibration only now accepts 0.015 rad endpoint residual. Normal task
+  manipulation remains on its tighter configured joint endpoint threshold.
