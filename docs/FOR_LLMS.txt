@@ -2291,3 +2291,17 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   dark part boxes after perspective rectification. The touching gear pair is the
   only merged connected-component case and is split board-locally. This supports
   the planned deterministic identity-by-board-region approach.
+
+2026-09-28 WRIST CAMERAS LIVE AFTER COMBINED BOOT:
+  Supersedes earlier wrist-blocked status. Combined camera boot completed and
+  wrist-camera-init.service succeeded. Both Sony streams produced 1920x1536 RGB
+  images with increasing frame IDs. First frames were black during warm-up;
+  discard startup frames and check image content before using a snapshot.
+  OPERATOR-CONFIRMED MAPPING from displayed images:
+    wrist_a = RIGHT wrist
+    wrist_b = LEFT wrist
+  Images: docs/evidence/2026-09-28-wrist/images/wrist_a.png and wrist_b.png.
+  Head RGB-only snapshot also succeeded after reboot and publisher restart.
+  Wrist API uses /usr/bin/python3; head capture uses Conda python3.
+  No arm motion commanded for this camera validation. Simultaneous sustained
+  streaming, wrist calibration and visual servo operation remain unvalidated.
