@@ -220,6 +220,18 @@ def move_camera_clear_for_image(
         tuple(round(float(v), 4) for v in current.position_m),
         flush=True,
     )
+
+    # Onsite validation: head-board capture succeeded from z≈0.806 m with the
+    # arm in its existing pose. Do not invent a harder orientation-preserving
+    # relocation when the TCP is already at least 0.30 m above the measured
+    # floor; capture first, then run the restored verticalization sequence.
+    if float(current.position_m[2]) >= float(floor_m) + 0.30:
+        print(
+            "CAMERA IMAGE CLEAR: CURRENT POSE ALREADY HIGH; NO ARM MOVE BEFORE IMAGE",
+            flush=True,
+        )
+        return current
+
     kin_cfg = robot._kinematics.config
     old_kin = dict(kin_cfg)
     old_joint_tol = float(robot.config["motion"]["joint_reached_tolerance_rad"])
