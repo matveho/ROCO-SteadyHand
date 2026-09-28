@@ -23,7 +23,7 @@ from steadyhand.models import Pose
 def config():
     return {
         "robot_name": "test-vega",
-        "working_arm": "left",
+        "working_arm": "right",
         "sdk_version": "0.5.0",
         "allow_robot_init_head_motion": True,
         "urdf_path": "fake.urdf",
@@ -41,7 +41,7 @@ def config():
             "joint_timeout_s": 0.001,
         },
         "kinematics": {
-            "backend": "pinocchio", "base_frame": "base", "ee_frame": "L_ee",
+            "backend": "pinocchio", "base_frame": "base", "ee_frame": "R_ee",
             "left_arm_joint_names": [f"L_arm_j{i}" for i in range(1, 8)],
             "right_arm_joint_names": [f"R_arm_j{i}" for i in range(1, 8)],
         },
@@ -186,7 +186,7 @@ class AdapterContractTests(unittest.TestCase):
     def test_prepare_is_no_robot_and_shares_limits_with_solver(self):
         self.adapter.prepare()
         self.assertEqual(self.events, [])
-        self.assertEqual(self.adapter._kinematics.cfg["joint_limits_rad"][1], (-0.4, 1.5))
+        self.assertEqual(self.adapter._kinematics.cfg["joint_limits_rad"][1], (-1.5, 0.4))
 
     def test_start_state_motion_and_shutdown(self):
         adapter = self.connect()
@@ -229,7 +229,7 @@ class AdapterContractTests(unittest.TestCase):
         self.assertEqual(self.events, [])
 
     def test_bad_sdk_order_stops_and_shutdowns(self):
-        self.robot.left_arm.names.reverse()
+        self.robot.right_arm.names.reverse()
         with self.assertRaisesRegex(ValueError, "joint order"):
             self.adapter.connect()
         self.assertEqual(self.events, [("Robot",), ("estop",), ("shutdown",)])
@@ -237,11 +237,11 @@ class AdapterContractTests(unittest.TestCase):
     def test_startup_rejects_nonfinite_short_and_stale_state(self):
         for q in ([0.0] * 6, [math.nan] * 7, [2.0] * 7):
             with self.subTest(q=q):
-                self.robot.left_arm.q = q
+                self.robot.right_arm.q = q
                 with self.assertRaises(ValueError):
                     VegaAdapter(config()).connect()
-        self.robot.left_arm.q = [0.0] * 7
-        self.robot.left_arm.frozen = True
+        self.robot.right_arm.q = [0.0] * 7
+        self.robot.right_arm.frozen = True
         with self.assertRaisesRegex(RuntimeError, "timestamp"):
             VegaAdapter(config()).connect()
 
@@ -283,7 +283,7 @@ class AdapterContractTests(unittest.TestCase):
 
     def test_invalid_state_after_connect_never_commands(self):
         adapter = self.connect()
-        self.robot.left_arm.q = [math.nan] * 7
+        self.robot.right_arm.q = [math.nan] * 7
         with self.assertRaisesRegex(ValueError, "finite"):
             adapter.move_joints([0.1] * 7)
         self.assertTrue(self.robot.stopped)
@@ -294,14 +294,14 @@ class AdapterContractTests(unittest.TestCase):
             with self.subTest(error=error):
                 self.robot.stopped = False
                 adapter = self.connect()
-                self.robot.left_arm.error = error
+                self.robot.right_arm.error = error
                 with self.assertRaises(type(error)):
                     adapter.move_joints([0.01] * 7)
                 self.assertTrue(self.robot.stopped)
 
     def test_unreached_target_stops_before_second_segment(self):
         adapter = self.connect()
-        self.robot.left_arm.track = False
+        self.robot.right_arm.track = False
         with self.assertRaisesRegex(RuntimeError, "timeout"):
             adapter.move_joints([0.3, 0, 0, 0, 0, 0, 0])
         self.assertEqual(sum(event[0] == "move_to_joint_pos" for event in self.events), 1)
@@ -309,7 +309,7 @@ class AdapterContractTests(unittest.TestCase):
 
     def test_frozen_state_stops_before_second_segment(self):
         adapter = self.connect()
-        self.robot.left_arm.frozen = True
+        self.robot.right_arm.frozen = True
         with self.assertRaisesRegex(RuntimeError, "timestamp"):
             adapter.move_joints([0.3, 0, 0, 0, 0, 0, 0])
         self.assertEqual(sum(event[0] == "move_to_joint_pos" for event in self.events), 1)
@@ -383,7 +383,7 @@ class GripperContractTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.path = Path(self.temp.name) / "gripper.py"
         self.path.write_text(DRIVER, encoding="utf-8")
-        self.cfg = {"driver_path": str(self.path), "scope": "left", "grip_current_a": 0.3, "home_on_connect": True}
+        self.cfg = {"driver_path": str(self.path), "scope": "right", "grip_current_a": 0.3, "home_on_connect": True}
 
     def test_driver_registration_and_exact_calls(self):
         gripper = VegaCanGripper(self.cfg)
@@ -397,11 +397,11 @@ class GripperContractTests(unittest.TestCase):
         self.assertTrue(gripper.status()["enabled"])
         gripper.close()
         self.assertEqual(driver.calls, [
-            ("left", "home"), ("left", "open", 500.0), ("left", "grip", 0.3, 60),
-            ("left", "close"), ("left", "move_to", 0.2, 10.0),
-            ("left", "halt"), ("close_bus",),
+            ("right", "home"), ("right", "open", 500.0), ("right", "grip", 0.3, 60),
+            ("right", "close"), ("right", "move_to", 0.2, 10.0),
+            ("right", "halt"), ("close_bus",),
         ])
-        self.assertNotIn(("left", "release"), driver.calls)
+        self.assertNotIn(("right", "release"), driver.calls)
 
     def test_config_validation_never_imports_driver(self):
         self.path.write_text("raise RuntimeError('must not import')", encoding="utf-8")
@@ -422,13 +422,13 @@ class GripperContractTests(unittest.TestCase):
         driver = module.Grippers()
         def fail_home():
             raise RuntimeError("homing failed")
-        driver.left.home = fail_home
+        driver.right.home = fail_home
         module.Grippers = lambda: driver
         with patch("steadyhand.grippers.vega._load_gripper_module", return_value=module):
             gripper = VegaCanGripper(self.cfg)
             with self.assertRaisesRegex(RuntimeError, "homing failed"):
                 gripper.connect()
-        self.assertEqual(driver.calls, [("left", "halt"), ("close_bus",)])
+        self.assertEqual(driver.calls, [("right", "halt"), ("close_bus",)])
         self.assertIsNone(gripper._driver)
 
     def test_invalid_current_never_reaches_driver(self):
@@ -437,7 +437,7 @@ class GripperContractTests(unittest.TestCase):
         for current in (-1, 0, math.nan, math.inf):
             with self.assertRaises(ValueError):
                 gripper.grip(current)
-        self.assertEqual(gripper._driver.calls, [("left", "home")])
+        self.assertEqual(gripper._driver.calls, [("right", "home")])
         gripper.close()
 
     def test_close_bus_attempted_even_when_halt_fails(self):
@@ -446,7 +446,7 @@ class GripperContractTests(unittest.TestCase):
         driver = gripper._driver
         def fail_halt():
             raise RuntimeError("halt failed")
-        driver.left.halt = fail_halt
+        driver.right.halt = fail_halt
         with self.assertRaisesRegex(RuntimeError, "halt failed"):
             gripper.close()
         self.assertIn(("close_bus",), driver.calls)
