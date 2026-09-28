@@ -142,7 +142,10 @@ def _interactive_teach_orientation(robot, *, floor, speed_scale=0.60, max_step_d
     current = robot.get_tcp_pose()
     if current is None:
         raise RuntimeError("orientation teach requires current TCP pose")
-    min_teach_z = float(floor) + 0.40
+    # Camera-clear's validated fallback leaves the TCP about 0.30-0.35 m
+    # above the measured floor. That provides substantial free-space clearance
+    # for the small orientation-only teach steps without forcing another lift.
+    min_teach_z = float(floor) + 0.30
     if float(current.position_m[2]) < min_teach_z:
         raise RuntimeError(
             f"orientation teach requires TCP z >= {min_teach_z:.3f} m; "
