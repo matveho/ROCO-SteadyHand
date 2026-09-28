@@ -27,6 +27,11 @@ class TaskCoordinateReachabilityTests(unittest.TestCase):
             self.assertEqual(name, f"{part}.{kind}")
             self.assertEqual(len(xyz), 3)
 
+    def test_secondary_connect_and_grade_points_are_preserved(self):
+        for name in ("rod_16mm.connect", "gear_20teeth.grade"):
+            _, _, xyz = _resolve_point(name, self.data)
+            self.assertEqual(len(xyz), 3)
+
 
 if __name__ == "__main__":
     unittest.main()

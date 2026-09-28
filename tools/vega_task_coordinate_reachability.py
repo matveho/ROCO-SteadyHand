@@ -58,7 +58,7 @@ def _resolve_point(name, task_data):
     if "." not in name:
         raise ValueError(f"point {name!r} must be part.pick or part.place")
     part, kind = name.rsplit(".", 1)
-    if kind not in ("pick", "place") or part not in task_data["parts"]:
+    if part not in task_data["parts"] or kind not in task_data["parts"][part]:
         raise ValueError(f"unknown task point {name!r}")
     return part, kind, _finite_vector(task_data["parts"][part][kind], 3, name)
 
@@ -77,7 +77,7 @@ def _live_pose(source_xyz, *, source_center, live_center, ux, uy, hover, quat):
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("points", nargs="*", default=list(DEFAULT_POINTS),
-                   help="point names such as battery_size1.pick")
+                   help="point names such as battery_size1.pick or rod_16mm.connect")
     p.add_argument("--coordinates", default="configs/task_coordinates.json")
     p.add_argument("--calibration", default="calibration/vega_board_manual.json")
     p.add_argument("--speed-scale", type=float, default=0.35)
