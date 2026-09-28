@@ -62,9 +62,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # Operator-measured physical claw-center clearance change across the board.
 # Active right-arm board-plane correction from the latest supervised survey:
-# TOP_RIGHT=84 mm, CENTER=45 mm, BOTTOM_RIGHT=-5 mm across the 386 mm field.
-MEASURED_NEAR_CLAW_HEIGHT_MM = -5.0
-MEASURED_FAR_CLAW_HEIGHT_MM = 84.0
+# TOP_RIGHT=85 mm, BOTTOM_RIGHT=0 mm across the 386 mm field.
+MEASURED_NEAR_CLAW_HEIGHT_MM = 0.0
+MEASURED_FAR_CLAW_HEIGHT_MM = 85.0
 MEASURED_FORWARD_SPAN_MM = 386.0
 ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M = 0.30
 # The measured competition RIGHT_READY is a board-working pose about 0.15 m
@@ -490,7 +490,7 @@ def main(argv=None):
         default=DEFAULT_FORWARD_RISE_ANGLE_DEG,
         help=(
             "physical claw-center rise angle during +base-X motion; "
-            "default is derived from onsite -5 mm bottom-right / 84 mm "
+            "default is derived from onsite 0 mm bottom-right / 85 mm "
             "top-right over the 386 mm span"
         ),
     )

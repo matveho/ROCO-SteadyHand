@@ -70,8 +70,8 @@ class BoardManualCalibrationTests(unittest.TestCase):
         self.assertAlmostEqual(sum(v*v for v in q), 1.0, places=12)
         self.assertGreater(abs(q[2]), 0.0)
 
-    def test_default_plane_angle_uses_measured_39_61_over_383(self):
-        expected = math.degrees(math.atan((61.0 - 39.0) / 383.0))
+    def test_default_plane_angle_uses_latest_0_85_over_386(self):
+        expected = math.degrees(math.atan((85.0 - 0.0) / 386.0))
         self.assertAlmostEqual(DEFAULT_FORWARD_RISE_ANGLE_DEG, expected, places=9)
 
     def test_forward_rise_compensation_moves_tcp_down(self):

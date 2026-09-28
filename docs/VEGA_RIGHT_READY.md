@@ -110,6 +110,12 @@ converts each clearance to the board surface Z, fits the board surface plane,
 and stores corrected axes. Task-coordinate motion refuses to run until this
 schema is present.
 
+The current calibration config applies the observed 85 mm TOP_RIGHT / 0 mm
+BOTTOM_RIGHT slope across both board edges and biases the four initial targets
+so each begins at a 100 mm TCP-to-board clearance. The prompt defaults are
+therefore 100 mm at every reference; replace them only if a physical gauge
+reading says otherwise.
+
 ## Operator competition pipeline
 
 The menu entry point keeps calibration, position tests, and versioned task

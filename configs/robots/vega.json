@@ -100,7 +100,7 @@
     "joint_timeout_s": 30
   },
   "board_calibration": {
-    "forward_rise_angle_deg": 13.0,
+    "forward_rise_angle_deg": 12.418744602,
     "fallback_file": "calibration/vega_board_manual_fallback.json",
     "camera_target_corrections_m": {
       "CENTER": [-0.046518656, -0.014059528],
@@ -110,13 +110,21 @@
     },
     "camera_target_correction_convention": "These are final corrected TCP XY minus the raw camera coarse XY, measured from the permanent five-point run; forward=+base X and right=-base Y.",
     "default_task_clearance_mm": 100.0,
-    "suggested_clearance_mm": {
-      "CENTER": 67.0,
-      "TOP_RIGHT": 97.0,
-      "BOTTOM_RIGHT": 28.0,
-      "BOTTOM_LEFT": 19.0
+    "calibration_target_clearance_mm": 100.0,
+    "calibration_reference_clearance_mm": {
+      "CENTER": 42.5,
+      "TOP_RIGHT": 85.0,
+      "BOTTOM_RIGHT": 0.0,
+      "BOTTOM_LEFT": 0.0
     },
-    "source": "permanent five-point calibration 2026-09-12; coarse-target residuals CENTER forward 50/right 5 mm, TOP_RIGHT right 30 mm, BOTTOM_RIGHT forward 60/right 25 mm; recorded clearances CENTER 67 mm, TOP_RIGHT 97 mm, BOTTOM_RIGHT 28 mm, BOTTOM_LEFT 19 mm",
+    "suggested_clearance_mm": {
+      "CENTER": 100.0,
+      "TOP_RIGHT": 100.0,
+      "BOTTOM_RIGHT": 100.0,
+      "BOTTOM_LEFT": 100.0
+    },
+    "calibration_height_convention": "Initial calibration target Z is biased from the observed 85 mm TOP_RIGHT / 0 mm BOTTOM_RIGHT slope so every reference starts at 100 mm TCP-to-board clearance; TOP_LEFT is assumed to match TOP_RIGHT and BOTTOM_LEFT to match BOTTOM_RIGHT.",
+    "source": "operator rerun: TOP_RIGHT clearance 85 mm, BOTTOM_RIGHT touching board (0 mm), assumed across left edge; 386 mm forward span",
     "status": "active_supervised_board_plane_correction"
   },
   "joint_presets": {

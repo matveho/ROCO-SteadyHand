@@ -40,11 +40,16 @@ ROOT = Path(__file__).resolve().parents[1]
 LABELS = ("CENTER", "TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT")
 
 
-def _target(point, hover_z, quaternion):
-    return Pose(tuple(float(v) for v in (point[0], point[1], hover_z)), tuple(quaternion))
+def _target(point, hover_z, quaternion, *, z_offset_m=0.0):
+    return Pose(
+        tuple(float(v) for v in (point[0], point[1], float(hover_z) + float(z_offset_m))),
+        tuple(quaternion),
+    )
 
 
-def _reachable_initial_target(robot, point, center, hover_z, quaternion, label):
+def _reachable_initial_target(
+    robot, point, center, hover_z, quaternion, label, *, z_offset_m=0.0
+):
     """Preflight an initial camera target, insetting only when necessary."""
     import numpy as np
     point = np.asarray(point, dtype=float)
@@ -56,7 +61,7 @@ def _reachable_initial_target(robot, point, center, hover_z, quaternion, label):
         # The board target is planar XY; do not add a 2-vector to the
         # camera-read 3-vector (which also contains the provisional plane Z).
         xy = center[:2] + float(alpha) * (point[:2] - center[:2])
-        candidate = _target(xy, hover_z, quaternion)
+        candidate = _target(xy, hover_z, quaternion, z_offset_m=z_offset_m)
         try:
             robot._kinematics.solve(candidate, seed)
         except Exception as exc:
@@ -70,6 +75,19 @@ def _reachable_initial_target(robot, point, center, hover_z, quaternion, label):
             )
         return candidate, alpha
     raise RuntimeError(f"{label} initial target is not reachable: {last_error}")
+
+
+def _calibration_height_offset_m(cfg, label):
+    """Return the configured Z bias that starts each point at 100 mm clearance."""
+    board_cfg = cfg.get("board_calibration") or {}
+    target_mm = float(board_cfg.get("calibration_target_clearance_mm", 100.0))
+    references = board_cfg.get("calibration_reference_clearance_mm") or {}
+    if label not in references:
+        return 0.0
+    reference_mm = float(references[label])
+    if not all(math.isfinite(v) for v in (target_mm, reference_mm)):
+        raise ValueError("calibration clearance references must be finite")
+    return (target_mm - reference_mm) / 1000.0
 
 
 def _fit_surface(samples):
@@ -260,11 +278,19 @@ def _main_once(argv=None):
             "max_iterations": 240,
         })
         for label in LABELS:
+            height_offset_m = _calibration_height_offset_m(cfg, label)
             target, alpha = _reachable_initial_target(
                 robot, points[label], points["CENTER"], hover_z,
-                ready_pose.quaternion_wxyz, label,
+                ready_pose.quaternion_wxyz, label, z_offset_m=height_offset_m,
             )
-            print(label, "CAMERA TARGET =", tuple(round(v, 6) for v in target.position_m), flush=True)
+            print(
+                label,
+                "CAMERA TARGET =",
+                tuple(round(v, 6) for v in target.position_m),
+                "HEIGHT OFFSET MM =",
+                round(height_offset_m * 1000.0, 1),
+                flush=True,
+            )
             input(f"Press Enter to move to {label}; type anything to cancel: ")
             move_tcp_segmented(
                 robot, target, speed_scale=float(args.coarse_speed_scale),
@@ -297,6 +323,7 @@ def _main_once(argv=None):
                     print("Enter one finite height in millimetres.", flush=True)
             samples[label] = {
                 "camera_target_pose": _pose_record(target),
+                "calibration_height_offset_m": float(height_offset_m),
                 "camera_inset_fraction": float(alpha),
                 "joint_names": list(robot._joint_names),
                 "joint_positions_rad": list(robot._read_joint_positions()),
