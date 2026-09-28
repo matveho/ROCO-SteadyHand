@@ -1,4 +1,4 @@
-"""Center battery_size1 to its taught jaw-alignment pixel using wrist_b.
+"""Center battery_size1 to its taught jaw-alignment pixel using wrist_a.
 
 This is the battery-specific bridge between coarse hover and descent. It never
 changes Z, never connects the gripper and never descends. For the first
@@ -29,7 +29,7 @@ from steadyhand.config import load_bundle
 from steadyhand.geometry import quaternion_angle
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vision.wrist_servo import run_xy_servo
-from tools.vega_wrist_fine_center import WristBOnlyCapture
+from tools.vega_wrist_fine_center import WristAOnlyCapture
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CAL = ROOT / "calibration" / "battery_size1_grasp.json"
@@ -45,7 +45,7 @@ def main(argv=None):
     p.add_argument("--calibration", default=str(DEFAULT_CAL.relative_to(ROOT)))
     p.add_argument("--coarse-xy", nargs=2, type=float, required=True, metavar=("X", "Y"))
     p.add_argument("--feature", nargs=2, type=float, required=True, metavar=("U", "V"),
-                   help="battery feature pixel in the initial wrist_b hover image")
+                   help="battery feature pixel in the initial wrist_a hover image")
     p.add_argument("--probe-m", type=float, default=0.008)
     p.add_argument("--gain", type=float, default=0.65)
     p.add_argument("--max-step-m", type=float, default=0.010)
@@ -110,7 +110,7 @@ def main(argv=None):
             stream.write(json.dumps(record) + "\n")
         print(kind.upper(), json.dumps(fields), flush=True)
         if "feature_uv" in fields and capture is not None:
-            raw = output / f"{capture.index - 1:03d}_wrist_b.png"
+            raw = output / f"{capture.index - 1:03d}_wrist_a.png"
             annotated = cv2.imread(str(raw))
             if annotated is not None:
                 uv = tuple(int(round(v)) for v in fields["feature_uv"])
@@ -125,7 +125,7 @@ def main(argv=None):
 
     try:
         cameras.connect()
-        capture = WristBOnlyCapture(cameras, output, settle_s=0.20, warmup_attempts=8)
+        capture = WristAOnlyCapture(cameras, output, settle_s=0.20, warmup_attempts=8)
         capture()
 
         cfg["allow_robot_init_head_motion"] = True
