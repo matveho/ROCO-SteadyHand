@@ -2078,3 +2078,20 @@ Current competition-network workflow:
   this skips head motion/capture/detection and goes directly to the vertical-claw
   reach plan. Use this for rapid policy iteration; only refresh the registration
   after the board moves.
+
+
+2026-09-27 ASAP FIX — VERTICAL CLAW FRAME CONVENTION:
+  The previous vertical-claw benchmark still applied the simulator's top-down
+  q=(0,1,0,0) directly to physical IK frame tip_l. That is wrong.
+  Organizer param_config's top-down quaternion is for L_ee_link_gripper_link.
+  Physical SteadyHand IK uses tip_l. URDF fixed transform:
+    L_ee_link_gripper_link -> tip_l
+    xyz=(0,-0.015,0.198), rpy=(pi,0,pi/2)
+  Therefore a top-down physical gripper with in-plane yaw psi must target:
+    R_base_tip = Rz(psi) * Rx(pi) * R_link_tip
+               = Rz(psi - pi/2)
+  i.e. tip_l quaternion:
+    (cos((psi-pi/2)/2), 0, 0, sin((psi-pi/2)/2))
+  tools/vega_board_benchmark.py now uses this corrected family. The prior
+  'center unreachable' result is invalid as a workspace conclusion because it
+  tested the wrong tip_l orientation family.
