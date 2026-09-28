@@ -201,19 +201,63 @@ def resolve_ab_delta(observations, explicit_delta_m=None):
     return tuple(bi - ai for ai, bi in zip(a, b)), "difference_of_absolute_centers"
 
 
-def _load_template_context():
-    if not TEMPLATE_PATH.is_file():
-        return {}
-    data = json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
+def _fallback_context():
     return {
-        key: deepcopy(data[key])
+        "purpose": (
+            "offline calibration of modeled tip_l to operator-defined "
+            "physical claw center/frame"
+        ),
+        "frame_convention": {
+            "base_axes": "x forward/away from robot, y robot-left, z up",
+            "physical_claw_center": "center used by operator for alignment",
+            "physical_claw_axis_base": (
+                "unit vector from wrist toward fingertips"
+            ),
+            "physical_claw_x_axis_base": (
+                "unit vector along a marked jaw/reference direction; "
+                "required only to resolve yaw/full frame"
+            ),
+        },
+        "historical_context": {
+            "forward_rise_measurement": {
+                "near_robot_edge_physical_claw_clearance_m": 0.039,
+                "far_edge_physical_claw_clearance_m": 0.061,
+                "forward_span_m": 0.383,
+                "derived_rise_angle_deg": math.degrees(
+                    math.atan((0.061 - 0.039) / 0.383)
+                ),
+                "direction": "+base X / away from robot",
+                "identifiability": (
+                    "clearance is claw-center minus board-surface height; "
+                    "by itself it cannot distinguish claw-path slope from "
+                    "board-plane slope"
+                ),
+            },
+            "board_width_operator_measured_m": 0.383,
+        },
+        "measurement_protocol": [instruction for _, instruction in STAGES],
+    }
+
+
+def _load_template_context():
+    fallback = _fallback_context()
+    if not TEMPLATE_PATH.is_file():
+        return fallback
+    try:
+        data = json.loads(TEMPLATE_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        # The recorder must still emit analyzer-ready JSON if the optional
+        # human-facing template is absent or malformed.  The analyzer itself
+        # does not require this context.
+        return fallback
+    return {
+        key: deepcopy(data.get(key, fallback[key]))
         for key in (
             "purpose",
             "frame_convention",
             "historical_context",
             "measurement_protocol",
         )
-        if key in data
     }
 
 
