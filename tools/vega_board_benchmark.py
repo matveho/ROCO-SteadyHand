@@ -195,6 +195,8 @@ def main(argv=None):
                    help="TCP benchmark height in base frame")
     p.add_argument("--speed-scale", type=float, default=0.90)
     p.add_argument("--output", default="calibration/vega_board_live.json")
+    p.add_argument("--reuse-registration", action="store_true",
+                   help="skip head capture and reuse the saved board JSON")
     p.add_argument("--execute", action="store_true")
     p.add_argument("--confirm-physical-motion", action="store_true")
     args = p.parse_args(argv)
@@ -212,77 +214,96 @@ def main(argv=None):
             f"--hover-z must be above hard TCP floor {floor:.6f} m"
         )
 
-    print("Capturing downward head view...")
-    head_q, frame = _set_head_and_capture(robot_name, args.head_j1)
-    fx, fy, cx, cy = intrinsics_from_camera_info(frame.camera_info)
-
-    pixels = detect_white_board_corners(frame.left_rgb)
-    labels = ("tl", "tr", "br", "bl")
-    print("BOARD PIXELS =", dict(zip(labels, pixels)))
-
-    T_base_camera = head_left_optical_transform(
-        head_q,
-        lift_m=float(cfg["kinematics"]["fixed_joint_values"]["Lift"]),
-        torso_flip_rad=float(
-            cfg["kinematics"]["fixed_joint_values"]["torso_flip"]
-        ),
-    )
-    corners_base = pixels_to_horizontal_plane(
-        pixels,
-        fx=fx, fy=fy, cx=cx, cy=cy,
-        T_base_camera=T_base_camera,
-        plane_z_m=plane_z,
-    )
-    T_base_board, width_m, height_m = board_frame_from_corners(corners_base)
-    center = T_base_board[:3, 3]
-
-    print("BOARD CENTER BASE =", tuple(round(float(x), 5) for x in center))
-    for label, point in zip(labels, corners_base):
-        print(
-            f"BOARD {label.upper()} BASE =",
-            tuple(round(float(x), 5) for x in point),
-        )
-    print(f"BOARD SIZE ~= {width_m:.3f} x {height_m:.3f} m")
-
     output = Path(args.output)
     if not output.is_absolute():
         output = ROOT / output
-    output.parent.mkdir(parents=True, exist_ok=True)
-    record = {
-        "schema_version": 1,
-        "robot_id": "vega",
-        "robot_name": robot_name,
-        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
-        "base_frame": cfg["kinematics"]["base_frame"],
-        "camera_frame": "zed_left_camera_optical",
-        "method": "head white-board quadrilateral + horizontal-plane ray intersection",
-        "calibration_status": "coarse_source_robot_camera_reference_normalized_by_live_head_q",
-        "warning": (
-            "Absolute head-camera calibration originates from organizer source robot "
-            "dm/vg3eb20f25bb-1u. Use for coarse board registration; wrist visual "
-            "servo should perform fine part centering."
-        ),
-        "head_q_rad": _serializable(head_q),
-        "head_j1_downward_sign_verified_onsite": "positive",
-        "plane_z_m": plane_z,
-        "hover_z_m": float(args.hover_z),
-        "intrinsics": {"fx": fx, "fy": fy, "cx": cx, "cy": cy},
-        "board_pixels": {
-            label: [int(u), int(v)]
-            for label, (u, v) in zip(labels, pixels)
-        },
-        "corners_base_m": {
-            label: [float(x) for x in point]
-            for label, point in zip(labels, corners_base)
-        },
-        "center_base_m": [float(x) for x in center],
-        "width_m": width_m,
-        "height_m": height_m,
-        "T_base_board_center": _serializable(T_base_board),
-        "T_base_camera": _serializable(T_base_camera),
-    }
-    output.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
-    print("WROTE", output)
+
+    if args.reuse_registration:
+        if not output.is_file():
+            raise SystemExit(f"--reuse-registration requested but {output} does not exist")
+        record = json.loads(output.read_text(encoding="utf-8"))
+        import numpy as np
+        labels = ("tl", "tr", "br", "bl")
+        corners_base = np.asarray(
+            [record["corners_base_m"][label] for label in labels], dtype=float
+        )
+        center = np.asarray(record["center_base_m"], dtype=float)
+        print("REUSING BOARD REGISTRATION", output)
+        print("BOARD CENTER BASE =", tuple(round(float(x), 5) for x in center))
+        for label, point in zip(labels, corners_base):
+            print(
+                f"BOARD {label.upper()} BASE =",
+                tuple(round(float(x), 5) for x in point),
+            )
+    else:
+        print("Capturing downward head view...")
+        head_q, frame = _set_head_and_capture(robot_name, args.head_j1)
+        fx, fy, cx, cy = intrinsics_from_camera_info(frame.camera_info)
+
+        pixels = detect_white_board_corners(frame.left_rgb)
+        labels = ("tl", "tr", "br", "bl")
+        print("BOARD PIXELS =", dict(zip(labels, pixels)))
+
+        T_base_camera = head_left_optical_transform(
+            head_q,
+            lift_m=float(cfg["kinematics"]["fixed_joint_values"]["Lift"]),
+            torso_flip_rad=float(
+                cfg["kinematics"]["fixed_joint_values"]["torso_flip"]
+            ),
+        )
+        corners_base = pixels_to_horizontal_plane(
+            pixels,
+            fx=fx, fy=fy, cx=cx, cy=cy,
+            T_base_camera=T_base_camera,
+            plane_z_m=plane_z,
+        )
+        T_base_board, width_m, height_m = board_frame_from_corners(corners_base)
+        center = T_base_board[:3, 3]
+
+        print("BOARD CENTER BASE =", tuple(round(float(x), 5) for x in center))
+        for label, point in zip(labels, corners_base):
+            print(
+                f"BOARD {label.upper()} BASE =",
+                tuple(round(float(x), 5) for x in point),
+            )
+        print(f"BOARD SIZE ~= {width_m:.3f} x {height_m:.3f} m")
+
+        output.parent.mkdir(parents=True, exist_ok=True)
+        record = {
+            "schema_version": 1,
+            "robot_id": "vega",
+            "robot_name": robot_name,
+            "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+            "base_frame": cfg["kinematics"]["base_frame"],
+            "camera_frame": "zed_left_camera_optical",
+            "method": "head white-board quadrilateral + horizontal-plane ray intersection",
+            "calibration_status": "coarse_source_robot_camera_reference_normalized_by_live_head_q",
+            "warning": (
+                "Absolute head-camera calibration originates from organizer source robot "
+                "dm/vg3eb20f25bb-1u. Use for coarse board registration; wrist visual "
+                "servo should perform fine part centering."
+            ),
+            "head_q_rad": _serializable(head_q),
+            "head_j1_downward_sign_verified_onsite": "positive",
+            "plane_z_m": plane_z,
+            "hover_z_m": float(args.hover_z),
+            "intrinsics": {"fx": fx, "fy": fy, "cx": cx, "cy": cy},
+            "board_pixels": {
+                label: [int(u), int(v)]
+                for label, (u, v) in zip(labels, pixels)
+            },
+            "corners_base_m": {
+                label: [float(x) for x in point]
+                for label, point in zip(labels, corners_base)
+            },
+            "center_base_m": [float(x) for x in center],
+            "width_m": width_m,
+            "height_m": height_m,
+            "T_base_board_center": _serializable(T_base_board),
+            "T_base_camera": _serializable(T_base_camera),
+        }
+        output.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+        print("WROTE", output)
 
     if not args.execute:
         print("Registration complete. Re-run with --execute --confirm-physical-motion for benchmark.")
