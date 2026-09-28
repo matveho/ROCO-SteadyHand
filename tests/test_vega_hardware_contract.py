@@ -15,7 +15,7 @@ import unittest
 from unittest.mock import patch
 
 from steadyhand.adapters.vega import VegaAdapter
-from steadyhand.cameras.vega import intrinsics_from_camera_info
+from steadyhand.cameras.vega import VegaHeadCamera, intrinsics_from_camera_info
 from steadyhand.grippers.vega import VegaCanGripper, _load_gripper_module
 from steadyhand.models import Pose
 
@@ -436,6 +436,53 @@ class GripperContractTests(unittest.TestCase):
             def __bool__(self):
                 raise ValueError("ambiguous array truth value")
         self.assertEqual(intrinsics_from_camera_info({"K": Array([700, 0, 960, 0, 701, 600, 0, 0, 1])}), (700, 701, 960, 600))
+
+    def test_head_camera_read_waits_for_first_frames(self):
+        class FakeHead:
+            def __init__(self):
+                self.calls = 0
+
+            def get_obs(self, *, obs_keys, include_timestamp):
+                self.calls += 1
+                if self.calls < 3:
+                    return {key: None for key in obs_keys}
+                return {
+                    key: {"data": key, "timestamp_ns": self.calls}
+                    for key in obs_keys
+                }
+
+            def get_camera_info(self):
+                return {"K": [700, 0, 960, 0, 701, 600, 0, 0, 1]}
+
+        camera = VegaHeadCamera()
+        camera._head = FakeHead()
+        frame = camera.read(include_depth=False, timeout_s=0.1, poll_s=0.0)
+        self.assertEqual(camera._head.calls, 3)
+        self.assertEqual(frame.left_rgb, "left_rgb")
+        self.assertEqual(frame.right_rgb, "right_rgb")
+
+    def test_head_camera_read_retries_late_camera_info(self):
+        class FakeHead:
+            def __init__(self):
+                self.info_calls = 0
+
+            def get_obs(self, *, obs_keys, include_timestamp):
+                return {
+                    key: {"data": key, "timestamp_ns": 1}
+                    for key in obs_keys
+                }
+
+            def get_camera_info(self):
+                self.info_calls += 1
+                if self.info_calls == 1:
+                    raise RuntimeError("info not ready")
+                return {"K": [700, 0, 960, 0, 701, 600, 0, 0, 1]}
+
+        camera = VegaHeadCamera()
+        camera._head = FakeHead()
+        frame = camera.read(include_depth=False, timeout_s=0.1, poll_s=0.0)
+        self.assertEqual(camera._head.info_calls, 2)
+        self.assertIsNotNone(frame.camera_info)
 
 
 if __name__ == "__main__":
