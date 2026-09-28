@@ -405,19 +405,13 @@ class ReadOnlyVegaTipReader:
             )
 
         working_arm = self.cfg.get("working_arm")
-        if working_arm not in ("left", "right"):
-            raise RuntimeError("working_arm must be left or right")
-        component_name = f"{working_arm}_arm"
+        if working_arm != "right":
+            raise RuntimeError("tool-frame recorder is locked to working_arm='right'")
+        component_name = "right_arm"
 
         kin_cfg = dict(self.cfg["kinematics"])
-        self._joint_names = tuple(
-            kin_cfg[
-                "left_arm_joint_names"
-                if working_arm == "left"
-                else "right_arm_joint_names"
-            ]
-        )
-        limits = self.cfg["arm_joint_limits_rad"][working_arm]
+        self._joint_names = tuple(kin_cfg["right_arm_joint_names"])
+        limits = self.cfg["arm_joint_limits_rad"]["right"]
         kin_cfg["joint_limits_rad"] = limits
 
         urdf_path = Path(self.cfg["urdf_path"]).expanduser()
