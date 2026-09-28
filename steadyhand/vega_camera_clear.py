@@ -21,6 +21,9 @@ from .models import Pose
 CAMERA_CLEAR_X_M = 0.50
 CAMERA_CLEAR_Y_M = 0.00
 CAMERA_CLEAR_Z_ABOVE_FLOOR_M = 0.80
+CAMERA_CLEAR_MIN_Z_ABOVE_FLOOR_M = 0.40
+CAMERA_CLEAR_Z_STEP_M = 0.05
+CAMERA_CLEAR_X_CANDIDATES_M = (0.50, 0.45, 0.40, 0.35)
 CAMERA_CLEAR_SPEED_SCALE = 0.90
 CAMERA_CLEAR_ESCAPE_LIFT_M = 0.10
 CAMERA_CLEAR_VERTICALIZE_ABOVE_FLOOR_M = 0.30
@@ -49,6 +52,46 @@ def camera_clear_pose(floor_m: float) -> Pose:
     )
 
 
+def _highest_reachable_camera_clear_pose(robot, *, floor_m: float) -> Pose:
+    """Pick the highest IK-feasible vertical clear pose near the requested x.
+
+    Search height first, then prefer x closest to the operator-requested 0.50 m.
+    This is a pure planning step: no robot command is sent here.
+    """
+    floor_m = float(floor_m)
+    seed = robot._read_joint_positions()
+    quat = vertical_claw_tip_quaternion(0.0)
+
+    z = floor_m + CAMERA_CLEAR_Z_ABOVE_FLOOR_M
+    z_min = floor_m + CAMERA_CLEAR_MIN_Z_ABOVE_FLOOR_M
+    last_error = None
+    while z >= z_min - 1e-9:
+        for x in CAMERA_CLEAR_X_CANDIDATES_M:
+            candidate = Pose(
+                (float(x), CAMERA_CLEAR_Y_M, float(z)),
+                quat,
+            )
+            try:
+                robot._kinematics.solve(candidate, seed)
+            except Exception as exc:
+                last_error = exc
+                continue
+            print(
+                "CAMERA CLEAR: PLANNED REACHABLE PRESET ->",
+                tuple(round(float(v), 4) for v in candidate.position_m),
+                flush=True,
+            )
+            return candidate
+        z -= CAMERA_CLEAR_Z_STEP_M
+
+    raise RuntimeError(
+        "No reachable high vertical camera-clear pose found in search "
+        f"x={CAMERA_CLEAR_X_CANDIDATES_M}, "
+        f"z_above_floor={CAMERA_CLEAR_MIN_Z_ABOVE_FLOOR_M:.2f}.."
+        f"{CAMERA_CLEAR_Z_ABOVE_FLOOR_M:.2f} m; last IK error: {last_error}"
+    )
+
+
 def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEAR_SPEED_SCALE):
     """Recover from a low/arbitrary wrist pose, then move clear of board view.
 
@@ -64,7 +107,7 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
     """
     floor_m = float(floor_m)
     speed_scale = float(speed_scale)
-    target = camera_clear_pose(floor_m)
+    requested_target = camera_clear_pose(floor_m)
     current = robot.get_tcp_pose()
 
     if current is None:
@@ -97,7 +140,7 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
         kin_cfg["max_iterations"] = 180
 
         escape_z = min(
-            float(target.position_m[2]),
+            float(requested_target.position_m[2]),
             float(current.position_m[2]) + CAMERA_CLEAR_ESCAPE_LIFT_M,
         )
         if escape_z > float(current.position_m[2]) + 0.01:
@@ -124,7 +167,7 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
             )
 
         verticalize_z = min(
-            float(target.position_m[2]),
+            float(requested_target.position_m[2]),
             max(
                 float(robot.get_tcp_pose().position_m[2]),
                 floor_m + CAMERA_CLEAR_VERTICALIZE_ABOVE_FLOOR_M,
@@ -151,6 +194,11 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
             max_orientation_step_rad=0.55,
             min_tcp_z_m=floor_m,
         )
+
+        # The literal requested 0.50/0/0.80-above-floor pose is not
+        # guaranteed reachable with a vertical claw. Plan the highest reachable
+        # nearby pose before issuing any command.
+        target = _highest_reachable_camera_clear_pose(robot, floor_m=floor_m)
 
         print(
             "CAMERA CLEAR: PRESET ->",
