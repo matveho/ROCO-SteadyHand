@@ -2226,3 +2226,14 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   robot: acquire fresh downward head RGB once
   laptop/offline: iterate detector against saved images
   robot: only return for validation after the overlay is visually correct
+
+
+2026-09-28 STEP-2 CAPTURE TOOL:
+  Added tools/vega_capture_board_view.py for the active board-identification
+  milestone. It intentionally moves only the head, commands head_j1=+0.55
+  (onsite-verified downward), captures RGB-only left/right head frames, and
+  saves head joint readback + camera metadata. It does not connect arms or
+  grippers. Requires the head-camera publisher to already be running.
+  Pair it with:
+    tools/identify_board_snapshot.py <saved-directory>
+  so board CV can be tuned offline without consuming robot time.
