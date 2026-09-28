@@ -24,12 +24,16 @@ intentionally null.
 
 Verified inputs used by the tools:
 
-- working arm: LEFT;
+- working arm: RIGHT;
 - TCP: `tip_r`;
 - physical right wrist camera: `wrist_a`;
+- CAN gripper scope: `right`;
 - grip current: 1.0 A;
 - grip speed: 240 deg/s;
-- task floor: `configs/skills/vega.json:safety.min_tcp_z_m`;
+- task floor guard: `configs/skills/vega.json:safety.min_tcp_z_m`; this numeric
+  guard remains provisional from the earlier bring-up and is **not** recorded
+  as a measured right-arm battery calibration until separate `tip_r` floor
+  revalidation is performed;
 - vertical claw orientation is preserved from the successful wrist-centering
   hover.
 
@@ -43,11 +47,29 @@ than 0.04 rad.
 Do this only after the board-axis benchmark and the image-center
 `vega_wrist_fine_center.py` validation have passed.
 
-### 1. Create the calibration record
+### 1. Create a clean right-arm calibration record
+
+Battery calibration schema 2 records `working_arm=right`, `tcp_frame=tip_r`,
+`wrist_camera=wrist_a`, and `gripper.scope=right`. Any pre-switch,
+schema-1, provenance-missing, `tip_l`, `wrist_b`, or left-gripper artifact is
+stale and must not be incrementally reused.
+
+If a calibration file already exists from earlier bring-up, reset it before
+teaching either physical section:
+
+```bash
+python3 tools/vega_battery_size1_calibrate.py init --force
+```
+
+For a new path with no existing file:
 
 ```bash
 python3 tools/vega_battery_size1_calibrate.py init
 ```
+
+Both the jaw/hover section and grasp section must then be retaught on the right
+arm. Teaching commands refuse to update a file that was not created by this
+clean right-arm initialization epoch.
 
 ### 2. Teach the jaw-alignment goal pixel
 
@@ -163,7 +185,11 @@ python3 tools/vega_battery_size1_pick.py \
 The pick tool refuses to move unless:
 
 - the calibration file is complete;
-- the calibration belongs to the current robot/base frame and `wrist_a`;
+- the calibration belongs to the current robot/base frame, explicitly records
+  `working_arm=right`, `tcp_frame=tip_r`, `wrist_a`, and right gripper
+  scope;
+- runtime config still has right arm / `tip_r` / `wrist_a=right_wrist` /
+  `gripper.scope=right`;
 - the gripper config is exactly 1.0 A / 240 deg/s;
 - the wrist alignment result converged to the taught goal pixel;
 - the alignment result was generated from the current calibration contents;
