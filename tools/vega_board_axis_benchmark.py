@@ -67,6 +67,7 @@ def main(argv=None):
     # Robot() is known to move the head. Opt in, then explicitly put the full
     # head pose back into the verified downward view before perception.
     cfg["allow_robot_init_head_motion"] = True
+    cfg["auto_clear_software_estop_on_connect"] = True
 
     # This benchmark is clear free-space motion. Larger joint chunks reduce
     # controller stop/start behavior while the server motion plugin still owns
