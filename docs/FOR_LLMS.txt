@@ -2183,3 +2183,10 @@ MERGE RESOLUTION: Canonical servo is the automated template-tracking implementat
 from fc841b0, with capture-only default, measured probes and bounded motion.
 Use docs/VEGA_WRIST_SERVO.md and --camera (not --left-camera).
 The earlier manual-feature CLI was superseded during this merge.
+
+2026-09-27 HEAD SIDEWAYS FIX:
+  Benchmark readback [0.54949945,-1.3261709,0.06351253] looked sideways.
+  Cause: only J1 was overwritten after Robot initialization, retaining J2/J3.
+  Board execution now restores ALL THREE head_q_rad values from the successful
+  saved board registration. Missing/non-finite saved pose fails before connection.
+  SSH reset prevented further live verification; rerun center-only after deploy.

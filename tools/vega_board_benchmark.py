@@ -299,6 +299,13 @@ def main(argv=None):
     if not args.confirm_physical_motion:
         raise SystemExit("--execute requires --confirm-physical-motion")
 
+    # Restore the complete pose which produced this registration. Robot() may
+    # change any head joint; retaining its J2/J3 can point the camera sideways.
+    saved_head = record.get("head_q_rad")
+    if (not isinstance(saved_head, (list, tuple)) or len(saved_head) != 3
+            or not all(math.isfinite(float(v)) for v in saved_head)):
+        raise SystemExit("Board registration lacks valid head_q_rad; capture a verified board view first")
+
     # Benchmark path intentionally uses only the arm. Do not home the gripper.
     cfg["allow_robot_init_head_motion"] = True
     # Fewer controller stop/start segments make the free-space benchmark smoother.
@@ -312,8 +319,8 @@ def main(argv=None):
         # head stays on the board during the benchmark and is ready for the next
         # perception step.
         import numpy as np
-        head_q = np.asarray(robot._robot.head.get_joint_pos(), dtype=float)
-        head_q[0] = float(args.head_j1)
+        head_q = np.asarray(saved_head, dtype=float)
+        print("RESTORING REGISTERED HEAD POSE =", head_q, flush=True)
         robot._robot.head.set_joint_pos(
             head_q,
             wait_time=1.2,
