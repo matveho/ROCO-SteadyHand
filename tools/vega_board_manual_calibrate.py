@@ -1,7 +1,7 @@
 """Interactive physical calibration of Vega head->board coarse registration.
 
 Flow:
-  1. Clear the left claw from the head-board view.
+  1. Clear the right claw from the head-board view.
   2. Capture the board exactly like vega_board_axis_benchmark.py.
   3. Move to the predicted CENTER, BOARD_X_PLUS and BOARD_Y_PLUS hover targets.
   4. At each target, let the operator jog the physical claw center relative to
@@ -170,7 +170,7 @@ def _interactive_teach_orientation(robot, *, floor, speed_scale=0.60, max_step_d
         flush=True,
     )
     print(
-        "Rotations are about BASE axes and hold the modeled tip_l position fixed. "
+        "Rotations are about BASE axes and hold the modeled tip_r position fixed. "
         "Use small steps and the hardware e-stop if motion is unexpected.",
         flush=True,
     )
