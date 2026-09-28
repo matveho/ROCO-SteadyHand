@@ -1,15 +1,15 @@
-"""Move battery_size1 from source-localizer XY to a safe coarse hover only.
+"""Move battery_size1 to source-localizer XY at the current safe hover only.
 
 Input is the battery source-localizer localization.json, not raw X/Y typed from
 memory. The tool revalidates the completed manual board calibration and
 requires its SHA/timestamp to match the localization provenance.
 
 Arm behavior is deliberately narrow:
-- preserve the currently accepted hover orientation;
-- lift first if below the accepted hover;
-- translate in XY at or above the accepted hover;
-- if necessary, lower only to the accepted safe hover, never below it;
-- no gripper, wrist cameras/servo, grasp descent, placement, or insertion.
+- current TCP must already be at the accepted low-hover Z;
+- preserve the exact live hover Z and orientation;
+- move only in base-frame X/Y to the localized battery source;
+- no vertical move, gripper, wrist camera/servo, grasp descent, placement, or
+  insertion.
 
 Robot() on Vega homes the head as an SDK side effect, so head-motion and
 physical-motion confirmations are both explicit.
@@ -68,6 +68,7 @@ def main(argv=None):
     p.add_argument("--max-calibration-age-min", type=float, default=720.0)
     p.add_argument("--max-localization-age-min", type=float, default=120.0)
     p.add_argument("--orientation-tolerance-rad", type=float, default=0.05)
+    p.add_argument("--hover-z-tolerance-m", type=float, default=0.008)
     p.add_argument("--final-position-tolerance-m", type=float, default=0.008)
     p.add_argument("--speed-scale", type=float, default=0.70)
     p.add_argument("--output")
@@ -92,6 +93,7 @@ def main(argv=None):
         args.max_calibration_age_min,
         args.max_localization_age_min,
         args.orientation_tolerance_rad,
+        args.hover_z_tolerance_m,
         args.final_position_tolerance_m,
         args.speed_scale,
     )
@@ -103,6 +105,8 @@ def main(argv=None):
         p.error("--max-localization-age-min must be 5..720")
     if not 0.01 <= args.orientation_tolerance_rad <= 0.15:
         p.error("--orientation-tolerance-rad must be 0.01..0.15")
+    if not 0.003 <= args.hover_z_tolerance_m <= 0.015:
+        p.error("--hover-z-tolerance-m must be 0.003..0.015")
     if not 0.002 <= args.final_position_tolerance_m <= 0.015:
         p.error("--final-position-tolerance-m must be 0.002..0.015")
     if not 0.45 <= args.speed_scale <= 0.90:
@@ -172,15 +176,16 @@ def main(argv=None):
         "operator_confirmed_board_unchanged_since_localization": True,
         "accepted_hover": {
             "source": "manual_corrected.CENTER",
-            "z_m": hover["z_m"],
+            "reference_z_m": hover["z_m"],
             "reference_quaternion_wxyz": list(
                 hover["quaternion_wxyz"]
             ),
             "orientation_status": hover["orientation_status"],
         },
         "motion_contract": {
+            "xy_only": True,
+            "preserve_live_z": True,
             "preserve_live_orientation": True,
-            "minimum_commanded_z_m": hover["z_m"],
             "configured_floor_m": floor,
             "gripper": False,
             "wrist_servo": False,
@@ -218,18 +223,15 @@ def main(argv=None):
                 f"error={orientation_error:.4f} rad"
             )
 
-        # Preserve the LIVE accepted quaternion exactly. Do not manufacture
-        # or command a new orientation from an analytic convention.
         target_xy = localization["coarse_base_xy_m"]
         stages = plan_hover_stages(
             start,
             target_xy,
             hover_z_m=hover["z_m"],
             floor_m=floor,
+            hover_z_tolerance_m=float(args.hover_z_tolerance_m),
         )
 
-        # Tight IK is important because the measured final XY is handed
-        # directly to the wrist centering gate.
         old_kin = dict(robot._kinematics.config)
         try:
             robot._kinematics.config["position_tolerance_m"] = 0.0007
@@ -253,8 +255,6 @@ def main(argv=None):
 
             measured_stages = []
             for label, target in stages:
-                # Preflight each stage with the current live seed before
-                # sending any motion command.
                 robot._kinematics.solve(
                     target,
                     robot._read_joint_positions(),
@@ -288,6 +288,17 @@ def main(argv=None):
                         "measured TCP orientation changed during "
                         "coarse-hover move"
                     )
+                if (
+                    abs(
+                        float(actual.position_m[2])
+                        - float(start.position_m[2])
+                    )
+                    > float(args.final_position_tolerance_m)
+                ):
+                    raise RuntimeError(
+                        "measured TCP Z changed during XY-only "
+                        "coarse-hover move"
+                    )
                 measured_stages.append(
                     {
                         "label": label,
@@ -304,7 +315,11 @@ def main(argv=None):
             final_pose.position_m[:2],
             localization["coarse_base_xy_m"],
         )
-        z_error = abs(
+        z_change = abs(
+            float(final_pose.position_m[2])
+            - float(start.position_m[2])
+        )
+        hover_reference_error = abs(
             float(final_pose.position_m[2])
             - float(hover["z_m"])
         )
@@ -314,12 +329,19 @@ def main(argv=None):
         )
         tol = float(args.final_position_tolerance_m)
 
-        if xy_error > tol or z_error > tol:
+        if xy_error > tol or z_change > tol:
             raise RuntimeError(
                 "coarse-hover endpoint outside measured tolerance: "
                 f"xy_error={xy_error:.4f} m, "
-                f"z_error={z_error:.4f} m, "
+                f"z_change={z_change:.4f} m, "
                 f"limit={tol:.4f} m"
+            )
+        if (
+            hover_reference_error
+            > float(args.hover_z_tolerance_m) + tol
+        ):
+            raise RuntimeError(
+                "measured final Z no longer matches accepted hover reference"
             )
         if float(final_pose.position_m[2]) < floor:
             raise RuntimeError(
@@ -342,7 +364,8 @@ def main(argv=None):
                 ),
                 "endpoint_error_m": {
                     "xy": xy_error,
-                    "z": z_error,
+                    "z_change_from_start": z_change,
+                    "z_from_hover_reference": hover_reference_error,
                 },
                 "orientation_change_rad": (
                     final_orientation_error
