@@ -4,8 +4,8 @@ Example:
 /usr/bin/python3 tools/vega_ik_check.py \
   --urdf ~/Downloads/Dexmate/vega_1u_gripper.urdf \
   --base-frame <verified-fixed-urdf-frame> \
-  --ee-frame L_ee \
-  --arm left \
+  --ee-frame R_ee \
+  --arm right \
   --fixed Lift=0.0 --fixed torso_flip=0.0 \
   --q 0 1.2 1.4 -1.57 -1.57 1 -0.35 \
   --dz 0.01
