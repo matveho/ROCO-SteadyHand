@@ -2237,3 +2237,31 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   Pair it with:
     tools/identify_board_snapshot.py <saved-directory>
   so board CV can be tuned offline without consuming robot time.
+
+
+2026-09-28 STEP 2 — OFFLINE BOARD + PART DETECTION VALIDATED ON PRIOR REAL HEAD IMAGE:
+  Prior competition head frame board_left.png (960x600) was analyzed offline.
+  Existing white-board detector returned:
+    TL=(421,366), TR=(575,366), BR=(621,517), BL=(377,518)
+  Perspective rectification to 800x800 then thresholding dark pixels at gray<140,
+  filtering connected components, and splitting the merged touching-gear cluster
+  recovered ALL 9 visible task parts in this real frame.
+
+  Added:
+    steadyhand/vision/task_parts.py
+      rectify_board()
+      detect_dark_part_boxes()
+      project_part_boxes_to_image()
+    tools/identify_board_snapshot.py now accepts snapshot dir, .npy, PNG, JPEG
+      and writes board_detection.json, board_overlay.png, board_rectified.png.
+
+  Board physical size is treated as 0.400 x 0.400 m, so the detector also
+  reports each detected part center in board millimetres from rectified TL.
+  Current detector intentionally returns numbered parts rather than hard-coding
+  identities. Identity-by-expected-board-region should be added only after the
+  physical layout labels are confirmed onsite.
+
+  Important physical-image observation:
+    the two gears touch/overlap in the dark binary mask and normally appear as
+    one connected component; detector handles the 8-components-for-9-parts case
+    by splitting the largest wide component at its column occupancy valley.
