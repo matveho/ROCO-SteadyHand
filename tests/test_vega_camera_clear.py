@@ -51,12 +51,41 @@ class VegaCameraClearTests(unittest.TestCase):
         )
         self.assertEqual(robot._kinematics.config, {})
 
-    def test_verticalization_failure_still_rejects_non_high_pose(self):
+    def test_escape_lift_refreshes_pose_before_verticalization_fallback(self):
+        floor = 0.4560002716867571
+        start = Pose((0.4933, -0.0631, 0.7273), (1.0, 0.0, 0.0, 0.0))
+        robot = _FakeRobot(start)
+
+        def fake_move(_robot, target, **kwargs):
+            robot.pose = target
+
+        with patch(
+            "steadyhand.vega_camera_clear._ik_feasible",
+            return_value=True,
+        ), patch(
+            "steadyhand.vega_camera_clear.move_tcp_segmented",
+            side_effect=fake_move,
+        ), patch(
+            "steadyhand.vega_camera_clear._reachable_verticalize_pose",
+            side_effect=RuntimeError("IK did not converge"),
+        ):
+            reached = move_camera_clear(robot, floor_m=floor, speed_scale=0.90)
+
+        self.assertAlmostEqual(reached.position_m[2], start.position_m[2] + 0.08)
+        self.assertGreaterEqual(
+            reached.position_m[2],
+            floor + CAMERA_CLEAR_RETAIN_HIGH_POSE_ABOVE_FLOOR_M,
+        )
+
+    def test_verticalization_failure_still_rejects_low_pose_if_escape_infeasible(self):
         floor = 0.456
-        pose = Pose((0.60, 0.0, floor + 0.35), (1.0, 0.0, 0.0, 0.0))
+        pose = Pose((0.60, 0.0, floor + 0.20), (1.0, 0.0, 0.0, 0.0))
         robot = _FakeRobot(pose)
 
         with patch(
+            "steadyhand.vega_camera_clear._ik_feasible",
+            return_value=False,
+        ), patch(
             "steadyhand.vega_camera_clear._reachable_verticalize_pose",
             side_effect=RuntimeError("IK did not converge"),
         ):
