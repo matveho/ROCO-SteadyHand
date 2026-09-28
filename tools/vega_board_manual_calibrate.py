@@ -55,6 +55,8 @@ ROOT = Path(__file__).resolve().parents[1]
 MEASURED_NEAR_CLAW_HEIGHT_MM = 39.0
 MEASURED_FAR_CLAW_HEIGHT_MM = 61.0
 MEASURED_FORWARD_SPAN_MM = 383.0
+ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M = 0.30
+
 DEFAULT_FORWARD_RISE_ANGLE_DEG = math.degrees(
     math.atan(
         (MEASURED_FAR_CLAW_HEIGHT_MM - MEASURED_NEAR_CLAW_HEIGHT_MM)
@@ -145,7 +147,7 @@ def _interactive_teach_orientation(robot, *, floor, speed_scale=0.60, max_step_d
     # Camera-clear's validated fallback leaves the TCP about 0.30-0.35 m
     # above the measured floor. That provides substantial free-space clearance
     # for the small orientation-only teach steps without forcing another lift.
-    min_teach_z = float(floor) + 0.30
+    min_teach_z = float(floor) + ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M
     if float(current.position_m[2]) < min_teach_z:
         raise RuntimeError(
             f"orientation teach requires TCP z >= {min_teach_z:.3f} m; "
