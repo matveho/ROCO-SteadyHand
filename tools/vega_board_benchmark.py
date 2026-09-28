@@ -1,15 +1,15 @@
-"""Register the physical task board and benchmark vertical left-claw reach.
+"""Register the physical task board and benchmark vertical right-claw reach.
 
 Milestone:
   1. Aim the head camera downward.
   2. Detect the large white task-board quadrilateral.
   3. Map its four corners + center into vega_1u_base_link.
   4. Save that board registration.
-  5. Optionally move the left TCP, held vertical, through:
+  5. Optionally move the right TCP, held vertical, through:
        center -> TL -> TR -> BR -> BL -> center
 
 This is intentionally the coarse/global layer. Fine object centering should use
-the left wrist camera after this board frame exists.
+the right wrist camera after this board frame exists.
 """
 
 import argparse
@@ -84,18 +84,18 @@ def _set_head_and_capture(cfg, head_j1, floor):
 
 
 def _yaw_quat(yaw):
-    """tip_l quaternion for a top-down physical gripper with free in-plane yaw.
+    """tip_r quaternion for a top-down physical gripper with free in-plane yaw.
 
     Important frame detail: the organizer's q=(0,1,0,0) top-down convention
-    applies to L_ee_link_gripper_link, NOT to tip_l.  Our physical IK frame is
-    tip_l, whose fixed transform from that gripper link is:
+    applies to R_ee_link_gripper_link, NOT to tip_r.  Our physical IK frame is
+    tip_r, whose fixed transform from that gripper link is:
         rpy = (pi, 0, pi/2)
     Therefore:
         R_base_tip = Rz(yaw) * Rx(pi) * R_ee_tip
                    = Rz(yaw - pi/2)
-    So a physically vertical gripper corresponds to a tip_l frame that looks
+    So a physically vertical gripper corresponds to a tip_r frame that looks
     like a pure base-Z rotation.  The previous implementation incorrectly put
-    a 180-deg X rotation directly on tip_l and made the center effectively
+    a 180-deg X rotation directly on tip_r and made the center effectively
     unreachable.
     """
     half = (float(yaw) - math.pi / 2.0) / 2.0
