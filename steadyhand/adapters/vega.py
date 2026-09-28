@@ -340,7 +340,14 @@ class VegaAdapter(RobotAdapter):
                 f"{getattr(handle, 'message', '')}"
             )
         self._active_motion_handle = None
-        self._wait_for_joint_state(target=target, newer_than=stamp)
+        # Once the server motion plugin reports a terminal "finished" state,
+        # measured joint state should settle promptly. Do not burn a second
+        # full motion timeout here; fail quickly with measured diagnostics.
+        self._wait_for_joint_state(
+            target=target,
+            newer_than=stamp,
+            timeout_s=min(timeout, 3.0),
+        )
 
     def move_tcp(self, pose, *, speed_scale: float = 1.0) -> None:
         try:
@@ -502,18 +509,61 @@ class VegaAdapter(RobotAdapter):
             "button_pressed": any(bool(raw[key]) for key in physical_keys),
         }
 
-    def _wait_for_joint_state(self, *, target=None, newer_than):
+    def _wait_for_joint_state(self, *, target=None, newer_than, timeout_s=None):
         motion = self.config["motion"]
-        deadline = time.monotonic() + float(motion["joint_timeout_s"])
+        timeout_s = (
+            float(motion["joint_timeout_s"])
+            if timeout_s is None
+            else float(timeout_s)
+        )
+        deadline = time.monotonic() + timeout_s
         tolerance = float(motion["joint_reached_tolerance_rad"])
+        last_values = None
+        last_stamp = None
+        last_fresh = False
+        last_error = None
         while True:
             values = self._read_joint_positions()
-            fresh = self._state_timestamp() > newer_than
-            reached = target is None or max(abs(a - b) for a, b in zip(values, target)) <= tolerance
+            stamp = self._state_timestamp()
+            fresh = stamp > newer_than
+            max_error = (
+                None
+                if target is None
+                else max(abs(a - b) for a, b in zip(values, target))
+            )
+            reached = target is None or max_error <= tolerance
+            last_values = values
+            last_stamp = stamp
+            last_fresh = fresh
+            last_error = max_error
             if fresh and reached:
                 return values
             if time.monotonic() >= deadline:
-                raise RuntimeError("Joint motion/state timeout: target not reached or joint timestamp did not advance; stop and inspect")
+                detail = (
+                    f"fresh={last_fresh}, state_timestamp_ns={last_stamp}, "
+                    f"required_newer_than_ns={newer_than}"
+                )
+                if target is not None:
+                    detail += (
+                        f", max_joint_error_rad={last_error:.6f}, "
+                        f"tolerance_rad={tolerance:.6f}, "
+                        f"target={tuple(round(float(v), 6) for v in target)}, "
+                        f"measured={tuple(round(float(v), 6) for v in last_values)}"
+                    )
+                try:
+                    velocity = _finite_vector(
+                        self._arm.get_joint_vel(), 7, "Vega joint velocity"
+                    )
+                    detail += (
+                        f", max_abs_joint_velocity_rad_s="
+                        f"{max(abs(v) for v in velocity):.6f}"
+                    )
+                except Exception:
+                    pass
+                raise RuntimeError(
+                    "Joint motion/state validation failed after "
+                    f"{timeout_s:.1f}s: {detail}; stop and inspect"
+                )
             # Read-only polling; SDK owns the active command stream above.
             time.sleep(0.01)
 
