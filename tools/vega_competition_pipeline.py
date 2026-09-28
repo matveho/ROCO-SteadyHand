@@ -185,6 +185,20 @@ def _run_competition_task(name, runtime, task_data, args):
     return 0
 
 
+def _available_position_names(runtime, task_data, clearance_m):
+    board_names = OrderedDict((name, "corrected board reference") for name in (
+        "board.center", "board.top_right", "board.bottom_right", "board.bottom_left"))
+    task_names = OrderedDict((name, "organizer task coordinate") for name in _task_targets(runtime, task_data, clearance_m))
+    return OrderedDict(list(board_names.items()) + list(task_names.items()))
+
+
+def _flatten_action_names(values):
+    names = []
+    for value in values or ():
+        names.extend(part.strip() for part in value.split(",") if part.strip())
+    return names
+
+
 def _recalibrate():
     print("Starting the five-point board calibration. Its output becomes the active runtime frame.")
     result = run_five_point_calibration(["--confirm-physical-motion"])
@@ -202,12 +216,56 @@ def main(argv=None):
     p.add_argument("--check-only", action="store_true", help="preflight menu selections without moving")
     p.add_argument("--speed-scale", type=float, default=0.30)
     p.add_argument("--clearance-mm", type=float, default=50.0)
+    actions = p.add_mutually_exclusive_group()
+    actions.add_argument("--recalibrate", action="store_true",
+                         help="run five-point calibration directly, without the menu")
+    actions.add_argument("--test-positions", nargs="+", metavar="POINT",
+                         help="test named board/task points directly; use all for every point")
+    actions.add_argument("--competition-task", nargs="+", metavar="TASK",
+                         help="run named competition task versions directly")
     args = p.parse_args(argv)
     if not args.check_only and (not args.confirm_head_motion or not args.confirm_physical_motion):
         p.error("physical pipeline requires --confirm-head-motion and --confirm-physical-motion")
     if not 20.0 <= args.clearance_mm <= 100.0:
         p.error("--clearance-mm must be 20..100")
     args.clearance_m = float(args.clearance_mm) / 1000.0
+
+    if args.recalibrate:
+        if args.check_only:
+            p.error("--recalibrate cannot be combined with --check-only")
+        return _recalibrate()
+
+    if args.test_positions is not None or args.competition_task is not None:
+        try:
+            runtime = _load_runtime()
+            task_data = runtime[1]
+        except Exception as exc:
+            print(f"No usable five-point calibration: {exc}", file=sys.stderr)
+            return 2
+        if args.test_positions is not None:
+            available = _available_position_names(runtime, task_data, args.clearance_m)
+            selected = list(available) if "all" in [x.lower() for x in args.test_positions] else _flatten_action_names(args.test_positions)
+            unknown = [name for name in selected if name not in available]
+            if unknown:
+                print("Unknown position(s): " + ", ".join(unknown), file=sys.stderr)
+                print("Available positions: " + ", ".join(available), file=sys.stderr)
+                return 2
+            targets = _make_test_targets(selected, runtime, task_data, args.clearance_m)
+            return _run_motion_targets(
+                targets, runtime[0], confirm_physical=args.confirm_physical_motion,
+                check_only=args.check_only, speed_scale=args.speed_scale,
+            )
+        selected = _flatten_action_names(args.competition_task)
+        unknown = [name for name in selected if name not in COMPETITION_TASKS]
+        if unknown:
+            print("Unknown competition task(s): " + ", ".join(unknown), file=sys.stderr)
+            print("Available tasks: " + ", ".join(COMPETITION_TASKS), file=sys.stderr)
+            return 2
+        for name in selected:
+            result = _run_competition_task(name, runtime, task_data, args)
+            if result:
+                return result
+        return 0
 
     while True:
         print("\n=== VEGA COMPETITION PIPELINE ===")
@@ -237,10 +295,7 @@ def main(argv=None):
             print("Choose recalibrate first.")
             continue
         if choice == "2":
-            board_names = OrderedDict((name, "corrected board reference") for name in (
-                "board.center", "board.top_right", "board.bottom_right", "board.bottom_left"))
-            task_names = OrderedDict((name, "organizer task coordinate") for name in _task_targets(runtime, task_data, args.clearance_m))
-            selected = _choose(OrderedDict(list(board_names.items()) + list(task_names.items())),
+            selected = _choose(_available_position_names(runtime, task_data, args.clearance_m),
                                "CALIBRATED POSITION TESTS", allow_all=True)
             if selected:
                 try:

@@ -128,3 +128,29 @@ The **Competition task versions** menu preserves the battery and all-part
 iterations as named entries. Only the calibrated battery approach-only entry
 currently commands motion; later grasp/place versions remain visible scaffolds
 until their approach, gripper, and verification gates are completed.
+
+The menu can be skipped for scripted operator runs:
+
+~~~bash
+# Recalibrate directly
+python3 tools/vega_competition_pipeline.py \
+  --recalibrate \
+  --confirm-head-motion \
+  --confirm-physical-motion
+
+# Test selected corrected references directly
+python3 tools/vega_competition_pipeline.py \
+  --test-positions board.center board.top_right task.battery_size1.pick \
+  --confirm-head-motion \
+  --confirm-physical-motion
+
+# Run a named preserved task version directly
+python3 tools/vega_competition_pipeline.py \
+  --competition-task battery_size1_pick_v0 \
+  --confirm-head-motion \
+  --confirm-physical-motion
+~~~
+
+Use `--test-positions all` to select every board and task point. `--check-only`
+can be combined with the test/task actions for local IK preflight without arm
+motion.
