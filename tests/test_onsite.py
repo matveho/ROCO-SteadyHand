@@ -295,7 +295,7 @@ class OnsiteTests(unittest.TestCase):
                 return FakeHandle(self, target)
 
         cfg = copy.deepcopy(load_bundle("vega")["robot"])
-        cfg["working_arm"] = "left"
+        cfg["working_arm"] = "right"
         cfg["motion"]["max_step_rad"] = 0.12
         cfg["motion"]["max_total_delta_rad"] = 2.5
         cfg["motion"]["joint_reached_tolerance_rad"] = 0.001
@@ -306,7 +306,7 @@ class OnsiteTests(unittest.TestCase):
         adapter._arm = FakeArm()
         adapter._kinematics = object()
         adapter._joint_limits = tuple(
-            tuple(x) for x in cfg["arm_joint_limits_rad"]["left"]
+            tuple(x) for x in cfg["arm_joint_limits_rad"]["right"]
         )
 
         target = [0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -317,7 +317,7 @@ class OnsiteTests(unittest.TestCase):
         self.assertAlmostEqual(adapter._arm.get_joint_pos()[0], 0.01)
         self.assertIsNone(adapter._active_motion_handle)
 
-    def test_official_vega_gripper_per_side_contract(self):
+    def test_official_vega_gripper_right_side_contract(self):
         module_source = r'''
 class Motor:
     def __init__(self, name):
@@ -380,19 +380,19 @@ class Grippers:
             path.write_text(module_source)
             g = VegaCanGripper({
                 "driver_path": str(path),
-                "scope": "left",
+                "scope": "right",
                 "home_on_connect": True,
                 "grip_current_a": 0.6,
             })
             g.connect()
-            self.assertTrue(g._driver.left.homed)
-            self.assertFalse(g._driver.right.homed)
+            self.assertTrue(g._driver.right.homed)
+            self.assertFalse(g._driver.left.homed)
             result = g.grip()
             self.assertTrue(result["gripped"])
             self.assertEqual(g.last_grip_result(), result)
             self.assertAlmostEqual(g.position(), 0.42)
             g.open()
-            self.assertTrue(g._driver.left.opened)
+            self.assertTrue(g._driver.right.opened)
             g.close()
 
     def test_rejects_wrong_robot_calibration(self):
