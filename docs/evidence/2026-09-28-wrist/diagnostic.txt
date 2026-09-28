@@ -1,0 +1,58 @@
+2026-09-11T17:02:10-07:00
+vega-1u
+vi-output, zedx 9-0020
+vi-output, zedx 9-0028
+Bus 002 Device 002: ID 0bda:0489 Realtek Semiconductor Corp. 4-Port USB 3.0 Hub
+Bus 002 Device 001: ID 1d6b:0003 Linux Foundation 3.0 root hub
+Bus 001 Device 003: ID 13d3:3549 IMC Networks Bluetooth Radio
+Bus 001 Device 004: ID 1d50:606f OpenMoko, Inc. Geschwister Schneider CAN adapter
+Bus 001 Device 002: ID 0bda:5489 Realtek Semiconductor Corp. 4-Port USB 2.0 Hub
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+ls: cannot access '/dev/v4l/by-id': No such file or directory
+/dev/v4l/by-path:
+platform-tegra-capture-vi-video-index0
+platform-tegra-capture-vi-video-index28
+Traceback (most recent call last):
+  File "/home/dexmate/ROCO-SteadyHand-live/tools/vega_wrists_probe.py", line 27, in <module>
+    raise SystemExit(main())
+  File "/home/dexmate/ROCO-SteadyHand-live/tools/vega_wrists_probe.py", line 8, in main
+    from wrist_cameras import WristCameras
+ModuleNotFoundError: No module named 'wrist_cameras'
+find: ‘/home/dexmate/.gnupg’: Permission denied
+/home/dexmate/miniconda3/bin/python3
+/home/dexmate/dexcontrol/examples/basic_examples/sensors/get_wrist_zed_x_one_data.py
+/home/dexmate/ROCO-SteadyHand/tools/vega_wrists_probe.py
+/home/dexmate/ROCO-SteadyHand/tools/__pycache__/vega_wrists_probe.cpython-313.pyc
+/home/dexmate/ROCO-SteadyHand-live/docs/VEGA_WRIST_SERVO.md
+/home/dexmate/ROCO-SteadyHand-live/docs/WRIST_SERVO.md
+/home/dexmate/ROCO-SteadyHand-live/tests/test_wrist_servo.py
+/home/dexmate/ROCO-SteadyHand-live/tools/vega_wrists_probe.py
+/home/dexmate/ROCO-SteadyHand-live/tools/vega_wrist_servo.py
+/home/dexmate/ROCO-SteadyHand-live/steadyhand/vision/wrist_servo.py
+  lm-sensors.service                                                                                                       loaded    active     exited       Initialize hardware monitoring sensors
+  nvs-service.service                                                                                                      loaded    active     running      NVS-SERVICE Embedded Sensor HAL Daemon
+tegra_camera          221184  7 nvhost_isp5,nvhost_nvcsi_t194,sl_zedxhdr,sl_zedxone_uhd,nv_hawk_owl,nvhost_vi5,sl_zedx
+v4l2_dv_timings        36864  1 tegra_camera
+nvhost_nvcsi           24576  1 tegra_camera
+tegra_camera_platform    24576  4 nvhost_isp5,nvhost_nvcsi_t194,tegra_camera,nvhost_vi5
+capture_ivc            28672  1 tegra_camera
+tegra_camera_rtcpu    176128  2 capture_ivc,tegra_camera
+ivc_bus                24576  2 capture_ivc,tegra_camera_rtcpu
+hsp_mailbox_client     20480  2 ivc_bus,tegra_camera_rtcpu
+v4l2_fwnode            20480  1 tegra_camera
+v4l2_async             20480  2 v4l2_fwnode,tegra_camera
+videobuf2_dma_contig    24576  1 tegra_camera
+videobuf2_memops       20480  1 videobuf2_dma_contig
+videobuf2_v4l2         28672  1 tegra_camera
+videobuf2_common       61440  4 videobuf2_dma_contig,videobuf2_v4l2,tegra_camera,videobuf2_memops
+videodev              249856  7 v4l2_async,sl_zedxhdr,videobuf2_v4l2,tegra_camera,sl_zedxone_uhd,videobuf2_common,sl_zedx
+mc                     57344  4 videodev,videobuf2_v4l2,tegra_camera,videobuf2_common
+host1x_nvhost          40960  7 nvhost_isp5,nvhost_nvcsi_t194,nvidia,tegra_camera,nvhost_capture,nvhost_nvcsi,nvhost_vi5
+mc_utils               16384  3 nvidia,nvgpu,tegra_camera_platform
+Traceback (most recent call last):
+  File "/home/dexmate/ROCO-SteadyHand-live/tools/vega_wrists_probe.py", line 27, in <module>
+    raise SystemExit(main())
+                     ~~~~^^
+  File "/home/dexmate/ROCO-SteadyHand-live/tools/vega_wrists_probe.py", line 8, in main
+    from wrist_cameras import WristCameras
+ModuleNotFoundError: No module named 'wrist_cameras'
