@@ -55,7 +55,10 @@ class VegaCameraClearTests(unittest.TestCase):
         floor = 0.456
         start = Pose((0.36, 0.0, 1.056), (1.0, 0.0, 0.0, 0.0))
         robot = _FakeRobot(start)
-        verticalize = Pose((0.50, 0.0, 0.906), (0.7, 0.0, 0.0, -0.7))
+        verticalize = Pose(
+            (0.50, 0.0, 0.906),
+            (2 ** -0.5, 0.0, 0.0, -(2 ** -0.5)),
+        )
         preset = Pose((0.35, 0.0, 1.056), verticalize.quaternion_wxyz)
         calls = []
 
