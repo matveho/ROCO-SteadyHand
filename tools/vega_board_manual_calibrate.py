@@ -325,7 +325,7 @@ def _move_configured_right_ready(robot, *, floor, speed_scale=0.45):
             "place the arm at RIGHT_READY and rerun"
         )
     print("RIGHT_READY TARGET Q =", list(target_q), flush=True)
-    input("Press Enter to move to measured RIGHT_READY; type anything to cancel: ")
+    print("MOVING TO RIGHT_READY", flush=True)
     robot.move_joints(target_q, speed_scale=float(speed_scale))
     joints = tuple(float(v) for v in robot._read_joint_positions())
     pose = robot.get_tcp_pose()

@@ -38,6 +38,8 @@ CALIBRATION = ROOT / "calibration" / "vega_board_manual.json"
 FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
 TASK_COORDINATES = ROOT / "configs" / "task_coordinates.json"
 DEFAULT_TASK_CLEARANCE_MM = 100.0
+DEFAULT_PIPELINE_SPEED_SCALE = 0.38
+POSITION_RECALIBRATE_REQUESTED = 3
 
 
 COMPETITION_TASKS = OrderedDict([
@@ -146,9 +148,84 @@ def _make_test_targets(selected, runtime, task_data, clearance_m):
     return targets
 
 
-def _run_motion_targets(targets, bundle, *, confirm_physical, check_only, speed_scale):
+def _capture_downward_head_frame(robot, *, floor_m):
+    """Move the arm/head clear, capture one downward board frame, then return."""
+    move_camera_clear_for_image(robot, floor_m=floor_m, speed_scale=0.90)
+    head_q = list(robot._robot.head.get_joint_pos())
+    print("HEAD BEFORE =", head_q, flush=True)
+    head_q[0] = 0.55
+    move_head = getattr(robot._robot.head, "move_to_joint_pos", None)
+    moved_head = False
+    if callable(move_head):
+        try:
+            handle = move_head(head_q, velocity_scale=0.45)
+            wait_fn = getattr(handle, "wait", None)
+            if callable(wait_fn):
+                wait_fn(timeout=5.0)
+            else:
+                time.sleep(1.5)
+            moved_head = True
+        except RuntimeError as exc:
+            print(
+                f"HEAD MOTION HANDLE FAILED ({exc}); falling back to set_joint_pos",
+                flush=True,
+            )
+    if not moved_head:
+        robot._robot.head.set_joint_pos(
+            head_q, wait_time=1.2, exit_on_reach=True,
+            exit_on_reach_kwargs={"tolerance": 0.02},
+        )
+    measured_head_q = list(robot._robot.head.get_joint_pos())
+    print("HEAD AFTER  =", measured_head_q, flush=True)
+    if abs(float(measured_head_q[0]) - 0.55) > 0.03:
+        raise RuntimeError(
+            f"downward head view was not reached: target=0.55 "
+            f"measured={measured_head_q[0]}"
+        )
+    time.sleep(0.5)
+    camera = VegaHeadCamera()
+    try:
+        camera.connect()
+        camera.read(include_depth=False, timeout_s=15.0)
+    finally:
+        camera.close()
+    print("BOARD CAMERA FRAME CAPTURED", flush=True)
+
+
+def _prompt_next_location(current_name, available_targets):
+    """Ask for the next location or a controlled session transition."""
+    names = list(available_targets)
+    print(f"\nREACHED {current_name}. Choose the next destination:", flush=True)
+    for index, name in enumerate(names, 1):
+        print(f"  {index}. {name}", flush=True)
+    print("  r. recalibrate (clear arm, photograph board, rebuild frame)", flush=True)
+    print("  e. exit location testing", flush=True)
+    while True:
+        raw = input("Next location [number/name/r/e]: ").strip()
+        lowered = raw.lower()
+        if lowered in ("e", "exit", "q", "quit", "0", "back"):
+            return "exit"
+        if lowered in ("r", "recalibrate", "calibration"):
+            return "recalibrate"
+        try:
+            index = int(raw)
+            if 1 <= index <= len(names):
+                return names[index - 1]
+        except ValueError:
+            pass
+        if raw in available_targets:
+            return raw
+        print("Choose a listed location, r for recalibrate, or e for exit.", flush=True)
+
+
+def _run_motion_targets(
+    targets, bundle, *, confirm_physical, check_only, speed_scale,
+    available_targets=None, interactive_next=False,
+):
     if not targets:
         return 0
+    if available_targets is None:
+        available_targets = targets
     cfg = bundle["robot"]
     cfg["allow_robot_init_head_motion"] = bool(confirm_physical)
     cfg["auto_clear_software_estop_on_connect"] = True
@@ -162,51 +239,9 @@ def _run_motion_targets(targets, bundle, *, confirm_physical, check_only, speed_
                 robot.prepare()
             else:
                 robot.connect()
-                if attempt > 1:
-                    # Recovery is deliberately a fresh physical startup: move
-                    # away from the board, read a new head-camera frame, then
-                    # return to the measured ready state for the same targets.
-                    move_camera_clear_for_image(robot, floor_m=floor, speed_scale=0.90)
-                    head_q = list(robot._robot.head.get_joint_pos())
-                    print("HEAD BEFORE =", head_q, flush=True)
-                    head_q[0] = 0.55
-                    move_head = getattr(robot._robot.head, "move_to_joint_pos", None)
-                    moved_head = False
-                    if callable(move_head):
-                        try:
-                            handle = move_head(head_q, velocity_scale=0.45)
-                            wait_fn = getattr(handle, "wait", None)
-                            if callable(wait_fn):
-                                wait_fn(timeout=5.0)
-                            else:
-                                time.sleep(1.5)
-                            moved_head = True
-                        except RuntimeError as exc:
-                            print(
-                                f"HEAD MOTION HANDLE FAILED ({exc}); falling back to "
-                                "set_joint_pos",
-                                flush=True,
-                            )
-                    if not moved_head:
-                        robot._robot.head.set_joint_pos(
-                            head_q, wait_time=1.2, exit_on_reach=True,
-                            exit_on_reach_kwargs={"tolerance": 0.02},
-                        )
-                    measured_head_q = list(robot._robot.head.get_joint_pos())
-                    print("HEAD AFTER  =", measured_head_q, flush=True)
-                    if abs(float(measured_head_q[0]) - 0.55) > 0.03:
-                        raise RuntimeError(
-                            f"downward head view was not reached: target=0.55 "
-                            f"measured={measured_head_q[0]}"
-                        )
-                    time.sleep(0.5)
-                    camera = VegaHeadCamera()
-                    try:
-                        camera.connect()
-                        camera.read(include_depth=False, timeout_s=15.0)
-                    finally:
-                        camera.close()
-                    print("RECOVERY CAMERA FRAME CAPTURED", flush=True)
+                # Every physical location session starts with a fresh board
+                # image, then automatically returns to the known RIGHT_READY.
+                _capture_downward_head_frame(robot, floor_m=floor)
             ready_q, _ = configured_right_preset(cfg, "right_ready")
             for name, target in targets.items():
                 robot._kinematics.solve(target, ready_q)
@@ -214,17 +249,28 @@ def _run_motion_targets(targets, bundle, *, confirm_physical, check_only, speed_
             print("ALL SELECTED TARGETS PREFLIGHTED", flush=True)
             if check_only:
                 return 0
-            input("Press Enter to move to measured RIGHT_READY; type anything to cancel: ")
+            print("MOVING TO RIGHT_READY", flush=True)
             robot.move_joints(ready_q, speed_scale=float(speed_scale))
-            for name, target in targets.items():
+            pending = list(targets.items())
+            while pending:
+                name, target = pending.pop(0)
                 input(f"Press Enter to move to {name}; type anything to cancel: ")
                 move_tcp_segmented(
                     robot, target, speed_scale=float(speed_scale),
-                    max_translation_step_m=0.04, max_orientation_step_rad=0.15,
+                    max_translation_step_m=0.06, max_orientation_step_rad=0.20,
                     min_tcp_z_m=floor,
                 )
                 actual = robot.get_tcp_pose()
                 print(name, "MEASURED TIP_R =", tuple(round(float(v), 6) for v in actual.position_m), flush=True)
+                if interactive_next:
+                    action = _prompt_next_location(name, available_targets)
+                    if action == "exit":
+                        return 0
+                    if action == "recalibrate":
+                        return POSITION_RECALIBRATE_REQUESTED
+                    next_target = available_targets[action]
+                    robot._kinematics.solve(next_target, robot._read_joint_positions())
+                    pending = [(action, next_target)]
             return 0
         except Exception as exc:
             if not any(marker in str(exc) for marker in (
@@ -282,7 +328,7 @@ def main(argv=None):
     p.add_argument("--confirm-head-motion", action="store_true")
     p.add_argument("--confirm-physical-motion", action="store_true")
     p.add_argument("--check-only", action="store_true", help="preflight menu selections without moving")
-    p.add_argument("--speed-scale", type=float, default=0.30)
+    p.add_argument("--speed-scale", type=float, default=DEFAULT_PIPELINE_SPEED_SCALE)
     p.add_argument(
         "--clearance-mm", type=float, default=DEFAULT_TASK_CLEARANCE_MM,
         help="TCP clearance above the calibrated board surface (default: 100 mm)",
@@ -370,9 +416,17 @@ def main(argv=None):
                                "CALIBRATED POSITION TESTS", allow_all=True)
             if selected:
                 try:
-                    targets = _make_test_targets(selected, runtime, task_data, args.clearance_m)
-                    _run_motion_targets(targets, runtime[0], confirm_physical=args.confirm_physical_motion,
-                                        check_only=args.check_only, speed_scale=args.speed_scale)
+                    available = _available_position_names(runtime, task_data, args.clearance_m)
+                    all_targets = _make_test_targets(list(available), runtime, task_data, args.clearance_m)
+                    targets = OrderedDict((name, all_targets[name]) for name in selected)
+                    result = _run_motion_targets(
+                        targets, runtime[0],
+                        confirm_physical=args.confirm_physical_motion,
+                        check_only=args.check_only, speed_scale=args.speed_scale,
+                        available_targets=all_targets, interactive_next=True,
+                    )
+                    if result == POSITION_RECALIBRATE_REQUESTED:
+                        _recalibrate()
                 except Exception as exc:
                     print(f"Position test failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue

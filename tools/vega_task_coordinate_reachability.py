@@ -249,7 +249,7 @@ def main(argv=None):
         print("PREFLIGHT OK:", len(points), "task points", flush=True)
         if args.check_only:
             return 0
-        input("Press Enter to move to measured RIGHT_READY; type anything to cancel: ")
+        print("MOVING TO RIGHT_READY", flush=True)
         robot.move_joints(ready_q, speed_scale=args.speed_scale)
         for name, _, _, _, target in points:
             input(f"Press Enter to move to {name}; type anything to cancel: ")

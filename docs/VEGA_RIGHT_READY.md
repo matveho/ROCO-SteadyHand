@@ -125,6 +125,10 @@ Choose **Recalibrate** whenever the board has moved or rotated. The menu runs
 the five-point camera/TCP/height procedure and reloads its output immediately.
 The **Position tests** menu lists the corrected board references and every
 published task point; selected targets are preflighted together before motion.
+The runner captures a downward head-camera frame and moves to RIGHT_READY
+automatically. After each reached location it lists the next destinations,
+plus `recalibrate` and `exit`; recalibration clears the arm, captures a new
+board frame, and rebuilds the live frame before continuing.
 The **Competition task versions** menu preserves the battery and all-part
 iterations as named entries. Only the calibrated battery approach-only entry
 currently commands motion; later grasp/place versions remain visible scaffolds
