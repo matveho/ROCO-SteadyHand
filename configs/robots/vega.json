@@ -2,7 +2,7 @@
   "schema_version": 1,
   "robot_id": "vega",
   "robot_name": "dm/vgfcb66075ea-1u",
-  "working_arm": "left",
+  "working_arm": "right",
   "host": "192.168.50.20",
   "sdk_version": "0.5.0",
   "urdf_path": "configs/robots/vega_1u_competition_kinematics.urdf",
@@ -101,7 +101,7 @@
   },
   "kinematics": {
     "backend": "pinocchio",
-    "ee_frame": "tip_l",
+    "ee_frame": "tip_r",
     "left_arm_joint_names": [
       "L_arm_j1",
       "L_arm_j2",
@@ -135,7 +135,7 @@
   "gripper_driver_path": "vendor/dexmate_setup/gripper.py",
   "gripper": {
     "driver_path": "vendor/dexmate_setup/gripper.py",
-    "scope": "left",
+    "scope": "right",
     "home_on_connect": true,
     "skip_home_verified": false,
     "grip_current_a": 1,
@@ -178,7 +178,7 @@
       "notes": "VERIFIED_ON_COMP_ROBOT 2026-09-28: wrist_a=RIGHT, wrist_b=LEFT by displayed-image occlusion/visual confirmation. First startup frames may be black; warm up and validate image content before use."
     }
   },
-  "notes": "Competition Vega dm/vgfcb66075ea-1u. Sep 27 physical verification: dexcontrol 0.5.0 move_to_joint_pos() moves joints bidirectionally; Pinocchio tip_l Cartesian -20 mm Z command moved physically down 20 mm. Working arm is left. Tracked compact FK/IK URDF reproduces the organizer competition arm/base/tip kinematics from dexmate-setup pinned commit 4be4d16140b25f730673d664b49c58280b07ef46; it intentionally contains no collision meshes. Fixed Lift=0 and torso_flip=0.22689280275926285 are organizer source-robot assumptions and must be rechecked if geometry changes. Gripper driver is vendored from the same organizer commit; Organizer object-grip default is 0.6 A at 60 deg/s; onsite battery bring-up raised grip to 1.0 A at 240 deg/s after 0.6 A produced a loose grasp. Table TCP floor is recorded in configs/skills/vega.json. No general collision checking is implemented.",
+  "notes": "Competition Vega dm/vgfcb66075ea-1u. Sep 28 right-arm migration: working arm is right, Cartesian IK/FK uses tip_r, CAN gripper scope is right, and the verified physical-right wrist stream is wrist_a. The tracked compact FK/IK URDF reproduces the organizer competition arm/base/tip kinematics from dexmate-setup pinned commit 4be4d16140b25f730673d664b49c58280b07ef46; it intentionally contains no collision meshes. Fixed Lift=0 and torso_flip=0.22689280275926285 are organizer source-robot assumptions and must be rechecked if geometry changes. Gripper object-grip current/speed remain 1.0 A and 240 deg/s from onsite bring-up. No general collision checking is implemented.",
   "allow_sdk_version_mismatch": false,
   "arm_joint_limits_rad": {
     "left": [
