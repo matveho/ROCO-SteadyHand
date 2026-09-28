@@ -199,7 +199,7 @@ def main(argv=None):
         raise ValueError("Fine wrist benchmark requires working_arm=right and ee_frame=tip_r")
     wrist_map = cfg["cameras"]["wrists"]["api_label_to_physical_mount"]
     if wrist_map.get("wrist_a") != "right_wrist":
-        raise ValueError("Competition mapping must verify wrist_a=left_wrist before motion")
+        raise ValueError("Competition mapping must verify wrist_a=right_wrist before motion")
 
     floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
     output = (
@@ -213,7 +213,7 @@ def main(argv=None):
         encoding="utf-8",
     )
     print("RUN OUTPUT", output.resolve(), flush=True)
-    print("CAMERA wrist_a = VERIFIED PHYSICAL LEFT", flush=True)
+    print("CAMERA wrist_a = VERIFIED PHYSICAL RIGHT", flush=True)
     print("GOAL = image center (SERVO VALIDATION ONLY; NOT jaw alignment)", flush=True)
 
     capture = None
