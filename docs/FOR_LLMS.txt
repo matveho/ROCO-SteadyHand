@@ -8,8 +8,14 @@ It supersedes older/stale Day-1 and early Day-2 status below where they conflict
 CURRENT REPOSITORY
 ------------------
 Refresh main before every edit. At handoff time:
-  main = ed579c16d510cd2cf46e649a13e54c2339ec3e7f
+  main = e110d1dcc7dfd7f2be69d11df8d0fdc0befb5397
   latest functional additions:
+    e110d1dcc7dfd7f2be69d11df8d0fdc0befb5397
+      refreshed wrist-servo docs for verified left stream
+    9449376c12521f90ee59a3bc3fde8e85212a3489
+      removed stale Day-2 wrist blocker
+    7bf4cf06bd0533b6a5e41f3d0b48d6e3b24615d4
+      authoritative main-agent handoff in this file
     7fd5d2961b21f70b71fe68329b5f8c4100fa3796
       tools/vega_board_axis_benchmark.py
     69c18d06781586c508367d3a749a48a0d8fefdcb
