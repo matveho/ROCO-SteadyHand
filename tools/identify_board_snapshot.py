@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.vision.board import detect_white_board_corners
 from steadyhand.vision.task_parts import (
     detect_dark_part_boxes,
+    label_final_layout,
     project_part_boxes_to_image,
     rectify_board,
 )
@@ -60,6 +61,7 @@ def main(argv=None):
     p.add_argument("--min-value", type=int, default=150)
     p.add_argument("--max-chroma", type=int, default=65)
     p.add_argument("--dark-threshold", type=int, default=140)
+    p.add_argument("--layout", choices=("unlabeled", "final"), default="unlabeled")
     args = p.parse_args(argv)
 
     import cv2
@@ -77,6 +79,8 @@ def main(argv=None):
         dark_threshold=args.dark_threshold,
     )
     parts = project_part_boxes_to_image(parts, H)
+    if args.layout == "final":
+        parts = label_final_layout(parts)
 
     output = Path(args.output_dir) if args.output_dir else source.parent
     output.mkdir(parents=True, exist_ok=True)
@@ -94,6 +98,7 @@ def main(argv=None):
             label: [int(x), int(y)]
             for label, (x, y) in zip(("tl", "tr", "br", "bl"), corners)
         },
+        "layout": args.layout,
         "parts": parts,
     }
     (output / "board_detection.json").write_text(
@@ -110,8 +115,9 @@ def main(argv=None):
         quad = np.rint(part["quad_image_px"]).astype(np.int32)
         cv2.polylines(overlay, [quad], True, (0, 0, 255), 2)
         x, y = (int(v) for v in quad[0])
+        label = part.get("name") or str(part["index"])
         cv2.putText(
-            overlay, str(part["index"]), (x, max(18, y - 3)),
+            overlay, label, (x, max(18, y - 3)),
             cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 255), 2,
             cv2.LINE_AA,
         )
@@ -121,8 +127,9 @@ def main(argv=None):
     for part in parts:
         x0, y0, x1, y1 = part["box_board_px"]
         cv2.rectangle(rect_bgr, (x0, y0), (x1, y1), (0, 0, 255), 3)
+        label = part.get("name") or str(part["index"])
         cv2.putText(
-            rect_bgr, str(part["index"]), (x0, max(18, y0 - 3)),
+            rect_bgr, label, (x0, max(18, y0 - 3)),
             cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 255), 2,
             cv2.LINE_AA,
         )
@@ -132,7 +139,7 @@ def main(argv=None):
     print("PARTS =", len(parts))
     for part in parts:
         print(
-            f"  {part['index']}: board_mm={tuple(round(v, 1) for v in part['center_board_mm_from_tl'])} "
+            f"  {part.get('name') or part['index']}: board_mm={tuple(round(v, 1) for v in part['center_board_mm_from_tl'])} "
             f"box={part['box_board_px']}"
         )
     print("WROTE", output / "board_detection.json")
