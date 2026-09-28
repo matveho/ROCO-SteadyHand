@@ -183,7 +183,7 @@ python3 tools/vega_battery_size1_center.py \
   --confirm-physical-motion
 ```
 
-`WRIST_U WRIST_V` is the battery feature pixel in the **initial wrist_b
+`WRIST_U WRIST_V` is the battery feature pixel in the **initial wrist_a
 image at the coarse hover**. It is not the head-image `BAT_U BAT_V`.
 
 The existing battery centering tool then converges that wrist feature to the
@@ -207,8 +207,8 @@ First acquisition can still fail if:
 - the second board dimension used for homography is measured incorrectly;
 - one of the four physical corner labels is assigned with the wrong axis sign;
 - battery center is selected incorrectly in the head image;
-- the resulting coarse XY is outside the left arm's reachable safe-hover region;
+- the resulting coarse XY is outside the right arm's reachable safe-hover region;
 - head-to-board visibility does not show all four corners clearly;
-- after coarse motion, `wrist_b` cannot see a trackable battery feature.
+- after coarse motion, `wrist_a` cannot see a trackable battery feature.
 
 None of those are hidden behind part-count/layout heuristics.
