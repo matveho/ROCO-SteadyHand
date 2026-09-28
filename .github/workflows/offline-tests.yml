@@ -5,7 +5,20 @@ on:
     branches:
       - main
       - onsite-2026
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
   pull_request:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+
+# Competition-day pushes can arrive in quick succession. Only the newest run
+# for a branch/ref is useful; cancel stale work instead of queueing redundant
+# checkout/setup/install cycles.
+concurrency:
+  group: offline-tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
