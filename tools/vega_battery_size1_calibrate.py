@@ -123,6 +123,7 @@ def main(argv=None):
     goal = sub.add_parser("record-goal-pixel")
     goal.add_argument("--goal-pixel", nargs=2, type=float, required=True, metavar=("U", "V"))
     goal.add_argument("--source-image", required=True)
+    goal.add_argument("--confirm-read-current-tcp", action="store_true")
 
     grasp = sub.add_parser("record-grasp-z")
     grasp.add_argument("--confirm-read-current-tcp", action="store_true")
@@ -148,6 +149,8 @@ def main(argv=None):
     if args.command == "record-goal-pixel":
         import cv2
 
+        if not args.confirm_read_current_tcp:
+            p.error("record-goal-pixel requires --confirm-read-current-tcp")
         source = _path(args.source_image)
         image = cv2.imread(str(source))
         if image is None:
@@ -158,16 +161,40 @@ def main(argv=None):
             raise ValueError("goal pixel must be finite")
         if not (0 <= u < w and 0 <= v < h):
             raise ValueError(f"goal pixel {(u, v)} is outside image {w}x{h}")
-        value = _load_or_blank(path, cfg)
-        value["jaw_alignment"] = {
-            "goal_pixel_uv": [u, v],
-            "image_size_px": [int(w), int(h)],
-            "source_image": str(source),
-            "source": "operator_taught",
-        }
-        _write(path, value)
-        print("JAW GOAL PIXEL =", [u, v], flush=True)
-        return 0
+
+        floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
+        cfg["allow_robot_init_head_motion"] = True
+        robot = VegaAdapter(cfg)
+        try:
+            robot.prepare()
+            robot.connect()
+            pose = robot.get_tcp_pose()
+            if not floor + 0.060 <= pose.position_m[2] <= floor + 0.120:
+                raise RuntimeError(
+                    "jaw goal pixel must be taught at a 60-120 mm safe hover"
+                )
+            vertical = quaternion_to_matrix(pose.quaternion_wxyz)[2][2]
+            if vertical < math.cos(0.12):
+                raise RuntimeError(
+                    "current tip_l is not within 0.12 rad of the established vertical "
+                    "claw family; align it before teaching the jaw goal pixel"
+                )
+            value = _load_or_blank(path, cfg)
+            value["jaw_alignment"] = {
+                "goal_pixel_uv": [u, v],
+                "image_size_px": [int(w), int(h)],
+                "source_image": str(source),
+                "taught_hover_tcp_z_m": float(pose.position_m[2]),
+                "taught_tip_quaternion_wxyz": list(pose.quaternion_wxyz),
+                "source": "operator_taught_current_tcp",
+            }
+            _write(path, value)
+            print("JAW GOAL PIXEL =", [u, v], flush=True)
+            print("TAUGHT HOVER TCP =", pose.position_m, flush=True)
+            print("TAUGHT TIP QUAT =", pose.quaternion_wxyz, flush=True)
+            return 0
+        finally:
+            robot.close()
 
     if args.command == "record-grasp-z":
         if not args.confirm_read_current_tcp:
