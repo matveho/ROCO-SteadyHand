@@ -15,7 +15,7 @@ from steadyhand.vision.wrist_servo import (
     jacobian_from_probes, run_xy_servo,
 )
 from tools.vega_wrist_servo import WristCapture, main
-from tools.vega_wrist_fine_center import WristBOnlyCapture, main as fine_main
+from tools.vega_wrist_fine_center import WristAOnlyCapture, main as fine_main
 
 try:
     import numpy as np
@@ -183,7 +183,7 @@ class ImageServoTests(unittest.TestCase):
             self.assertIn('measured_tcp', fields)
             self.assertIn('requested_tcp', fields)
 
-    def test_wrist_b_only_capture_retries_black_and_ignores_right_black(self):
+    def test_wrist_a_only_capture_retries_black_and_ignores_left_black(self):
         good = self.capture()
         black = np.zeros_like(good)
         calls = 0
@@ -191,9 +191,9 @@ class ImageServoTests(unittest.TestCase):
         def read(**kwargs):
             nonlocal calls
             calls += 1
-            left = black if calls == 1 else good
+            right = black if calls == 1 else good
             frame_b = types.SimpleNamespace(
-                rgb=left, frame_id=calls, timestamp_ns=calls * 10,
+                rgb=right, frame_id=calls, timestamp_ns=calls * 10,
                 received_monotonic_ns=calls * 100,
             )
             frame_a = types.SimpleNamespace(
@@ -205,20 +205,20 @@ class ImageServoTests(unittest.TestCase):
         cameras = types.SimpleNamespace(read=read)
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory)
-            capture = WristBOnlyCapture(
+            capture = WristAOnlyCapture(
                 cameras, output, settle_s=0, warmup_attempts=2
             )
             image = capture()
             self.assertEqual(image.shape, good.shape)
-            self.assertTrue((output / '000_wrist_b.png').is_file())
-            self.assertFalse((output / '000_wrist_a.png').exists())
+            self.assertTrue((output / '000_wrist_a.png').is_file())
+            self.assertFalse((output / '000_wrist_b.png').exists())
             records = [
                 json.loads(line)
                 for line in (output / 'capture_events.jsonl').read_text().splitlines()
             ]
             self.assertEqual([record['accepted'] for record in records], [False, True])
 
-    def test_wrist_b_only_capture_rejects_stale_identity(self):
+    def test_wrist_a_only_capture_rejects_stale_identity(self):
         image = self.capture()
         frame = types.SimpleNamespace(
             rgb=image, frame_id=7, timestamp_ns=99, received_monotonic_ns=101
@@ -227,7 +227,7 @@ class ImageServoTests(unittest.TestCase):
             read=lambda **kwargs: types.SimpleNamespace(wrist_a=frame, wrist_b=frame)
         )
         with tempfile.TemporaryDirectory() as directory:
-            capture = WristBOnlyCapture(
+            capture = WristAOnlyCapture(
                 cameras, Path(directory), settle_s=0, warmup_attempts=2
             )
             capture()
