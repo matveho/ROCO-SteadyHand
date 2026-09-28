@@ -1,4 +1,4 @@
-"""Detect the task board and all nine dark task parts in a saved head image.
+"""Detect the task board and any visible dark part-like regions in a saved head image.
 
 OFFLINE tool: never imports dexcontrol and never contacts the robot.
 
@@ -12,9 +12,9 @@ Outputs:
   board_overlay.png
   board_rectified.png
 
-The task board is perspective-rectified to a canonical square before dark-part
-segmentation.  Current competition geometry has nine parts; the touching gear
-pair is split from its merged dark component.
+The task board is perspective-rectified before dark-component segmentation.
+Part count and arrangement are intentionally not assumed: initial, intermediate,
+partial, and final task states are all accepted.
 """
 
 import argparse
