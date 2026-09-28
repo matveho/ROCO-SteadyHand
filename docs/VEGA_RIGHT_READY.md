@@ -67,3 +67,7 @@ measured ready endpoint after the head image, add:
 The preset move is still gated by the adapter's joint limits and maximum delta;
 if the live state is too far away, the tool stops and asks for manual recovery
 instead of inventing an IK path.
+
+Manual board jogs also preflight the complete target. An overshoot that is not
+IK-reachable is rejected before motion and returns to the jog prompt, allowing
+the operator to use a smaller inverse jog without terminating calibration.

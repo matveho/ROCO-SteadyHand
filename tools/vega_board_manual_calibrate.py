@@ -421,7 +421,19 @@ def _interactive_adjust(
         )
         # Tight IK is essential for 5-10 mm manual jogs. A 10 mm IK tolerance
         # can legally return the current seed and produce almost no motion.
-        robot._kinematics.solve(target, robot._read_joint_positions())
+        # Preflight the complete target and turn an unreachable overshoot into
+        # an interactive rejection. This is common when an operator walks past
+        # a board reference with repeated 50 mm jogs; no arm command is sent in
+        # that case, so the operator can recover with a smaller inverse jog.
+        try:
+            robot._kinematics.solve(target, robot._read_joint_positions())
+        except Exception as exc:
+            print(
+                "JOG REJECTED BEFORE MOTION: target was not IK-reachable; "
+                f"try a smaller/inverse jog ({exc})",
+                flush=True,
+            )
+            continue
         move_tcp_segmented(
             robot,
             target,
