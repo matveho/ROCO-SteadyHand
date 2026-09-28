@@ -114,56 +114,56 @@ def _vertical_target_for_point(
     label,
     point,
     center,
-    preferred_hover_z,
+    hover_z,
     floor,
+    yaw,
 ):
-    """Fast exact-first vertical-claw planner for one waypoint."""
+    """Fast fixed-plane planner while keeping one constant vertical-claw yaw."""
     import numpy as np
 
-    # Coarse navigation only. Keep this solver fast; wrist servo will own the
-    # final XY millimetres later.
     robot._kinematics.config["position_tolerance_m"] = 0.010
     robot._kinematics.config["orientation_tolerance_rad"] = 0.12
     robot._kinematics.config["max_seed_delta_rad"] = 2.4
     robot._kinematics.config["max_iterations"] = 140
 
+    if not (float(floor) + 0.03 <= float(hover_z) <= float(floor) + 0.10 + 1e-9):
+        raise ValueError(
+            f"benchmark hover_z={float(hover_z):.4f} must stay 3-10 cm above "
+            f"configured floor {float(floor):.4f}"
+        )
+
     seed = robot._read_joint_positions()
     point = np.asarray(point, dtype=float)
     center = np.asarray(center, dtype=float)
+    quat = _yaw_quat(float(yaw))
 
-    z0 = max(float(floor) + 0.07, float(preferred_hover_z))
-    dzs = (0.0, -0.04, +0.04)
-    yaws = (0.0, math.pi / 2.0, -math.pi / 2.0, math.pi)
-
-    # Exact point first. The common yaw=0,z=z0 solution is intentionally the
-    # very first attempt because CENTER and TL were already observed to solve.
-    alphas = (1.0,) if label == "center" else (1.0, 0.90, 0.80, 0.70)
-
+    # Exact board point first; only inset if the coarse global registration
+    # lies beyond the actual arm envelope. Z and yaw stay fixed so the arm
+    # traverses one flat plane without wrist reorientation.
+    alphas = (1.0,) if label == "center" else (
+        1.0, 0.96, 0.92, 0.88, 0.84, 0.80, 0.75, 0.70,
+    )
     last_error = None
     for alpha in alphas:
         xy = center + float(alpha) * (point - center)
-        for dz in dzs:
-            z = z0 + dz
-            if z <= float(floor) + 0.06:
-                continue
-            for yaw in yaws:
-                quat = _yaw_quat(yaw)
-                target = _pose_at(xy, z, quat)
-                try:
-                    robot._kinematics.solve(target, seed)
-                except Exception as exc:
-                    last_error = exc
-                    continue
-                print(
-                    f"{label.upper()} PLAN: alpha={alpha:.2f}, z={z:.3f} m, "
-                    f"yaw={math.degrees(yaw):+.0f} deg, "
-                    f"xy=({target.position_m[0]:.4f},{target.position_m[1]:.4f})",
-                    flush=True,
-                )
-                return target
+        target = _pose_at(xy, float(hover_z), quat)
+        try:
+            robot._kinematics.solve(target, seed)
+        except Exception as exc:
+            last_error = exc
+            continue
+
+        print(
+            f"{label.upper()} PLAN: alpha={alpha:.2f}, z={float(hover_z):.3f} m, "
+            f"yaw={math.degrees(float(yaw)):+.0f} deg, "
+            f"xy=({target.position_m[0]:.4f},{target.position_m[1]:.4f})",
+            flush=True,
+        )
+        return target
 
     raise RuntimeError(
-        f"{label}: no reachable vertical-claw pose in fast search; "
+        f"{label}: no reachable vertical-claw pose on fixed plane "
+        f"z={float(hover_z):.3f}, yaw={math.degrees(float(yaw)):+.0f}; "
         f"last IK error: {last_error}"
     )
 
@@ -174,8 +174,10 @@ def main(argv=None):
                    help="downward-looking head_j1; onsite +0.55 looks down")
     p.add_argument("--plane-z", type=float, default=None,
                    help="board/table plane Z in base frame; defaults to measured task floor")
-    p.add_argument("--hover-z", type=float, default=0.64,
-                   help="TCP benchmark height in base frame")
+    p.add_argument("--hover-z", type=float, default=0.55,
+                   help="flat TCP benchmark plane; must stay <=10 cm above configured floor")
+    p.add_argument("--claw-yaw-deg", type=float, default=0.0,
+                   help="fixed in-plane gripper yaw for the whole benchmark")
     p.add_argument("--speed-scale", type=float, default=0.90)
     p.add_argument("--output", default="calibration/vega_board_live.json")
     p.add_argument("--reuse-registration", action="store_true",
@@ -192,9 +194,10 @@ def main(argv=None):
     safety = dict(skills_cfg.get("safety") or {})
     floor = float(safety["min_tcp_z_m"])
     plane_z = floor if args.plane_z is None else float(args.plane_z)
-    if args.hover_z <= floor:
+    if not (floor + 0.03 <= float(args.hover_z) <= floor + 0.10 + 1e-9):
         raise SystemExit(
-            f"--hover-z must be above hard TCP floor {floor:.6f} m"
+            f"--hover-z must stay 3-10 cm above hard TCP floor {floor:.6f} m; "
+            f"requested {float(args.hover_z):.6f} m"
         )
 
     output = Path(args.output)
@@ -296,10 +299,28 @@ def main(argv=None):
 
     # Benchmark path intentionally uses only the arm. Do not home the gripper.
     cfg["allow_robot_init_head_motion"] = True
+    # Fewer controller stop/start segments make the free-space benchmark smoother.
+    cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.30)
+
     robot = VegaAdapter(cfg)
     robot.prepare()
     robot.connect()
     try:
+        # Robot() homes the head forward. Re-aim it down AFTER connecting so the
+        # head stays on the board during the benchmark and is ready for the next
+        # perception step.
+        import numpy as np
+        head_q = np.asarray(robot._robot.head.get_joint_pos(), dtype=float)
+        head_q[0] = float(args.head_j1)
+        robot._robot.head.set_joint_pos(
+            head_q,
+            wait_time=1.2,
+            exit_on_reach=True,
+            exit_on_reach_kwargs={"tolerance": 0.02},
+        )
+        print("HEAD DOWN =", robot._robot.head.get_joint_pos(), flush=True)
+
+        fixed_yaw = math.radians(float(args.claw_yaw_deg))
         points = [
             ("center", center),
             ("tl", corners_base[0]),
@@ -308,30 +329,9 @@ def main(argv=None):
             ("bl", corners_base[3]),
             ("center", center),
         ]
-        # Move to safe clearance first, then plan + execute one waypoint at a
-        # time. Do NOT pre-plan the whole board: exhaustive planning was wasting
-        # tens of seconds per corner and looked like a hang onsite.
-        current = robot.get_tcp_pose()
-        clearance_z = max(float(current.position_m[2]), float(args.hover_z))
-        clearance = Pose(
-            (
-                float(current.position_m[0]),
-                float(current.position_m[1]),
-                clearance_z,
-            ),
-            current.quaternion_wxyz,
-        )
-        if float(clearance.position_m[2]) > float(current.position_m[2]) + 1e-4:
-            print("CLEARANCE UP", flush=True)
-            move_tcp_segmented(
-                robot,
-                clearance,
-                speed_scale=float(args.speed_scale),
-                max_translation_step_m=0.08,
-                max_orientation_step_rad=0.35,
-                min_tcp_z_m=floor,
-            )
-
+        # Approach the requested low working plane. Do not rise above it; the
+        # user wants the arm operating like a 3D-printer nozzle within 10 cm of
+        # the configured floor. The first CENTER move establishes the plane.
         for label, point in points:
             print(f"PLANNING {label.upper()}...", flush=True)
             target = _vertical_target_for_point(
@@ -351,8 +351,8 @@ def main(argv=None):
                 robot,
                 target,
                 speed_scale=float(args.speed_scale),
-                max_translation_step_m=0.08,
-                max_orientation_step_rad=0.35,
+                max_translation_step_m=0.20,
+                max_orientation_step_rad=0.80,
                 min_tcp_z_m=floor,
             )
             actual = robot.get_tcp_pose()
