@@ -18,7 +18,7 @@ from .models import Pose
 
 
 PART_NAME = "battery_size1"
-WRIST_CAMERA = "wrist_b"
+WRIST_CAMERA = "wrist_a"
 SCHEMA_VERSION = 1
 VERIFIED_GRIP_CURRENT_A = 1.0
 VERIFIED_GRIP_SPEED_DPS = 240
@@ -69,10 +69,10 @@ def load_calibration(path, robot_config, *, floor_m):
     if value.get("base_frame") != robot_config["kinematics"]["base_frame"]:
         raise ValueError("battery calibration has the wrong base frame")
     if value.get("wrist_camera") != WRIST_CAMERA:
-        raise ValueError("battery calibration must use wrist_b")
+        raise ValueError("battery calibration must use wrist_a")
     mapping = robot_config["cameras"]["wrists"]["api_label_to_physical_mount"]
-    if mapping.get(WRIST_CAMERA) != "left_wrist":
-        raise ValueError("robot config does not verify wrist_b as the physical left wrist")
+    if mapping.get(WRIST_CAMERA) != "right_wrist":
+        raise ValueError("robot config does not verify wrist_a as the physical right wrist")
 
     jaw = value.get("jaw_alignment")
     grasp = value.get("grasp")
@@ -145,7 +145,7 @@ def load_alignment_result(path, calibration_path, calibration, *, current_pose=N
     if value.get("status") != "converged":
         raise ValueError("battery alignment result is not converged")
     if value.get("part") != PART_NAME or value.get("wrist_camera") != WRIST_CAMERA:
-        raise ValueError("alignment result is not a battery_size1 wrist_b result")
+        raise ValueError("alignment result is not a battery_size1 wrist_a result")
     expected_digest = calibration_sha256(calibration_path)
     if value.get("calibration_sha256") != expected_digest:
         raise ValueError("alignment result was produced with a different calibration")
