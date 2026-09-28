@@ -1,3 +1,408 @@
+===============================================================================
+PRIMARY HANDOFF — 2026-09-28 ~10:53 EDT — READ THIS FIRST
+===============================================================================
+
+This block is the authoritative current state for the NEXT MAIN AGENT.
+It supersedes older/stale Day-1 and early Day-2 status below where they conflict.
+
+CURRENT REPOSITORY
+------------------
+Refresh main before every edit. At handoff time:
+  main = ed579c16d510cd2cf46e649a13e54c2339ec3e7f
+  latest functional additions:
+    7fd5d2961b21f70b71fe68329b5f8c4100fa3796
+      tools/vega_board_axis_benchmark.py
+    69c18d06781586c508367d3a749a48a0d8fefdcb
+      records stable live head perception
+    ba625d8b4a01338b0865e3694bcc957431c3b29c
+      explicit software-estop gate in live scene perception
+    4824313f5002142163ed3049bdedd077ef3f2a04
+      verified full head pose/readback before scene perception
+
+IMPORTANT: GitHub offline-tests are currently FAILING on recent main even though
+compileall succeeds. The failing step is the unit-test suite. Exact failing test
+was not recovered before handoff. Do not ignore this indefinitely, but DO NOT
+let it block the immediately pending physical board-axis benchmark unless that
+benchmark itself errors. Fix CI in parallel/secondary work once the robot test
+result is captured.
+
+TEAM / STRATEGY DECISION
+------------------------
+Do NOT make direct integration of submitted policy.py the main goal.
+policy.py is a deterministic simulator skill executor, NOT a learned visual
+policy. In simulation it receives exact PartTarget geometry, Lula IK, and
+simulator snap events. The physical stack already ports the useful sequencing
+ideas into steadyhand/executor.py.
+
+Preferred competition architecture:
+  head RGB
+    -> detect 400 x 400 mm white board
+    -> perspective-normalized board coordinates
+    -> exploit known source/destination layout / ROI priors
+    -> coarse board->base arm target
+    -> left arm as fixed vertical claw, low planar motion
+    -> LEFT wrist camera fine XY centering
+    -> fixed per-part grasp/place Z
+    -> grip / transfer / release
+    -> add placement correction/contact search only where needed
+
+Use structure of the task aggressively. Do NOT build generic object recognition
+unless board-relative identity-by-region demonstrably fails.
+
+CURRENT PRIMARY MILESTONE
+-------------------------
+Step 2 (board + part perception) is COMPLETE.
+
+The operator just ran:
+  python3 tools/vega_scene_perception.py --frames 3
+
+Live head pose readback:
+  HEAD BEFORE = [1.55887568, -1.23766530, 0.06159267]
+  HEAD AFTER  = [0.54873151, -0.00017453, 0.00017453]
+
+Head RGB was healthy:
+  mean ~= 95.8..96.2
+  std  ~= 56.9..57.2
+
+Three consecutive live detections all found the same board + all 9 parts.
+
+Board pixel corners:
+  F0: TL=(428,354) TR=(582,354) BR=(629,504) BL=(409,503)
+  F1: TL=(428,354) TR=(582,354) BR=(629,503) BL=(409,503)
+  F2: TL=(428,354) TR=(582,354) BR=(629,503) BL=(409,503)
+
+Coarse board center base estimate:
+  ~= (0.560, -0.013, 0.456) m
+
+Representative stable board-relative part centers from frame 2, mm from
+rectified board TL:
+  part_1  (204.0,  52.6)
+  part_2  ( 71.1,  67.1)
+  part_3  (253.1,  71.1)
+  part_4  (201.0,  91.6)
+  part_5  (319.1, 135.4)
+  part_6  (365.5, 141.7)
+  part_7  ( 78.1, 199.7)
+  part_8  ( 69.3, 257.6)
+  part_9  (251.3, 296.4)
+
+This is enough. Do not spend more primary time tuning head CV unless a later
+scene genuinely fails.
+
+VISION IMPLEMENTATION
+---------------------
+Canonical offline + live perception now share the same code.
+
+Key files:
+  steadyhand/vision/board.py
+    detect_white_board_corners()
+    head_left_optical_transform()
+    pixels_to_horizontal_plane()
+    board_frame_from_corners()
+
+  steadyhand/vision/task_parts.py
+    BOARD_SIZE_M = 0.400
+    rectify_board()
+    detect_dark_part_boxes()
+    project_part_boxes_to_image()
+    label_final_layout()
+
+  steadyhand/vision/scene.py
+    reusable live head task scene detector + overlay
+
+  tools/identify_board_snapshot.py
+    offline replay on .npy / PNG / JPEG
+    outputs board_detection.json, board_overlay.png, board_rectified.png
+
+  tools/vega_scene_perception.py
+    canonical live no-arm scene perception
+    commands FULL head pose [0.55,0,0], verifies readback, validates non-black
+    RGB, detects board + parts, writes images/JSON
+
+Physical image edge case:
+  the two gears touch in the dark segmentation and normally become one connected
+  component. detect_dark_part_boxes() handles the expected 8-components-for-9
+  parts case by splitting the largest wide component at its column-occupancy
+  valley. This has worked on the real competition head image.
+
+IMPORTANT IDENTITY CAVEAT:
+  FINAL_LAYOUT_ORDER in task_parts.py was operator-confirmed against a FINAL /
+  assembled-layout image:
+    hdmi, rod_16mm, bolt_8mm, usb_a, gear_60teeth, gear_20teeth,
+    battery_size1, battery_size5, pin
+  Do NOT assume this spatial order labels the SOURCE/pre-pick layout.
+  The live Step-2 run intentionally used layout="unlabeled".
+  Before autonomous source picking, establish the source-layout identity/ROI
+  mapping from the current board or competition reference.
+
+HEAD->BASE CALIBRATION STATUS
+-----------------------------
+The 400 x 400 mm board coordinates are strong because they come from image
+homography + known board size.
+
+Absolute base coordinates are intentionally COARSE:
+  head optical extrinsic originated from organizer source robot calibration,
+  normalized through live head kinematics.
+  It is NOT a millimetre-accurate calibration for this competition serial.
+
+The next physical benchmark exists specifically to answer:
+  "Is this coarse T_base_board good enough to put the wrist camera over the
+   correct ~5-10 cm local region?"
+
+Do not chase perfect head calibration if the answer is yes.
+
+NEXT ACTION — WAITING FOR OPERATOR RESULT
+-----------------------------------------
+The previous main agent's final instruction was:
+
+Pull/deploy latest.
+
+Run:
+  cd ~/ROCO-SteadyHand-live
+  python3 tools/vega_board_axis_benchmark.py \
+    --confirm-physical-motion
+
+tools/vega_board_axis_benchmark.py does:
+  live head RGB
+    -> current T_base_board
+    -> pre-check exact IK for 3 safe interior targets
+    -> fixed z=0.55 m
+    -> fixed vertical-claw orientation
+    -> speed_scale=0.90
+    -> NO gripper
+    -> CENTER
+       -> board +X 100 mm
+       -> CENTER
+       -> board +Y 100 mm
+       -> CENTER
+
+The next agent should begin by asking for / reading THIS benchmark result.
+
+PASS CRITERIA:
+  1. CENTER is visibly roughly over the physical board center.
+  2. BOARD_X_PLUS moves about 10 cm along one board axis.
+  3. BOARD_Y_PLUS moves about 10 cm along the perpendicular board axis.
+  4. claw remains physically vertical and movement is low/planar/smooth enough.
+
+If those are true:
+  STOP global calibration immediately.
+  Step 3 is complete.
+  Move directly to:
+    head-detected part
+      -> arm coarse hover above it
+      -> LEFT wrist_b image
+      -> local XY centering
+
+If center is offset by a few cm BUT wrist_b still clearly sees the intended local
+board region:
+  ACCEPT IT. Wrist servo is supposed to close the precision gap.
+
+If one axis/sign is wrong:
+  use the printed BOARD +X UNIT / BOARD +Y UNIT and observed physical direction
+  to make ONE explicit transform/sign correction.
+  Do not reopen broad camera calibration.
+
+If an exact 100 mm interior point is unreachable:
+  reduce offset to 50-75 mm or validate center + one reachable interior point.
+  Do not return to literal outer-board-corner reachability or large yaw/Z search.
+
+If vertical orientation is wrong:
+  inspect tip_l convention before changing workspace assumptions.
+  Correct vertical physical tip_l family is based on:
+    R_base_tip = Rz(psi - pi/2)
+  i.e. wxyz:
+    (cos((psi-pi/2)/2), 0, 0, sin((psi-pi/2)/2))
+  Simulator q=(0,1,0,0) belongs to L_ee_link_gripper_link, NOT tip_l.
+
+ARM / MOTION FACTS ALREADY PROVEN
+---------------------------------
+Competition robot:
+  dm/vgfcb66075ea-1u
+  working arm: LEFT
+  kinematic EE/TCP: tip_l
+  base: vega_1u_base_link
+
+Measured table light-contact tip_l z:
+  0.4460002716867571 m
+
+Configured hard floor:
+  0.4560002716867571 m
+
+Desired normal board working plane:
+  z ~= 0.55 m
+  ~= 94 mm above configured floor
+
+Motion preference from operator:
+  - vertical claw like a 3D-printer nozzle
+  - keep wrist camera downward
+  - move in a low flat plane where possible
+  - ordinary testing minimum speed_scale ~= 0.45
+  - clear/free-space movement ~= 0.90
+  - slower only for precision/contact
+  - avoid tiny segmented stop/start trajectories; smooth/direct is preferred
+
+Lower stack is physically real:
+  - joint readback/control works
+  - Pinocchio FK/IK works on left arm
+  - Cartesian tip_l motion physically validated
+  - CAN left gripper works
+  - battery_size1 full physical pick/lift/transfer/place/release sequence executed
+    previously; one attempt dropped battery during descent, but lower stack was
+    considered proven enough to move on
+
+Do not spend primary time retuning gripper unless grasp retention blocks scoring.
+
+WRIST CAMERAS — CURRENT VERIFIED STATUS
+---------------------------------------
+EARLIER "wrist blocked/missing" sections below are STALE and superseded.
+
+A combined camera boot was prepared and then successfully booted after user
+explicitly authorized reboot with console recovery available.
+
+Verified on competition unit:
+  wrist-camera-init.service succeeded
+  both Sony wrist streams produce REAL 1920x1536 RGB
+  frame IDs increase
+  startup frames can be black; allow warm-up and validate image content
+  operator-confirmed mapping:
+    wrist_a = RIGHT wrist
+    wrist_b = LEFT wrist
+  LEFT wrist_b sees the board clearly
+  head RGB-only capture also works after publisher restart
+
+Evidence:
+  docs/evidence/2026-09-28-wrist/
+  docs/evidence/2026-09-28-wrist/images/wrist_a.png
+  docs/evidence/2026-09-28-wrist/images/wrist_b.png
+  docs/evidence/2026-09-28-wrist/images/README.md
+
+Config now records:
+  wrist_a -> right_wrist
+  wrist_b -> left_wrist
+
+Camera boot/install caveats:
+  official ZED Link 1.4.3 was installed after maintainer confirmation
+  combined boot entry succeeded
+  backup before camera install:
+    /var/backups/steadyhand-wrists-1789172301/system-before.tgz
+
+Do NOT hot-unload camera/kernel modules.
+
+Current unresolved wrist integration questions:
+  - sustained concurrent head+wrist streaming has not yet been fully validated
+  - single-interpreter compatibility for wrist_cameras + dexcontrol + pinocchio
+    + cv2/numpy should be checked before relying on live visual servo
+  - historical split: /usr/bin/python3 for wrist API, Conda python3 for head /
+    arm stack
+  - image center is NOT necessarily jaw center; must teach jaw-alignment pixel
+  - wrist Jacobian depends on hover Z/orientation and should be identified with
+    local small XY probes
+
+tools/vega_wrist_servo.py already exists and now defaults to wrist_b=LEFT.
+It rejects stale frame IDs and near-black startup frames.
+It implements:
+  +X/+Y local probes
+  measured 2x2 image Jacobian
+  bounded XY corrections
+  fixed Z/orientation
+  no descent/gripper action
+
+Do not assume it is physically validated yet.
+
+NEXT AFTER BOARD-AXIS PASS
+--------------------------
+The next meaningful benchmark is NOT more board calibration.
+
+Target:
+  choose one easy source part (default battery_size1 unless procedure/scoring
+  says another is better)
+    -> identify it by known source board ROI
+    -> head gives coarse board/base XY
+    -> move left vertical claw to low hover above it
+    -> capture wrist_b
+    -> center the part to a taught jaw-alignment pixel
+    -> stop
+
+Expected time if runtime dependencies cooperate:
+  ~15-30 min for first wrist-centered coarse approach.
+
+Then teach:
+  grasp Z
+  place Z
+  jaw goal pixel
+  grip settings
+  board-relative destination
+
+Then autonomous one-part benchmark:
+  detect board
+    -> source ROI / blob
+    -> coarse hover
+    -> wrist center
+    -> fixed-Z grasp
+    -> grip
+    -> lift
+    -> board-relative destination
+    -> fixed-Z place
+    -> release
+
+Get ONE part working end-to-end before calibrating all parts.
+
+COMPETITION PROCEDURE
+---------------------
+Representatives were absent at start of Day 2, so procedure questions are still
+pending. Canonical checklist:
+  docs/COMPETITION_QUESTIONS.md
+
+Do not block engineering while waiting, but when a representative appears,
+resolve scoring / human-intervention / reset / calibration / randomization rules.
+
+REPOSITORY COORDINATION
+-----------------------
+Canonical Day-2 plan:
+  docs/DAY2_EXECUTION_PLAN.md
+
+NOTE: any stale "wrist camera blocker" language in older docs must be interpreted
+as historical only; live wrist cameras are now working.
+
+Use secondary/more-powerful agents aggressively for:
+  - CI/test troubleshooting
+  - interpreter/dependency checks
+  - non-motion camera stress tests
+  - offline CV evaluation
+  - repo cleanup/docs
+while main onsite interaction stays focused on scoring progress.
+
+Hard rule from operator:
+  after repo changes, simply tell them to pull/deploy and proceed; do not wait
+  for a git-pull confirmation.
+
+RABBIT HOLES TO AVOID
+---------------------
+Do NOT spend primary robot time on:
+  - TensorRT / ZED neural depth
+  - perfect global head-camera extrinsics
+  - literal four-corner arm reach
+  - direct policy.py hardware integration
+  - generic learned object recognition
+  - prolonged gripper tuning
+  - arbitrary service/kernel changes now that cameras work
+
+SUCCESS DEFINITION FOR TODAY
+----------------------------
+Minimum useful trajectory:
+  1. board-axis benchmark passes coarse mapping
+  2. wrist_b fine centering works over one head-detected part
+  3. one open-release part works autonomously
+  4. repeat it reliably
+  5. then scale mostly by per-part configuration
+
+This is the scoring-first path. Do not optimize infrastructure for its own sake.
+
+===============================================================================
+END PRIMARY HANDOFF
+===============================================================================
+
+
 FOR_LLMS.txt
 ===============================================================================
 STEADYHAND / ROCO @ IROS 2026 — AGENT HANDOFF AND SOURCE OF CONTEXT
