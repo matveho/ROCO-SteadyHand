@@ -73,12 +73,20 @@ def _reachable_initial_target(robot, point, center, hover_z, quaternion, label):
 
 def _fit_surface(samples):
     import numpy as np
+    def surface_z(sample):
+        tip_z = float(sample["tip_r_pose"]["position_m"][2])
+        if sample.get("measured_clearance_mm") is not None:
+            return tip_z - float(sample["measured_clearance_mm"]) / 1000.0
+        measured = float(sample["measured_surface_z_mm"])
+        # Compatibility with the first run, whose prompt called clearance a
+        # surface height and recorded values such as 13..88 mm.
+        return tip_z - measured / 1000.0 if measured < 200.0 else measured / 1000.0
     rows = []
     values = []
     for label in LABELS:
         pose = samples[label]["tip_r_pose"]
         x, y = (float(v) for v in pose["position_m"][:2])
-        z = float(samples[label]["measured_surface_z_mm"]) / 1000.0
+        z = surface_z(samples[label])
         rows.append((x, y, 1.0))
         values.append(z)
     coefficients, _, _, _ = np.linalg.lstsq(np.asarray(rows), np.asarray(values), rcond=None)
@@ -238,7 +246,10 @@ def _main_once(argv=None):
             all_jogs.extend(point_jogs)
             corrected = robot.get_tcp_pose()
             while True:
-                raw = input(f"Enter measured BOARD SURFACE Z at {label} in mm (base-frame Z): ").strip()
+                raw = input(
+                    f"Enter measured TCP-to-board CLEARANCE at {label} in mm "
+                    "(positive means TCP is above board): "
+                ).strip()
                 try:
                     surface_mm = float(raw)
                     if not math.isfinite(surface_mm): raise ValueError
@@ -251,7 +262,8 @@ def _main_once(argv=None):
                 "joint_names": list(robot._joint_names),
                 "joint_positions_rad": list(robot._read_joint_positions()),
                 "tip_r_pose": _pose_record(corrected),
-                "measured_surface_z_mm": surface_mm,
+                "measured_clearance_mm": surface_mm,
+                "measured_surface_z_mm": float(corrected.position_m[2]) - surface_mm / 1000.0,
                 "jogs": point_jogs,
             }
             _print_pose(f"RECORDED {label}", corrected)
@@ -277,7 +289,7 @@ def _main_once(argv=None):
             "jogs": all_jogs,
             "corrected_board_frame_xy": frame_xy,
             "board_surface_plane_base": plane,
-            "height_reference": "board_surface_z_mm_in_vega_1u_base_link",
+            "height_reference": "tcp_to_board_clearance_mm; surface_z=tip_z-clearance",
             "right_ready": {
                 "joint_names": list(cfg["kinematics"]["right_arm_joint_names"]),
                 "joint_positions_rad": list(ready_q),
@@ -328,14 +340,16 @@ def main(argv=None):
         except Exception as exc:
             if not _retryable_ik_error(exc):
                 raise
-            print(
-                f"CALIBRATION IK RETRY {attempt}: {exc}", flush=True,
-            )
+            print(f"CALIBRATION IK RETRY {attempt}: {exc}", flush=True)
             print(
                 "Re-entering camera-clear recovery, taking a fresh head-camera "
-                "frame, and retrying calibration. Press Ctrl-C to stop.",
+                "frame, and retrying calibration.",
                 flush=True,
             )
+            answer = input("Retry calibration? Type yes to continue, or no to stop: ").strip().lower()
+            if answer not in ("y", "yes"):
+                print("Calibration retry stopped by operator.", flush=True)
+                return 2
             time.sleep(1.0)
 
 

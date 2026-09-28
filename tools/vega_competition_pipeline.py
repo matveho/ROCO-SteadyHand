@@ -11,6 +11,7 @@ import json
 import math
 from pathlib import Path
 import sys
+import time
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -164,6 +165,13 @@ def _run_motion_targets(targets, bundle, *, confirm_physical, check_only, speed_
                     # away from the board, read a new head-camera frame, then
                     # return to the measured ready state for the same targets.
                     move_camera_clear_for_image(robot, floor_m=floor, speed_scale=0.90)
+                    head_q = list(robot._robot.head.get_joint_pos())
+                    head_q[0] = 0.55
+                    robot._robot.head.set_joint_pos(
+                        head_q, wait_time=1.2, exit_on_reach=True,
+                        exit_on_reach_kwargs={"tolerance": 0.02},
+                    )
+                    time.sleep(0.5)
                     camera = VegaHeadCamera()
                     try:
                         camera.connect()
@@ -197,7 +205,11 @@ def _run_motion_targets(targets, bundle, *, confirm_physical, check_only, speed_
             )):
                 raise
             print(f"POSITION IK RETRY {attempt}: {exc}", flush=True)
-            print("Recovering through camera-clear, taking a fresh photo, and retrying.", flush=True)
+            print("Recovering through camera-clear, downward head view, fresh photo, and retrying.", flush=True)
+            answer = input("Retry this position test? Type yes to continue, or no to stop: ").strip().lower()
+            if answer not in ("y", "yes"):
+                print("Position retry stopped by operator.", flush=True)
+                return 2
         finally:
             robot.close()
 

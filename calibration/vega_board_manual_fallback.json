@@ -86,21 +86,47 @@
     ]
   },
   "board_surface_plane_base": {
-    "model": "z_m = a*x_m + b*y_m + c",
+    "model": "z_m = a*x_m + b*y_m + c plus measured local residual correction",
     "coefficients": {
-      "a": 0.19205467430571835,
-      "b": 0.007154801534026262,
-      "c": -0.029510319309734814
+      "a": -0.21839521933754846,
+      "b": -0.005228199387112498,
+      "c": 0.586394132173724
     },
     "residuals_mm": [
-      3.7278219565391386,
-      -1.7921550267816637,
-      -0.11715590260006313,
-      -1.8185110271573128
+      -0.14319562468517733,
+      0.06884147407937302,
+      0.00450027196940983,
+      0.06985387863667203
     ],
-    "max_abs_residual_mm": 3.7278219565391386
+    "max_abs_residual_mm": 0.14319562468517733,
+    "residual_anchors": [
+      {
+        "label": "CENTER",
+        "x_m": 0.42667793709610435,
+        "y_m": -0.02278118945120526,
+        "residual_m": -0.00014319562468517733
+      },
+      {
+        "label": "TOP_RIGHT",
+        "x_m": 0.628660753467146,
+        "y_m": -0.2005313372537897,
+        "residual_m": 6.884147407937302e-05
+      },
+      {
+        "label": "BOTTOM_RIGHT",
+        "x_m": 0.2298480569108205,
+        "y_m": -0.21187429033016159,
+        "residual_m": 4.50027196940983e-06
+      },
+      {
+        "label": "BOTTOM_LEFT",
+        "x_m": 0.24030307747211604,
+        "y_m": 0.16457494351495464,
+        "residual_m": 6.985387863667203e-05
+      }
+    ]
   },
-  "height_reference": "board_surface_z_mm_in_vega_1u_base_link",
+  "height_reference": "tcp_to_board_clearance_mm; surface_z=tip_z-clearance",
   "samples": {
     "CENTER": {
       "tip_r_pose": {
@@ -116,7 +142,8 @@
           0.5716177406282605
         ]
       },
-      "measured_surface_z_mm": 56.0
+      "measured_clearance_mm": 56.0,
+      "measured_surface_z_mm": 0.49318561949116896
     },
     "TOP_RIGHT": {
       "tip_r_pose": {
@@ -132,7 +159,8 @@
           0.570825037068854
         ]
       },
-      "measured_surface_z_mm": 88.0
+      "measured_clearance_mm": 88.0,
+      "measured_surface_z_mm": 0.4502148883199647
     },
     "BOTTOM_RIGHT": {
       "tip_r_pose": {
@@ -148,7 +176,8 @@
           0.5704952868058722
         ]
       },
-      "measured_surface_z_mm": 13.0
+      "measured_clearance_mm": 13.0,
+      "measured_surface_z_mm": 0.5373086366771945
     },
     "BOTTOM_LEFT": {
       "tip_r_pose": {
@@ -164,7 +193,8 @@
           0.5710613303892433
         ]
       },
-      "measured_surface_z_mm": 16.0
+      "measured_clearance_mm": 16.0,
+      "measured_surface_z_mm": 0.5331225121215311
     }
   },
   "right_ready": {
@@ -202,5 +232,5 @@
     "source": "configured_operator_measured_RIGHT_READY"
   },
   "source": "operator_final_physical_calibration_pasted_2026-09-12",
-  "fallback_note": "Permanent fallback when no newer calibration is available. Surface plane residual max is 3.73 mm; task motion uses this fitted plane and 50 mm clearance by default."
+  "fallback_note": "Permanent fallback. Final measured clearances were 56, 88, 13, and 16 mm; reconstructed board surface plane max residual is 0.143 mm."
 }

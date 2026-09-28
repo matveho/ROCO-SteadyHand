@@ -34,6 +34,45 @@ def _finite_vector(value, size, name):
     return result
 
 
+def _fit_plane_from_samples(samples):
+    rows = []
+    values = []
+    for label in ("CENTER", "TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT"):
+        sample = samples.get(label) or {}
+        position = (sample.get("tip_r_pose") or {}).get("position_m") or []
+        if len(position) != 3:
+            continue
+        if sample.get("measured_clearance_mm") is not None:
+            surface_z = float(position[2]) - float(sample["measured_clearance_mm"]) / 1000.0
+        elif sample.get("measured_surface_z_mm") is not None:
+            value = float(sample["measured_surface_z_mm"])
+            surface_z = float(position[2]) - value / 1000.0 if value < 200.0 else value / 1000.0
+        else:
+            continue
+        rows.append((float(position[0]), float(position[1]), 1.0))
+        values.append(surface_z)
+    if len(rows) < 3:
+        return None
+    matrix = [[sum(row[i] * row[j] for row in rows) for j in range(3)] for i in range(3)]
+    vector = [sum(row[i] * value for row, value in zip(rows, values)) for i in range(3)]
+    for i in range(3):
+        pivot = max(range(i, 3), key=lambda index: abs(matrix[index][i]))
+        if abs(matrix[pivot][i]) < 1e-12:
+            return None
+        matrix[i], matrix[pivot] = matrix[pivot], matrix[i]
+        vector[i], vector[pivot] = vector[pivot], vector[i]
+        scale = matrix[i][i]
+        matrix[i] = [value / scale for value in matrix[i]]
+        vector[i] /= scale
+        for row_index in range(3):
+            if row_index == i:
+                continue
+            scale = matrix[row_index][i]
+            matrix[row_index] = [a - scale * b for a, b in zip(matrix[row_index], matrix[i])]
+            vector[row_index] -= scale * vector[i]
+    return tuple(vector)
+
+
 def _load_manual(path, cfg):
     path = Path(path)
     if not path.is_file() and path.name == "vega_board_manual.json" and FALLBACK_CALIBRATION.is_file():
@@ -65,14 +104,25 @@ def _load_manual(path, cfg):
         raise ValueError("five-point calibration lacks a finite board surface plane")
     anchors = []
     samples = raw.get("samples") or {}
+    reconstructed = _fit_plane_from_samples(samples)
+    if reconstructed is not None:
+        # The first completed run recorded clearances under the old field name
+        # and therefore contains an invalid low-Z plane. Reconstruct from the
+        # measured TCP Z and the entered TCP-to-board clearance.
+        a, b, c = reconstructed
     for label in ("CENTER", "TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT"):
         sample = samples.get(label) or {}
         pose = sample.get("tip_r_pose") or {}
         position = pose.get("position_m") or []
-        measured_mm = sample.get("measured_surface_z_mm")
+        measured_mm = sample.get("measured_clearance_mm")
+        measured_is_clearance = measured_mm is not None
+        if measured_mm is None:
+            measured_mm = sample.get("measured_surface_z_mm")
         if len(position) == 3 and measured_mm is not None:
             x, y = float(position[0]), float(position[1])
             measured_z = float(measured_mm) / 1000.0
+            if measured_is_clearance or measured_z < 0.2:
+                measured_z = float(position[2]) - measured_z
             plane_z = a * x + b * y + c
             if all(math.isfinite(v) for v in (x, y, measured_z, plane_z)):
                 anchors.append({"label": label, "x_m": x, "y_m": y,
