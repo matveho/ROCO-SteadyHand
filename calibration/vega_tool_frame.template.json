@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "purpose": "offline calibration of modeled tip_l to operator-defined physical claw center/frame",
+  "purpose": "offline calibration of modeled tip_r to operator-defined physical claw center/frame",
   "frame_convention": {
     "base_axes": "x forward/away from robot, y robot-left, z up",
     "physical_claw_center": "center used by operator for alignment",
@@ -18,12 +18,12 @@
         0.453961879,
         -0.5846381783
       ],
-      "modeled_tip_l_position_base_m": [
+      "modeled_tip_r_position_base_m": [
         0.6531807699,
         0.2234521549,
         0.4460002717
       ],
-      "interpretation": "some physical claw geometry first touched the table at this joint state; do not assume modeled tip_l origin equals the operator-defined claw center"
+      "interpretation": "some physical claw geometry first touched the table at this joint state; do not assume modeled tip_r origin equals the operator-defined claw center"
     },
     "forward_rise_measurement": {
       "near_robot_edge_physical_claw_clearance_m": 0.039,
@@ -36,10 +36,10 @@
     "board_width_operator_measured_m": 0.383
   },
   "measurement_protocol": [
-    "A_REFERENCE: safe hover. Record modeled tip_l pose. Measure physical claw axis in base; also measure a jaw/reference axis if a unique yaw correction is desired. Align physical claw center to a fixed mark used by C and D.",
+    "A_REFERENCE: safe hover. Record modeled tip_r pose. Measure physical claw axis in base; also measure a jaw/reference axis if a unique yaw correction is desired. Align physical claw center to a fixed mark used by C and D.",
     "B_FORWARD: keep the same commanded tip quaternion, translate 50-100 mm in +base X, and measure the physical claw-center displacement including height change. Do not use B as a pivot pose. This short local repeat is needed to distinguish a true fixed-frame effect from the older long-span 39/61 mm observation.",
-    "C_PIVOT_PITCH: return the physical claw center to the exact A mark, change orientation about one horizontal axis by roughly 8-12 deg, and record modeled tip_l pose.",
-    "D_PIVOT_ROLL: keep the physical claw center on the same A mark, change orientation about a second nonparallel horizontal axis by roughly 8-12 deg, and record modeled tip_l pose."
+    "C_PIVOT_PITCH: return the physical claw center to the exact A mark, change orientation about one horizontal axis by roughly 8-12 deg, and record modeled tip_r pose.",
+    "D_PIVOT_ROLL: keep the physical claw center on the same A mark, change orientation about a second nonparallel horizontal axis by roughly 8-12 deg, and record modeled tip_r pose."
   ],
   "observations": [
     {
