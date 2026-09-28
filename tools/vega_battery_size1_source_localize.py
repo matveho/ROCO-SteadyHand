@@ -176,7 +176,7 @@ def _print_result(record, output):
     print("CENTER ARGUMENT =", "--coarse-xy", f"{x:.6f}", f"{y:.6f}", flush=True)
     print("LOCALIZATION FILE =", (output / "localization.json").resolve(), flush=True)
     print(
-        "NOTE: move the left TCP to a safe low hover at this XY before "
+        "NOTE: move the right TCP to a safe low hover at this XY before "
         "vega_battery_size1_center.py; --coarse-xy is a gate, not a navigation command.",
         flush=True,
     )
