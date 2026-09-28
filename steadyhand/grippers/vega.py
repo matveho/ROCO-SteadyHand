@@ -37,8 +37,8 @@ class VegaCanGripper:
 
     def validate_config(self):
         """Validate gates/files without executing the third-party driver module."""
-        if self.scope not in ("left", "right", "both"):
-            raise ValueError("gripper.scope must be 'left', 'right', or 'both'")
+        if self.scope != "right":
+            raise ValueError("competition gripper.scope must be 'right'")
         path = self.config.get("driver_path")
         if not path:
             raise ValueError("gripper.driver_path is required")
@@ -62,14 +62,13 @@ class VegaCanGripper:
             for name in ("home", "both_open", "both_close", "status", "halt", "close_bus"):
                 if not callable(getattr(self._driver, name, None)):
                     raise TypeError(f"Onsite Grippers driver does not implement documented {name}()")
-            if self.scope in ("left", "right"):
-                motor = self._motor()
-                for name in ("home", "open", "close", "grip", "move_to",
-                             "position", "halt", "release"):
-                    if not callable(getattr(motor, name, None)):
-                        raise TypeError(
-                            f"Onsite {self.scope} gripper does not implement {name}()"
-                        )
+            motor = self._motor()
+            for name in ("home", "open", "close", "grip", "move_to",
+                         "position", "halt", "release"):
+                if not callable(getattr(motor, name, None)):
+                    raise TypeError(
+                        f"Onsite right gripper does not implement {name}()"
+                    )
             if self.config.get("home_on_connect", True):
                 if self.scope == "both":
                     self._driver.home(require_all=True)
@@ -102,11 +101,6 @@ class VegaCanGripper:
     def grip(self, current_a=None):
         """Current-limited object grasp on the selected physical gripper."""
         self._require()
-        if self.scope == "both":
-            raise ValueError(
-                "Object grip requires a single gripper scope ('left' or 'right'); "
-                "the official driver has per-motor grip(), not a top-level both-grip."
-            )
         value = self.config.get("grip_current_a") if current_a is None else current_a
         speed = int(round(_positive(
             self.config.get("grip_speed_dps", 60),
