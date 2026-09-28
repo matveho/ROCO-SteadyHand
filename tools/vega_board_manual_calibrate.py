@@ -43,7 +43,6 @@ from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vision.scene import detect_head_task_scene
 from steadyhand.vega_camera_clear import move_camera_clear
-from tools.vega_board_benchmark import _yaw_quat
 from tools.vega_scene_perception import _ensure_publisher
 
 
@@ -90,6 +89,14 @@ def _print_pose(prefix, pose):
         "quat_wxyz=",
         tuple(round(float(v), 7) for v in pose.quaternion_wxyz),
         flush=True,
+    )
+
+
+def _coarse_target_preserving_orientation(point, hover_z, current_pose):
+    """Build a board-calibration coarse target without imposing tool orientation."""
+    return Pose(
+        (float(point[0]), float(point[1]), float(hover_z)),
+        tuple(float(v) for v in current_pose.quaternion_wxyz),
     )
 
 
@@ -239,7 +246,12 @@ def main(argv=None):
             "383 mm span"
         ),
     )
-    p.add_argument("--claw-yaw-deg", type=float, default=0.0)
+    p.add_argument(
+        "--claw-yaw-deg",
+        type=float,
+        default=0.0,
+        help="legacy compatibility option; board calibration preserves live TCP orientation",
+    )
     p.add_argument("--settle-s", type=float, default=0.5)
     p.add_argument("--publisher-log", default="~/head_camera.log")
     p.add_argument("--output", default="calibration/vega_board_manual.json")
@@ -363,19 +375,31 @@ def main(argv=None):
         print("HEAD PREDICTED +X UNIT =", tuple(round(float(v), 6) for v in bx), flush=True)
         print("HEAD PREDICTED +Y UNIT =", tuple(round(float(v), 6) for v in by), flush=True)
 
-        quat = _yaw_quat(math.radians(float(args.claw_yaw_deg)))
+        coarse_orientation_pose = robot.get_tcp_pose()
+        if coarse_orientation_pose is None:
+            raise RuntimeError("cannot preserve live TCP orientation: no current TCP pose")
+        print(
+            "COARSE ORIENTATION: preserving live reachable tip_l quaternion =",
+            tuple(round(float(v), 7) for v in coarse_orientation_pose.quaternion_wxyz),
+            flush=True,
+        )
+        if abs(float(args.claw_yaw_deg)) > 1e-12:
+            print(
+                "NOTE: --claw-yaw-deg is ignored during board calibration; "
+                "live TCP orientation is preserved",
+                flush=True,
+            )
+
         corrected = {}
         for label in ("CENTER", "BOARD_X_PLUS", "BOARD_Y_PLUS"):
             point = predicted[label]
-            target = Pose(
-                (float(point[0]), float(point[1]), float(args.hover_z)),
-                quat,
+            target = _coarse_target_preserving_orientation(
+                point, args.hover_z, coarse_orientation_pose
             )
             robot._kinematics.config["position_tolerance_m"] = 0.0007
             robot._kinematics.config["orientation_tolerance_rad"] = 0.02
             robot._kinematics.config["max_seed_delta_rad"] = 2.4
             robot._kinematics.config["max_iterations"] = 180
-            robot._kinematics.solve(target, robot._read_joint_positions())
 
             print(
                 f"COARSE MOVE {label} ->",
@@ -386,8 +410,8 @@ def main(argv=None):
                 robot,
                 target,
                 speed_scale=float(args.coarse_speed_scale),
-                max_translation_step_m=0.20,
-                max_orientation_step_rad=0.80,
+                max_translation_step_m=0.12,
+                max_orientation_step_rad=0.10,
                 min_tcp_z_m=floor,
             )
             reached = robot.get_tcp_pose()
@@ -455,8 +479,12 @@ def main(argv=None):
                 "y_reference_distance_m": float(np.linalg.norm(dy)),
             },
             "orientation_status": (
-                "MEASURED_ONLY_NOT_CALIBRATED_VERTICAL; physical claw was reported angled"
+                "LIVE_REACHABLE_TCP_ORIENTATION_PRESERVED; "
+                "NOT_CALIBRATED_VERTICAL; physical claw was reported angled"
             ),
+            "coarse_preserved_quaternion_wxyz": [
+                float(v) for v in coarse_orientation_pose.quaternion_wxyz
+            ],
             "jogs": events,
         }
 
