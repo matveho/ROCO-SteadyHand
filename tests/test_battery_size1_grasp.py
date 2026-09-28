@@ -94,6 +94,11 @@ class CalibrationContractTests(unittest.TestCase):
         self.assertEqual(value["tcp_frame"], "tip_r")
         self.assertEqual(value["wrist_camera"], "wrist_a")
         self.assertEqual(value["gripper"]["scope"], "right")
+        # The shared floor is still only a provisional runtime guard; a fresh
+        # right-arm battery artifact must not claim it as a measured tip_r
+        # calibration value.
+        self.assertNotIn("floor_m", value)
+        self.assertNotIn("table_contact_tip_z_m", value)
 
     def test_stale_missing_or_left_provenance_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -239,6 +244,13 @@ class CalibrationContractTests(unittest.TestCase):
             record["goal_uv"] = [900, 700]
             result.write_text(json.dumps(record))
             with self.assertRaisesRegex(ValueError, "jaw goal"):
+                load_alignment_result(result, cal, loaded, current_pose=current)
+
+            alignment_result(result, cal)
+            record = json.loads(result.read_text())
+            record.pop("working_arm")
+            result.write_text(json.dumps(record))
+            with self.assertRaisesRegex(ValueError, "working_arm=right"):
                 load_alignment_result(result, cal, loaded, current_pose=current)
 
 
