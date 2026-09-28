@@ -31,6 +31,9 @@ CAMERA_CLEAR_VERTICALIZE_Z_CANDIDATES_ABOVE_FLOOR_M = (0.45, 0.40, 0.35, 0.30)
 CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD = 0.020
 CAMERA_CLEAR_RETAIN_HIGH_POSE_ABOVE_FLOOR_M = 0.30
 CAMERA_CLEAR_ESCAPE_POSITION_TOLERANCE_M = 0.002
+CAMERA_IMAGE_CLEAR_Z_ABOVE_FLOOR_M = 0.60
+CAMERA_IMAGE_CLEAR_MIN_Z_ABOVE_FLOOR_M = 0.45
+CAMERA_IMAGE_CLEAR_X_CANDIDATES_M = (0.35, 0.40, 0.45, 0.50)
 
 
 def vertical_claw_tip_quaternion(yaw_rad: float = 0.0):
@@ -143,6 +146,187 @@ def _can_retain_high_pose(current, *, floor_m: float) -> bool:
     return float(current.position_m[2]) >= (
         float(floor_m) + CAMERA_CLEAR_RETAIN_HIGH_POSE_ABOVE_FLOOR_M
     )
+
+
+
+
+def _reachable_image_clear_pose(robot, *, floor_m: float) -> Pose:
+    """Find a high camera-clear pose while preserving the live TCP orientation.
+
+    This phase intentionally does not verticalize the claw. It only gets the
+    arm high/out of the head image so perception happens before any orientation
+    change. The preferred height matches the ~1.056 m pose from which the
+    original verticalization sequence was physically successful onsite.
+    """
+    current = robot.get_tcp_pose()
+    if current is None:
+        raise RuntimeError("camera image-clear planning requires current TCP pose")
+    seed = robot._read_joint_positions()
+    quat = tuple(float(v) for v in current.quaternion_wxyz)
+    last_error = None
+
+    xy_candidates = [
+        (float(current.position_m[0]), float(current.position_m[1])),
+        *[(float(x), CAMERA_CLEAR_Y_M) for x in CAMERA_IMAGE_CLEAR_X_CANDIDATES_M],
+    ]
+    seen = set()
+    unique_xy = []
+    for xy in xy_candidates:
+        key = (round(xy[0], 6), round(xy[1], 6))
+        if key not in seen:
+            seen.add(key)
+            unique_xy.append(xy)
+
+    z = float(floor_m) + CAMERA_IMAGE_CLEAR_Z_ABOVE_FLOOR_M
+    z_min = float(floor_m) + CAMERA_IMAGE_CLEAR_MIN_Z_ABOVE_FLOOR_M
+    while z >= z_min - 1e-9:
+        for x, y in unique_xy:
+            candidate = Pose((x, y, z), quat)
+            try:
+                robot._kinematics.solve(candidate, seed)
+            except Exception as exc:
+                last_error = exc
+                continue
+            print(
+                "CAMERA IMAGE CLEAR: PLANNED ->",
+                tuple(round(float(v), 4) for v in candidate.position_m),
+                flush=True,
+            )
+            return candidate
+        z -= CAMERA_CLEAR_Z_STEP_M
+
+    raise RuntimeError(
+        "No reachable orientation-preserving camera image-clear pose found; "
+        f"last IK error: {last_error}"
+    )
+
+
+def move_camera_clear_for_image(
+    robot, *, floor_m: float, speed_scale: float = CAMERA_CLEAR_SPEED_SCALE
+):
+    """Clear the head-camera view without changing the live TCP orientation."""
+    floor_m = float(floor_m)
+    current = robot.get_tcp_pose()
+    if current is None:
+        raise RuntimeError("camera image-clear move requires current TCP pose")
+    if float(current.position_m[2]) < floor_m:
+        raise RuntimeError(
+            f"Current TCP z={float(current.position_m[2]):.4f} is below "
+            f"configured floor {floor_m:.4f}"
+        )
+
+    print(
+        "CAMERA IMAGE CLEAR: START ->",
+        tuple(round(float(v), 4) for v in current.position_m),
+        flush=True,
+    )
+    kin_cfg = robot._kinematics.config
+    old_kin = dict(kin_cfg)
+    old_joint_tol = float(robot.config["motion"]["joint_reached_tolerance_rad"])
+    try:
+        robot.config["motion"]["joint_reached_tolerance_rad"] = max(
+            old_joint_tol, CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD
+        )
+        kin_cfg["position_tolerance_m"] = CAMERA_CLEAR_ESCAPE_POSITION_TOLERANCE_M
+        kin_cfg["orientation_tolerance_rad"] = 0.04
+        kin_cfg["max_seed_delta_rad"] = 2.5
+        kin_cfg["max_iterations"] = 180
+
+        target = _reachable_image_clear_pose(robot, floor_m=floor_m)
+        move_tcp_segmented(
+            robot,
+            target,
+            speed_scale=float(speed_scale),
+            max_translation_step_m=0.08,
+            max_orientation_step_rad=0.10,
+            min_tcp_z_m=floor_m,
+        )
+        actual = robot.get_tcp_pose()
+        print(
+            "CAMERA IMAGE CLEAR: REACHED ->",
+            tuple(round(float(v), 4) for v in actual.position_m),
+            flush=True,
+        )
+        return actual
+    finally:
+        robot.config["motion"]["joint_reached_tolerance_rad"] = old_joint_tol
+        kin_cfg.clear()
+        kin_cfg.update(old_kin)
+
+
+def move_verticalize_after_image(
+    robot, *, floor_m: float, speed_scale: float = CAMERA_CLEAR_SPEED_SCALE
+):
+    """Run the original physically successful verticalization sequence.
+
+    This intentionally mirrors the pre-fallback onsite sequence:
+      reachable verticalize waypoint -> verticalize -> highest reachable
+      vertical preset.
+    It is called only after the head image has been captured.
+    """
+    floor_m = float(floor_m)
+    current = robot.get_tcp_pose()
+    if current is None:
+        raise RuntimeError("post-image verticalization requires current TCP pose")
+    print(
+        "POST-IMAGE VERTICALIZE: START ->",
+        tuple(round(float(v), 4) for v in current.position_m),
+        flush=True,
+    )
+
+    kin_cfg = robot._kinematics.config
+    old_kin = dict(kin_cfg)
+    old_joint_tol = float(robot.config["motion"]["joint_reached_tolerance_rad"])
+    try:
+        robot.config["motion"]["joint_reached_tolerance_rad"] = max(
+            old_joint_tol, CAMERA_CLEAR_JOINT_ENDPOINT_TOLERANCE_RAD
+        )
+        kin_cfg["position_tolerance_m"] = 0.010
+        kin_cfg["orientation_tolerance_rad"] = 0.12
+        kin_cfg["max_seed_delta_rad"] = 2.5
+        kin_cfg["max_iterations"] = 180
+
+        verticalize = _reachable_verticalize_pose(robot, floor_m=floor_m)
+        print(
+            "POST-IMAGE VERTICALIZE: WAYPOINT ->",
+            tuple(round(float(v), 4) for v in verticalize.position_m),
+            flush=True,
+        )
+        move_tcp_segmented(
+            robot,
+            verticalize,
+            speed_scale=float(speed_scale),
+            max_translation_step_m=0.12,
+            max_orientation_step_rad=0.45,
+            min_tcp_z_m=floor_m,
+        )
+
+        target = _highest_reachable_camera_clear_pose(robot, floor_m=floor_m)
+        print(
+            "POST-IMAGE VERTICALIZE: PRESET ->",
+            tuple(round(float(v), 4) for v in target.position_m),
+            flush=True,
+        )
+        move_tcp_segmented(
+            robot,
+            target,
+            speed_scale=float(speed_scale),
+            max_translation_step_m=0.15,
+            max_orientation_step_rad=0.45,
+            min_tcp_z_m=floor_m,
+        )
+
+        actual = robot.get_tcp_pose()
+        print(
+            "POST-IMAGE VERTICALIZE: REACHED ->",
+            tuple(round(float(v), 4) for v in actual.position_m),
+            flush=True,
+        )
+        return actual
+    finally:
+        robot.config["motion"]["joint_reached_tolerance_rad"] = old_joint_tol
+        kin_cfg.clear()
+        kin_cfg.update(old_kin)
 
 
 def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEAR_SPEED_SCALE):
