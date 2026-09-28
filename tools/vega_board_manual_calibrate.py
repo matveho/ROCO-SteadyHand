@@ -4,19 +4,24 @@ Flow:
   1. Clear the left claw from the head-board view.
   2. Capture the board exactly like vega_board_axis_benchmark.py.
   3. Move to the predicted CENTER, BOARD_X_PLUS and BOARD_Y_PLUS hover targets.
-  4. At each target, let the operator jog the TCP flat in base-frame directions:
+  4. At each target, let the operator jog the physical claw center relative to
+     the board:
        forward N   (+base X, away from robot)
        back N      (-base X, toward robot)
        left N      (+base Y, robot-left)
        right N     (-base Y, robot-right)
-     Distances are millimetres. Repeated commands are allowed.
+     Distances are millimetres. Repeated commands are allowed. A measured
+     forward/rise coupling can be compensated by adding signed TCP Z correction
+     to forward/back jogs so the physical claw center stays board-parallel.
   5. 'done' records the measured TCP for that reference.
   6. Print a paste-ready JSON calibration block containing predicted and corrected
      points, corrected board axes, TCP quaternions, and every manual jog.
 
-This tool calibrates BOARD POSITION/AXES only. It deliberately preserves the
-current TCP Z and orientation during manual XY jogs. A visibly angled claw is
-therefore reported, not silently treated as a calibrated vertical orientation.
+This tool calibrates BOARD POSITION/AXES only. It preserves TCP orientation.
+The operator reported that a nominal flat +base-X move raises the physical claw
+center by about 10 degrees, so forward/back jogs apply an explicit configurable
+Z compensation. A visibly angled claw is still reported, not silently treated
+as a calibrated vertical orientation.
 """
 
 import argparse
@@ -73,7 +78,28 @@ def _print_pose(prefix, pose):
     )
 
 
-def _interactive_adjust(robot, *, label, floor, speed_scale, max_jog_mm, events):
+def _board_parallel_jog_delta(command, mm, forward_rise_angle_deg):
+    """Return commanded base-frame dx,dy,dz for a board-parallel claw-center jog.
+
+    Physical observation: with dz=0, moving +base-X ("forward") raises the
+    physical center of the claw. Compensate by commanding TCP downward:
+        dz = -dx * tan(angle)
+    Backward motion receives the exact inverse. Left/right currently have no
+    measured vertical coupling and therefore use dz=0.
+    """
+    dx_unit, dy_unit = DIRECTIONS[command]
+    distance_m = float(mm) / 1000.0
+    dx = float(dx_unit) * distance_m
+    dy = float(dy_unit) * distance_m
+    angle_rad = math.radians(float(forward_rise_angle_deg))
+    dz = -dx * math.tan(angle_rad)
+    return dx, dy, dz
+
+
+def _interactive_adjust(
+    robot, *, label, floor, speed_scale, max_jog_mm,
+    forward_rise_angle_deg, events
+):
     print("", flush=True)
     print(f"=== MANUAL CALIBRATION: {label} ===", flush=True)
     print(
@@ -82,6 +108,12 @@ def _interactive_adjust(robot, *, label, floor, speed_scale, max_jog_mm, events)
         flush=True,
     )
     print("forward=away from robot (+base X), left=robot-left (+base Y)", flush=True)
+    print(
+        "BOARD-PARALLEL COMPENSATION: forward physical rise "
+        f"{float(forward_rise_angle_deg):.2f} deg; "
+        "commanded forward includes downward TCP Z",
+        flush=True,
+    )
     _print_pose("CURRENT", robot.get_tcp_pose())
 
     while True:
@@ -123,23 +155,33 @@ def _interactive_adjust(robot, *, label, floor, speed_scale, max_jog_mm, events)
             continue
 
         current = robot.get_tcp_pose()
-        dx_unit, dy_unit = DIRECTIONS[cmd]
-        dx = dx_unit * mm / 1000.0
-        dy = dy_unit * mm / 1000.0
+        dx, dy, dz = _board_parallel_jog_delta(
+            cmd, mm, forward_rise_angle_deg
+        )
         target = Pose(
             (
                 float(current.position_m[0]) + dx,
                 float(current.position_m[1]) + dy,
-                float(current.position_m[2]),
+                float(current.position_m[2]) + dz,
             ),
             tuple(float(v) for v in current.quaternion_wxyz),
         )
+        if float(target.position_m[2]) < float(floor):
+            print(
+                f"JOG REJECTED: compensated target z={target.position_m[2]:.6f} "
+                f"is below floor {float(floor):.6f}",
+                flush=True,
+            )
+            continue
         print(
-            f"JOG {cmd.upper()} {mm:g} mm ->",
+            f"JOG {cmd.upper()} {mm:g} mm "
+            f"(dx={dx*1000:+.1f}, dy={dy*1000:+.1f}, "
+            f"dz_comp={dz*1000:+.1f} mm) ->",
             tuple(round(float(v), 6) for v in target.position_m),
             flush=True,
         )
-        # Pre-plan the exact flat target before commanding it.
+        # Tight IK is essential for 5-10 mm manual jogs. A 10 mm IK tolerance
+        # can legally return the current seed and produce almost no motion.
         robot._kinematics.solve(target, robot._read_joint_positions())
         move_tcp_segmented(
             robot,
@@ -154,6 +196,8 @@ def _interactive_adjust(robot, *, label, floor, speed_scale, max_jog_mm, events)
             "label": label,
             "command": cmd,
             "distance_mm": mm,
+            "commanded_delta_m": [float(dx), float(dy), float(dz)],
+            "forward_rise_compensation_deg": float(forward_rise_angle_deg),
             "requested": _pose_record(target),
             "measured": _pose_record(actual),
         }
@@ -170,6 +214,15 @@ def main(argv=None):
     p.add_argument("--coarse-speed-scale", type=float, default=0.90)
     p.add_argument("--jog-speed-scale", type=float, default=0.70)
     p.add_argument("--max-jog-mm", type=float, default=50.0)
+    p.add_argument(
+        "--forward-rise-angle-deg",
+        type=float,
+        default=10.0,
+        help=(
+            "measured physical claw-center rise angle during +base-X motion; "
+            "forward jogs command -Z compensation (default 10 deg)"
+        ),
+    )
     p.add_argument("--claw-yaw-deg", type=float, default=0.0)
     p.add_argument("--settle-s", type=float, default=0.5)
     p.add_argument("--publisher-log", default="~/head_camera.log")
@@ -187,6 +240,10 @@ def main(argv=None):
         p.error("--jog-speed-scale must be 0.45..1.0")
     if not 1.0 <= float(args.max_jog_mm) <= 100.0:
         p.error("--max-jog-mm must be 1..100 mm")
+    if not math.isfinite(float(args.forward_rise_angle_deg)) or not (
+        -30.0 <= float(args.forward_rise_angle_deg) <= 30.0
+    ):
+        p.error("--forward-rise-angle-deg must be finite and within -30..30 deg")
 
     import numpy as np
 
@@ -202,6 +259,12 @@ def main(argv=None):
     cfg["allow_robot_init_head_motion"] = True
     cfg["auto_clear_software_estop_on_connect"] = True
     cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
+    # Operator-supervised calibration showed a stationary endpoint residual of
+    # 0.00657 rad. Accept up to 0.010 rad here only; normal manipulation keeps
+    # its configured tighter threshold.
+    cfg["motion"]["joint_reached_tolerance_rad"] = max(
+        float(cfg["motion"]["joint_reached_tolerance_rad"]), 0.010
+    )
 
     _ensure_publisher(args.publisher_log, robot_name=cfg["robot_name"])
 
@@ -275,8 +338,8 @@ def main(argv=None):
                 (float(point[0]), float(point[1]), float(args.hover_z)),
                 quat,
             )
-            robot._kinematics.config["position_tolerance_m"] = 0.010
-            robot._kinematics.config["orientation_tolerance_rad"] = 0.12
+            robot._kinematics.config["position_tolerance_m"] = 0.0007
+            robot._kinematics.config["orientation_tolerance_rad"] = 0.02
             robot._kinematics.config["max_seed_delta_rad"] = 2.4
             robot._kinematics.config["max_iterations"] = 180
             robot._kinematics.solve(target, robot._read_joint_positions())
@@ -307,6 +370,7 @@ def main(argv=None):
                 floor=floor,
                 speed_scale=float(args.jog_speed_scale),
                 max_jog_mm=float(args.max_jog_mm),
+                forward_rise_angle_deg=float(args.forward_rise_angle_deg),
                 events=events,
             )
 
@@ -328,6 +392,11 @@ def main(argv=None):
             "tcp_frame": cfg["kinematics"]["ee_frame"],
             "floor_m": floor,
             "nominal_axis_offset_m": float(args.offset_m),
+            "physical_claw_center_jog_compensation": {
+                "forward_rise_angle_deg": float(args.forward_rise_angle_deg),
+                "model": "dz_commanded=-dx_base*tan(angle)",
+                "applies_to": "manual forward/back jogs only",
+            },
             "head_prediction": {
                 "center_base_m": [float(v) for v in center],
                 "board_x_unit_base": [float(v) for v in bx],
