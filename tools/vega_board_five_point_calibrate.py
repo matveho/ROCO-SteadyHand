@@ -128,7 +128,10 @@ def main(argv=None):
                    help="initial TCP hover Z in base frame; default is floor + 80 mm")
     p.add_argument("--coarse-speed-scale", type=float, default=0.65)
     p.add_argument("--jog-speed-scale", type=float, default=0.45)
-    p.add_argument("--max-jog-mm", type=float, default=30.0)
+    p.add_argument(
+        "--max-jog-mm", type=float, default=float("inf"),
+        help="maximum single jog in mm; default is unlimited (IK still preflights)",
+    )
     p.add_argument("--settle-s", type=float, default=0.5)
     p.add_argument("--publisher-log", default="~/head_camera.log")
     p.add_argument("--output", default="calibration/vega_board_manual.json")
@@ -140,8 +143,8 @@ def main(argv=None):
         p.error("--coarse-speed-scale must be 0.3..0.8")
     if not 0.25 <= args.jog_speed_scale <= 0.7:
         p.error("--jog-speed-scale must be 0.25..0.7")
-    if not 1.0 <= args.max_jog_mm <= 60.0:
-        p.error("--max-jog-mm must be 1..60 mm")
+    if args.max_jog_mm <= 0 or math.isnan(args.max_jog_mm):
+        p.error("--max-jog-mm must be positive; omit it for unlimited jog distance")
 
     cfg = load_bundle("vega")["robot"]
     safety = dict(load_vega_skills().get("safety") or {})
