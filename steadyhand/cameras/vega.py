@@ -19,6 +19,7 @@ Wrists:
 
 from dataclasses import dataclass
 import math
+import time
 from typing import Any, Mapping
 
 
@@ -85,25 +86,69 @@ class VegaHeadCamera:
         self._require_connected()
         return self._head.get_camera_info()
 
-    def read(self, *, include_depth: bool = True) -> HeadCameraFrame:
+    def read(
+        self,
+        *,
+        include_depth: bool = True,
+        timeout_s: float = 15.0,
+        poll_s: float = 0.05,
+    ) -> HeadCameraFrame:
+        """Wait for the requested ZED streams and usable camera info.
+
+        The competition ZED can report initialized before its first Zenoh
+        frames are available, especially immediately after Robot() has moved
+        the head. A single-shot read therefore creates a false failure during
+        normal startup. Keep acquisition bounded, but tolerate that warm-up.
+        """
         self._require_connected()
+        timeout_s = float(timeout_s)
+        poll_s = float(poll_s)
+        if not math.isfinite(timeout_s) or timeout_s <= 0:
+            raise ValueError("timeout_s must be finite and > 0")
+        if not math.isfinite(poll_s) or poll_s < 0:
+            raise ValueError("poll_s must be finite and >= 0")
+
         keys = ["left_rgb", "right_rgb"]
         if include_depth:
             keys.append("depth")
-        obs = self._head.get_obs(obs_keys=keys, include_timestamp=True)
-        if any(obs.get(key) is None for key in keys):
-            raise RuntimeError("One or more Vega head streams are not ready")
 
-        depth = obs.get("depth")
-        return HeadCameraFrame(
-            left_rgb=obs["left_rgb"]["data"],
-            right_rgb=obs["right_rgb"]["data"],
-            depth_m=None if depth is None else depth["data"],
-            left_timestamp_ns=obs["left_rgb"].get("timestamp_ns"),
-            right_timestamp_ns=obs["right_rgb"].get("timestamp_ns"),
-            depth_timestamp_ns=None if depth is None else depth.get("timestamp_ns"),
-            camera_info=self._head.get_camera_info(),
-        )
+        deadline = time.monotonic() + timeout_s
+        last_missing = list(keys)
+        last_info_error = None
+        while True:
+            obs = self._head.get_obs(obs_keys=keys, include_timestamp=True)
+            last_missing = [key for key in keys if obs.get(key) is None]
+            if not last_missing:
+                try:
+                    camera_info = self._head.get_camera_info()
+                except Exception as exc:
+                    # The info service has also been observed to come up late.
+                    # Retry it within the same bounded warm-up window.
+                    last_info_error = exc
+                else:
+                    depth = obs.get("depth")
+                    return HeadCameraFrame(
+                        left_rgb=obs["left_rgb"]["data"],
+                        right_rgb=obs["right_rgb"]["data"],
+                        depth_m=None if depth is None else depth["data"],
+                        left_timestamp_ns=obs["left_rgb"].get("timestamp_ns"),
+                        right_timestamp_ns=obs["right_rgb"].get("timestamp_ns"),
+                        depth_timestamp_ns=None if depth is None else depth.get("timestamp_ns"),
+                        camera_info=camera_info,
+                    )
+
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                if last_info_error is not None and not last_missing:
+                    raise RuntimeError(
+                        "Vega head streams are ready but camera info is unavailable "
+                        f"after {timeout_s:.1f}s"
+                    ) from last_info_error
+                raise RuntimeError(
+                    "Vega head streams are not ready after "
+                    f"{timeout_s:.1f}s; missing: {', '.join(last_missing)}"
+                )
+            time.sleep(min(poll_s, remaining))
 
     def _require_connected(self) -> None:
         if self._head is None:
