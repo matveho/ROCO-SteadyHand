@@ -79,11 +79,18 @@ def _set_head_and_capture(robot_name, head_j1):
 
 
 def _yaw_quat(yaw):
+    """Top-down tip_l orientation with free rotation about base Z.
+
+    The competition/simulation top-down TCP convention is q=(0,1,0,0):
+    180 deg about base X, so the tool's local +Z points downward.  Premultiply
+    by base-Z yaw to rotate the claw in-plane without tilting it.
+    """
+    half = float(yaw) / 2.0
     return (
-        math.cos(float(yaw) / 2.0),
         0.0,
+        math.cos(half),
+        math.sin(half),
         0.0,
-        math.sin(float(yaw) / 2.0),
     )
 
 
@@ -94,74 +101,88 @@ def _pose_at(point, z, quat):
     )
 
 
-def _select_vertical_pose(robot, points, preferred_hover_z):
-    """Find one fixed vertical-claw yaw + hover Z that reaches all board points."""
+def _vertical_target_for_point(
+    robot,
+    label,
+    point,
+    center,
+    preferred_hover_z,
+    floor,
+):
+    """Solve one board waypoint while keeping the claw axis vertical.
+
+    Exact board coordinates are tried first.  If a coarse head-camera corner is
+    mechanically outside the arm envelope, progressively inset that corner
+    toward board center.  This keeps policy development moving while recording
+    how much of the coarse corner estimate is actually reachable.
+    """
     import numpy as np
 
-    # This is a coarse board-navigation benchmark, not precision insertion.
-    # The normal task solver uses 2 mm / 0.02 rad. Give the benchmark enough
-    # tolerance to avoid rejecting physically useful poses by a few mm while
-    # still preserving a fixed vertical tool orientation.
-    robot._kinematics.config["position_tolerance_m"] = 0.006
-    robot._kinematics.config["orientation_tolerance_rad"] = 0.08
-    robot._kinematics.config["max_seed_delta_rad"] = 2.2
+    # Coarse-navigation tolerances only. Fine wrist servo later owns final XY.
+    robot._kinematics.config["position_tolerance_m"] = 0.008
+    robot._kinematics.config["orientation_tolerance_rad"] = 0.10
+    robot._kinematics.config["max_seed_delta_rad"] = 2.4
 
-    # Search several safe hover heights automatically. Lower heights generally
-    # improve reach at the far board edge; all remain well above the hard floor.
-    heights = []
-    for z in (
-        preferred_hover_z,
-        preferred_hover_z - 0.04,
-        preferred_hover_z + 0.04,
-        preferred_hover_z - 0.08,
-        preferred_hover_z + 0.08,
-    ):
-        if z not in heights:
-            heights.append(float(z))
+    seed = robot._read_joint_positions()
+    point = np.asarray(point, dtype=float)
+    center = np.asarray(center, dtype=float)
 
-    # Tool yaw is free while the claw axis stays vertical. Search every 45 deg.
-    yaws = tuple(k * math.pi / 4.0 for k in range(-4, 4))
-    initial_seed = robot._read_joint_positions()
-    feasible = []
+    # Keep at least 7 cm over the hard floor.  Search low first because the
+    # forward board edge is usually the reach-limiting direction.
+    height_candidates = []
+    for dz in (0.0, -0.04, -0.08, +0.04, -0.12, +0.08, +0.12):
+        z = max(float(floor) + 0.07, float(preferred_hover_z) + dz)
+        if all(abs(z - old) > 1e-6 for old in height_candidates):
+            height_candidates.append(z)
 
-    unique_points = []
-    seen = set()
-    for label, point in points:
-        key = tuple(round(float(x), 5) for x in point[:2])
-        if key not in seen:
-            unique_points.append((label, point))
-            seen.add(key)
+    # Exact point first.  Only corner waypoints are allowed to inset.
+    alphas = (1.0,) if label == "center" else (
+        1.0, 0.97, 0.94, 0.90, 0.85, 0.80, 0.75, 0.70,
+    )
+    yaws = tuple(k * math.pi / 6.0 for k in range(-6, 6))  # 30 deg increments
 
-    for z in heights:
-        for yaw in yaws:
-            quat = _yaw_quat(yaw)
-            seed = initial_seed
-            cost = 0.0
-            try:
-                for _, point in unique_points:
-                    target = _pose_at(point, z, quat)
-                    answer = robot._kinematics.solve(target, seed)
-                    cost += float(np.linalg.norm(
-                        np.asarray(answer, dtype=float) - np.asarray(seed, dtype=float)
-                    ))
-                    seed = answer
-            except Exception:
-                continue
-            feasible.append((cost, z, yaw, quat))
+    candidates = []
+    for alpha in alphas:
+        xy = center + float(alpha) * (point - center)
+        for z in height_candidates:
+            for yaw in yaws:
+                quat = _yaw_quat(yaw)
+                target = _pose_at(xy, z, quat)
+                try:
+                    q = robot._kinematics.solve(target, seed)
+                except Exception:
+                    continue
+                joint_cost = float(np.linalg.norm(
+                    np.asarray(q, dtype=float) - np.asarray(seed, dtype=float)
+                ))
+                # Prefer exact geometry first, then lower joint travel and small
+                # deviation from requested hover height.
+                cost = (
+                    (1.0 - float(alpha)) * 100.0
+                    + joint_cost
+                    + abs(z - float(preferred_hover_z)) * 2.0
+                )
+                candidates.append((cost, alpha, z, yaw, quat, target))
 
-    if not feasible:
+        # If exact/near-exact worked, don't waste robot time searching deeper
+        # insets. The large alpha penalty already preserves exact preference.
+        if candidates:
+            break
+
+    if not candidates:
         raise RuntimeError(
-            "No fixed vertical-claw pose reached center + all four corners "
-            "across the automatic hover-height/yaw search"
+            f"{label}: no reachable vertical-claw pose found even after "
+            "height/yaw search and corner inset"
         )
 
-    feasible.sort(key=lambda item: item[0])
-    _, z, yaw, quat = feasible[0]
+    candidates.sort(key=lambda item: item[0])
+    _, alpha, z, yaw, quat, target = candidates[0]
     print(
-        f"SELECTED VERTICAL CLAW: hover_z={z:.3f} m, "
-        f"yaw={math.degrees(yaw):+.0f} deg"
+        f"{label.upper()} PLAN: alpha={alpha:.2f}, z={z:.3f} m, "
+        f"yaw={math.degrees(yaw):+.0f} deg, "
+        f"xy=({target.position_m[0]:.4f},{target.position_m[1]:.4f})"
     )
-    return float(z), quat
+    return target
 
 
 def main(argv=None):
@@ -283,17 +304,33 @@ def main(argv=None):
             ("bl", corners_base[3]),
             ("center", center),
         ]
-        selected_hover_z, quat = _select_vertical_pose(
-            robot, points, float(args.hover_z)
-        )
+        # Plan each waypoint independently. Tool yaw may change, but the claw
+        # axis remains vertical and the wrist camera remains downward-facing.
+        planned = []
+        for label, point in points:
+            planned.append((
+                label,
+                _vertical_target_for_point(
+                    robot,
+                    label,
+                    point,
+                    center,
+                    float(args.hover_z),
+                    floor,
+                ),
+            ))
 
         # First create clearance straight upward at current XY/orientation.
         current = robot.get_tcp_pose()
+        clearance_z = max(
+            float(current.position_m[2]),
+            max(float(target.position_m[2]) for _, target in planned),
+        )
         clearance = Pose(
             (
                 float(current.position_m[0]),
                 float(current.position_m[1]),
-                max(float(current.position_m[2]), selected_hover_z),
+                clearance_z,
             ),
             current.quaternion_wxyz,
         )
@@ -308,8 +345,7 @@ def main(argv=None):
                 min_tcp_z_m=floor,
             )
 
-        for label, point in points:
-            target = _pose_at(point, selected_hover_z, quat)
+        for label, target in planned:
             print(
                 f"MOVE {label.upper()} ->",
                 tuple(round(float(x), 4) for x in target.position_m),
