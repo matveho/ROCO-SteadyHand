@@ -2,8 +2,8 @@
 
 This module contains no robot I/O. It validates that a battery source
 localization is tied to the same completed manual board calibration present at
-motion time, and derives the already-accepted low-hover pose from that
-calibration without inventing a new orientation.
+motion time, and validates an XY-only coarse-hover plan without inventing a new
+orientation or changing hover height.
 """
 
 from __future__ import annotations
@@ -41,7 +41,9 @@ def load_source_localization(
     if value.get("part") != PART_NAME:
         raise ValueError("source localization is not for battery_size1")
     if value.get("method") not in LOCALIZATION_METHODS:
-        raise ValueError("source localization method is not an accepted battery method")
+        raise ValueError(
+            "source localization method is not an accepted battery method"
+        )
     if value.get("robot_name") != robot_config.get("robot_name"):
         raise ValueError("source localization belongs to a different robot")
     kin = robot_config.get("kinematics") or {}
@@ -97,7 +99,9 @@ def load_source_localization(
         or not isinstance(source_image.get("sha256"), str)
         or not source_image.get("sha256")
     ):
-        raise ValueError("source localization lacks source-image hash provenance")
+        raise ValueError(
+            "source localization lacks source-image hash provenance"
+        )
 
     return {
         "raw": value,
@@ -115,10 +119,9 @@ def load_source_localization(
 def accepted_hover_from_manual(manual_calibration, *, floor_m):
     """Return the measured low-hover Z/quaternion from manual CENTER.
 
-    Motion code should verify the live orientation matches this reference and
-    then preserve the live quaternion exactly. This helper does not claim the
-    orientation is a calibrated physical vertical; it only preserves the
-    already accepted hover orientation recorded by manual calibration.
+    This does not claim the quaternion is a newly calibrated physical vertical.
+    It is only the orientation that the completed manual board calibration
+    actually used at its accepted hover reference.
     """
     raw = manual_calibration.get("raw")
     if not isinstance(raw, dict):
@@ -152,13 +155,19 @@ def accepted_hover_from_manual(manual_calibration, *, floor_m):
     }
 
 
-def plan_hover_stages(current_pose, target_xy, *, hover_z_m, floor_m):
-    """Plan lift/planar/hover stages while preserving one fixed quaternion.
+def plan_hover_stages(
+    current_pose,
+    target_xy,
+    *,
+    hover_z_m,
+    floor_m,
+    hover_z_tolerance_m=0.008,
+):
+    """Plan a strictly XY-only move at the current accepted safe hover.
 
-    No waypoint is below the accepted hover Z or configured floor. If the live
-    TCP is lower than the accepted hover, it is lifted vertically first.
-    Otherwise XY translation occurs at the current (higher) Z, followed by the
-    only allowed downward motion: stopping exactly at the safe hover.
+    The current measured Z must already match the completed manual calibration's
+    hover reference. The planner never raises or lowers the TCP and preserves
+    the exact live quaternion.
     """
     current_xyz = _finite_vector(
         current_pose.position_m, 3, "current TCP position"
@@ -170,76 +179,58 @@ def plan_hover_stages(current_pose, target_xy, *, hover_z_m, floor_m):
     target_x, target_y = _finite_vector(target_xy, 2, "target XY")
     floor = _finite_scalar(floor_m, "task floor")
     hover_z = _finite_scalar(hover_z_m, "hover Z")
+    tolerance = _finite_positive(
+        hover_z_tolerance_m, "hover Z tolerance"
+    )
+
     if hover_z < floor:
         raise ValueError("hover Z is below configured floor")
     if current_xyz[2] < floor:
         raise ValueError("current TCP is below configured floor")
+    if abs(current_xyz[2] - hover_z) > tolerance:
+        raise ValueError(
+            "current TCP is not at the accepted hover Z; "
+            "no vertical motion is allowed"
+        )
 
     from .models import Pose
 
-    stages = []
-    transit_z = max(current_xyz[2], hover_z)
-
-    if current_xyz[2] < hover_z - 1e-9:
-        stages.append(
-            (
-                "LIFT_TO_HOVER",
-                Pose(
-                    (current_xyz[0], current_xyz[1], hover_z),
-                    quat,
-                ),
-            )
+    label = (
+        "HOLD_SAFE_HOVER"
+        if (
+            abs(current_xyz[0] - target_x) <= 1e-9
+            and abs(current_xyz[1] - target_y) <= 1e-9
         )
+        else "PLANAR_TO_SOURCE_XY"
+    )
+    target = Pose(
+        (target_x, target_y, current_xyz[2]),
+        quat,
+    )
 
-    if (
-        abs(current_xyz[0] - target_x) > 1e-9
-        or abs(current_xyz[1] - target_y) > 1e-9
-    ):
-        stages.append(
-            (
-                "PLANAR_TO_SOURCE_XY",
-                Pose((target_x, target_y, transit_z), quat),
-            )
+    if target.position_m[2] < floor:
+        raise AssertionError(
+            "planned hover target crossed configured floor"
         )
+    if target.position_m[2] != current_xyz[2]:
+        raise AssertionError("hover plan changed Z")
+    if target.quaternion_wxyz != quat:
+        raise AssertionError("hover plan changed orientation")
 
-    if transit_z > hover_z + 1e-9:
-        stages.append(
-            (
-                "LOWER_TO_SAFE_HOVER",
-                Pose((target_x, target_y, hover_z), quat),
-            )
-        )
-
-    if not stages:
-        stages.append(
-            (
-                "HOLD_SAFE_HOVER",
-                Pose((target_x, target_y, hover_z), quat),
-            )
-        )
-
-    for _, pose in stages:
-        if pose.position_m[2] < floor - 1e-12:
-            raise AssertionError(
-                "planned hover stage crossed configured floor"
-            )
-        if pose.position_m[2] < hover_z - 1e-12:
-            raise AssertionError(
-                "planned hover stage descended below safe hover"
-            )
-        if pose.quaternion_wxyz != quat:
-            raise AssertionError("hover plan changed orientation")
-
-    return stages
+    return [(label, target)]
 
 
 def _record_age_minutes(value, *, max_age_minutes, now, name):
     if not isinstance(value, str):
         raise ValueError(f"{name} has no generated_at_utc")
     try:
-        stamp = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        stamp = datetime.fromisoformat(
+            value.replace("Z", "+00:00")
+        )
     except ValueError as exc:
-        raise ValueError(f"{name} has invalid generated_at_utc") from exc
+        raise ValueError(
+            f"{name} has invalid generated_at_utc"
+        ) from exc
     if stamp.tzinfo is None:
         raise ValueError(f"{name} timestamp must include timezone")
 
