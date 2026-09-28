@@ -173,6 +173,7 @@ def main(argv=None):
         if not floor+0.06 <= args.hover_z <= floor+0.10+1e-9:
             raise ValueError("--hover-z must be 60–100 mm above task floor")
         cfg["allow_robot_init_head_motion"] = True
+        cfg["auto_clear_software_estop_on_connect"] = True
         cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.30)
         robot = VegaAdapter(cfg)
         robot.connect()
