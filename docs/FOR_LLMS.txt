@@ -2109,3 +2109,21 @@ Current competition-network workflow:
     - plans and EXECUTES each waypoint immediately instead of pre-planning all;
     - flushes progress messages so onsite status is visible.
   CENTER and TL had already solved at alpha=1.00, z=0.640, yaw=0 in the slow run.
+
+
+2026-09-27 ONSITE BENCHMARK MOTION REQUIREMENTS:
+  Operator observed the board benchmark physically moving but identified three
+  issues that are now treated as requirements:
+    1. Robot() homes the head forward, so when using --reuse-registration the
+       head ended up looking forward. Benchmark must re-command head_j1=+0.55
+       AFTER VegaAdapter.connect(), not only during head capture.
+    2. Previous hover_z=0.64 was much too high. Benchmark working plane must be
+       at most 0.10 m above safety.min_tcp_z_m. Default is now z=0.55 m with
+       floor=0.4560002716867571 m (~94 mm above configured floor).
+    3. Motion looked jittery. For this free-space board benchmark, keep one
+       constant vertical-claw yaw and one constant Z plane, raise adapter
+       joint waypoint max_step from 0.12 to 0.30 rad locally, and use much
+       larger Cartesian segments (0.20 m translation / 0.80 rad orientation)
+       to reduce repeated stop/start motion. Normal task config is unchanged.
+  Preferred physical behavior: establish the low plane at board center, then
+  traverse center/corners in that same plane like a 3D-printer nozzle.
