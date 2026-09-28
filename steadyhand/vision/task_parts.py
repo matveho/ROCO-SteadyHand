@@ -16,6 +16,39 @@ from __future__ import annotations
 BOARD_SIZE_M = 0.400
 
 
+# Confirmed by operator against the Sep-27 physical final-state head image.
+# Ordering matches detect_dark_part_boxes(): rectified board top-to-bottom,
+# then left-to-right. This mapping is ONLY valid for the assembled/final
+# layout. The source/pre-pick layout will get its own board-relative reference
+# after today's fresh initial-state capture.
+FINAL_LAYOUT_ORDER = (
+    "hdmi",
+    "rod_16mm",
+    "bolt_8mm",
+    "usb_a",
+    "gear_60teeth",
+    "gear_20teeth",
+    "battery_size1",
+    "battery_size5",
+    "pin",
+)
+
+
+def label_final_layout(parts):
+    """Attach confirmed final-layout names to nine spatially sorted detections."""
+    if len(parts) != len(FINAL_LAYOUT_ORDER):
+        raise ValueError(
+            f"final layout expects {len(FINAL_LAYOUT_ORDER)} parts, got {len(parts)}"
+        )
+    out = []
+    for part, name in zip(parts, FINAL_LAYOUT_ORDER):
+        item = dict(part)
+        item["name"] = name
+        item["identity_source"] = "confirmed_final_layout_spatial_order"
+        out.append(item)
+    return out
+
+
 def rectify_board(rgb, corners_px, *, canonical_size=800):
     """Return (rectified_rgb, H_image_to_board).
 
@@ -186,7 +219,7 @@ def detect_dark_part_boxes(
 
 
 def project_part_boxes_to_image(parts, H_image_to_board, *, padding_px=6):
-    """Add image-space quadrilaterals for board-space part boxes."""
+    """Add image-space quadrilaterals and exact projected centers."""
     import cv2
     import numpy as np
 
@@ -205,9 +238,16 @@ def project_part_boxes_to_image(parts, H_image_to_board, *, padding_px=6):
             dtype=np.float32,
         )
         projected = cv2.perspectiveTransform(quad, Hinv)[0]
+
+        cx, cy = (float(v) for v in part["center_board_px"])
+        center = cv2.perspectiveTransform(
+            np.asarray([[[cx, cy]]], dtype=np.float32), Hinv
+        )[0, 0]
+
         item = dict(part)
         item["quad_image_px"] = [
             [float(x), float(y)] for x, y in projected
         ]
+        item["center_image_px"] = [float(center[0]), float(center[1])]
         out.append(item)
     return out
