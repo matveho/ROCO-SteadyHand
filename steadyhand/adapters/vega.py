@@ -561,7 +561,7 @@ class VegaAdapter(RobotAdapter):
                 except Exception:
                     pass
                 raise RuntimeError(
-                    "Joint motion/state validation failed after "
+                    "Joint motion/state timeout after "
                     f"{timeout_s:.1f}s: {detail}; stop and inspect"
                 )
             # Read-only polling; SDK owns the active command stream above.
