@@ -1,13 +1,13 @@
 # Vega wrist XY servo — competition path
 
-The verified physical LEFT wrist camera is `wrist_b`. The next physical
+The verified physical RIGHT wrist camera is `wrist_a`. The next physical
 milestone uses `tools/vega_wrist_fine_center.py`.
 
 This is a fixed-height XY validation only:
 - starts from an already-established safe low hover;
 - accepts that coarse base-frame XY explicitly on the command line;
 - never performs board/global navigation;
-- uses only `wrist_b` for feedback;
+- uses only `wrist_a` for feedback;
 - discards startup-black frames and rejects stale frame identities;
 - calibrates a local 2x2 image Jacobian with reversible +X/+Y probes;
 - returns to the reference pose between probes;
@@ -16,7 +16,7 @@ This is a fixed-height XY validation only:
 
 ## Preferred physical test
 
-After the preceding board/part coarse-motion benchmark has placed the LEFT TCP
+After the preceding board/part coarse-motion benchmark has placed the RIGHT TCP
 at the desired low hover, use the exact base XY printed by that successful run:
 
 ```bash
@@ -67,7 +67,7 @@ Every run creates `runs/wrist_fine_<UTC>/` unless `--output` is supplied.
 It records:
 - `arguments.json`;
 - `start_state.json` with supplied coarse XY and measured TCP;
-- every accepted `wrist_b` RGB frame and metadata;
+- every accepted `wrist_a` RGB frame and metadata;
 - `capture_events.jsonl`, including discarded startup-dark frames;
 - `events.jsonl` with reference observations, measured probe/return TCPs,
   tracked feature pixels, fitted Jacobian, every correction request and every
@@ -75,7 +75,7 @@ It records:
 - tracked PNG overlays;
 - `result.json`.
 
-Success ends with `WRIST_B FINE CENTER PASS`.
+Success ends with `WRIST_A FINE CENTER PASS`.
 
 For the main agent, return the console lines for:
 `START STATE`, `REFERENCE`, `PROBE_X`, both `RETURN_REFERENCE` events,
