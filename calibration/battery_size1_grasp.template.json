@@ -8,7 +8,9 @@
     "goal_pixel_uv": null,
     "image_size_px": null,
     "source_image": null,
-    "source": null
+    "source": null,
+    "taught_hover_tcp_z_m": null,
+    "taught_tip_quaternion_wxyz": null
   },
   "grasp": {
     "tcp_z_m": null,
@@ -16,7 +18,7 @@
     "source": null
   },
   "gripper": {
-    "current_a": 1.0,
+    "current_a": 1,
     "speed_dps": 240
   },
   "calibration_complete": false
