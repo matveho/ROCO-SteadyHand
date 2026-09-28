@@ -193,11 +193,11 @@ class ImageServoTests(unittest.TestCase):
             calls += 1
             right = black if calls == 1 else good
             frame_b = types.SimpleNamespace(
-                rgb=right, frame_id=calls, timestamp_ns=calls * 10,
+                rgb=black, frame_id=calls, timestamp_ns=calls * 10,
                 received_monotonic_ns=calls * 100,
             )
             frame_a = types.SimpleNamespace(
-                rgb=black, frame_id=calls, timestamp_ns=calls * 10,
+                rgb=right, frame_id=calls, timestamp_ns=calls * 10,
                 received_monotonic_ns=calls * 100,
             )
             return types.SimpleNamespace(wrist_a=frame_a, wrist_b=frame_b)
