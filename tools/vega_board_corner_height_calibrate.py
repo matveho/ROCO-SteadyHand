@@ -20,6 +20,7 @@ from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
+from steadyhand.vega_presets import configured_right_preset
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,14 +56,48 @@ def _load_frame(path, config):
     return raw, center, ux, uy, pose
 
 
-def _corner_pose(center_xy, ux, uy, center_pose, x_offset, y_offset):
+def _corner_pose(center_xy, ux, uy, center_pose, x_offset, y_offset, quaternion=None):
     return Pose(
         (
             center_xy[0] + ux[0] * x_offset + uy[0] * y_offset,
             center_xy[1] + ux[1] * x_offset + uy[1] * y_offset,
             center_pose.position_m[2],
         ),
-        center_pose.quaternion_wxyz,
+        center_pose.quaternion_wxyz if quaternion is None else tuple(quaternion),
+    )
+
+
+def _reachable_corner(robot, *, label, center_xy, ux, uy, center_pose,
+                      x_offset, y_offset, quaternion):
+    """Find the largest reachable inset toward a requested board corner.
+
+    The calibrated board rectangle can extend beyond the arm envelope.  Probe
+    from the requested corner toward CENTER before any motion, so the tool
+    never starts a physical move with an IK target known to fail.
+    """
+    seed = robot._read_joint_positions()
+    last_error = None
+    # Keep the exact corner as the first choice; progressively inset by 2 cm.
+    for alpha in (1.00, 0.94, 0.88, 0.82, 0.76, 0.70, 0.64, 0.58, 0.52):
+        target = _corner_pose(
+            center_xy, ux, uy, center_pose,
+            float(x_offset) * alpha, float(y_offset) * alpha,
+            quaternion,
+        )
+        try:
+            robot._kinematics.solve(target, seed)
+        except Exception as exc:
+            last_error = exc
+            continue
+        if alpha < 1.0:
+            print(
+                f"{label}: full corner was outside the IK envelope; using "
+                f"{alpha:.0%} inset toward CENTER", flush=True,
+            )
+        return target, alpha
+    raise RuntimeError(
+        f"{label} has no reachable supervised inset on the calibrated plane; "
+        f"last IK error: {last_error}"
     )
 
 
@@ -102,6 +137,11 @@ def main(argv=None):
 
     cfg = load_bundle("vega")["robot"]
     raw, center, ux, uy, center_pose = _load_frame(args.calibration, cfg)
+    try:
+        _, ready_pose = configured_right_preset(cfg, "right_ready")
+        corner_quaternion = ready_pose.quaternion_wxyz
+    except (KeyError, ValueError):
+        corner_quaternion = center_pose.quaternion_wxyz
     frame = raw["corrected_board_frame_xy"]
     x_offset = float(args.x_offset_m if args.x_offset_m is not None else frame["x_reference_distance_m"])
     y_offset = float(args.y_offset_m if args.y_offset_m is not None else frame["y_reference_distance_m"])
@@ -118,21 +158,19 @@ def main(argv=None):
     try:
         robot.connect()
         targets = {
-            "TOP_RIGHT": _corner_pose(center, ux, uy, center_pose, +x_offset, +y_offset),
-            "BOTTOM_LEFT": _corner_pose(center, ux, uy, center_pose, -x_offset, -y_offset),
+            "TOP_RIGHT": (+x_offset, +y_offset),
+            "BOTTOM_LEFT": (-x_offset, -y_offset),
         }
         kin_cfg = robot._kinematics.config
         kin_cfg.update({"position_tolerance_m": 0.002, "orientation_tolerance_rad": 0.05,
                         "max_seed_delta_rad": 2.4, "max_iterations": 300})
-        for label, target in targets.items():
+        for label, (x_corner, y_corner) in targets.items():
+            target, alpha = _reachable_corner(
+                robot, label=label, center_xy=center, ux=ux, uy=uy,
+                center_pose=center_pose, x_offset=x_corner, y_offset=y_corner,
+                quaternion=corner_quaternion,
+            )
             print(label, "TARGET =", tuple(round(v, 6) for v in target.position_m), flush=True)
-            try:
-                robot._kinematics.solve(target, robot._read_joint_positions())
-            except Exception as exc:
-                raise RuntimeError(
-                    f"{label} target is not reachable from the current measured state; "
-                    "adjust --x-offset-m/--y-offset-m rather than forcing a path: " + str(exc)
-                ) from exc
             input(f"Press Enter to move to {label}; type anything to cancel: ")
             move_tcp_segmented(robot, target, speed_scale=args.speed_scale,
                                max_translation_step_m=0.06,
@@ -144,6 +182,8 @@ def main(argv=None):
                 raise ValueError("measured height must be finite")
             samples[label] = {
                 "requested_tip_r_pose": {"position_m": list(target.position_m), "quaternion_wxyz": list(target.quaternion_wxyz)},
+                "requested_corner_offsets_m": {"x": abs(x_corner), "y": abs(y_corner)},
+                "reachable_inset_fraction": alpha,
                 "joint_names": list(robot._joint_names),
                 "joint_positions_rad": list(robot._read_joint_positions()),
                 "tip_r_pose": {"position_m": list(pose.position_m), "quaternion_wxyz": list(pose.quaternion_wxyz)},
