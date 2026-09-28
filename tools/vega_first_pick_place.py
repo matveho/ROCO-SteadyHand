@@ -42,6 +42,7 @@ def main(argv=None):
     bundle = load_bundle("vega")
     cfg = bundle["robot"]
     cfg["allow_robot_init_head_motion"] = True
+    cfg["auto_clear_software_estop_on_connect"] = True
 
     skills_cfg = load_vega_skills()
     safety = dict(skills_cfg.get("safety") or {})
