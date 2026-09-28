@@ -122,7 +122,7 @@ def jacobian_from_measured_probes(reference_uv, probe_uvs, reference_xy, probe_x
     if np.linalg.svd(displacement, compute_uv=False)[-1] < 0.003:
         raise ValueError("Measured probes are too small or collinear (need >=3 mm)")
     if np.min(np.linalg.norm(pixels, axis=0)) < 3:
-        raise ValueError("Feature barely moved: check left-camera label / tracking")
+        raise ValueError("Feature barely moved: check selected wrist-camera label / tracking")
     matrix = pixels @ np.linalg.inv(displacement)
     result = PixelJacobian(*matrix.ravel())
     if result.condition_number() > 30:
@@ -234,7 +234,7 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
     if z < floor_m + 0.06:
         raise ValueError("Wrist servo requires at least 60 mm clearance above TCP floor")
     if quaternion_to_matrix(quat)[2][2] < math.cos(0.12):
-        raise ValueError("TCP is not in the corrected vertical tip_l orientation; use --move-to-board")
+        raise ValueError("TCP is not in the corrected vertical tip_r orientation; use --move-to-board")
 
     def target(dx, dy):
         return Pose((origin.position_m[0]+dx, origin.position_m[1]+dy, z), quat)
