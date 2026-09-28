@@ -159,3 +159,55 @@ Transient IK failures are automatically recovered. The runner closes the
 current motion session, uses the validated camera-clear pose, captures a fresh
 head-camera frame, and retries. Calibration repeats this startup sequence until
 it succeeds or the operator presses Ctrl-C.
+
+The final physical five-point result is preserved in
+`calibration/vega_board_manual_fallback.json`. If the live calibration file is
+absent, the pipeline uses that fallback automatically. The task-height planner
+uses the fitted plane plus the measured local residual corrections; the final
+fit residual is about 3.7 mm.
+
+## Next productive bring-up: battery wrist centering
+
+After updating the robot, first move to the calibrated coarse battery point:
+
+~~~bash
+python3 tools/vega_competition_pipeline.py \
+  --test-positions task.battery_size1.pick \
+  --confirm-head-motion \
+  --confirm-physical-motion
+~~~
+
+Then initialize and teach the right wrist-camera battery calibration. The
+existing tools use verified `wrist_a` and do not require manual claw control:
+
+~~~bash
+python3 tools/vega_battery_size1_calibrate.py init --force
+python3 tools/vega_battery_size1_calibrate.py \
+  capture-goal-image \
+  --output runs/battery_size1_goal.png
+~~~
+
+Inspect that image, choose a repeatable battery feature pixel `(U,V)`, then
+record it while the arm remains at the same hover:
+
+~~~bash
+python3 tools/vega_battery_size1_calibrate.py \
+  record-goal-pixel \
+  --goal-pixel U V \
+  --source-image runs/battery_size1_goal.png \
+  --confirm-read-current-tcp
+~~~
+
+For a first wrist-servo validation, use the coarse XY printed by the pipeline
+and the current feature pixel:
+
+~~~bash
+python3 tools/vega_battery_size1_center.py \
+  --coarse-xy X Y \
+  --feature U V \
+  --confirm-physical-motion
+~~~
+
+This keeps Z and orientation fixed, calibrates the local image Jacobian from
+small measured probes, and stops before grasping. Only after that passes should
+the grasp height be taught and `vega_battery_size1_pick.py` be attempted.
