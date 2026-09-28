@@ -29,7 +29,7 @@
       "near_robot_edge_physical_claw_clearance_m": 0.039,
       "far_edge_physical_claw_clearance_m": 0.061,
       "forward_span_m": 0.383,
-      "derived_rise_angle_deg": 3.287596,
+      "derived_rise_angle_deg": 3.287529,
       "direction": "+base X / away from robot",
       "note": "this measured 39/61 mm over 383 mm result supersedes the earlier visual estimate of about 10 degrees"
     },
