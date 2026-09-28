@@ -2,7 +2,7 @@
 
 This tool NEVER constructs dexcontrol.robot.Robot and never sends a motion,
 mode, E-stop, gripper, head, or camera command.  It creates a read-only arm
-state subscriber directly, computes modeled tip_l pose from measured joints
+state subscriber directly, computes modeled tip_r pose from measured joints
 using the tracked Pinocchio model, and writes analyzer-compatible JSON.
 
 Robot repositioning between A/B/C/D is entirely external to this process.
@@ -204,7 +204,7 @@ def resolve_ab_delta(observations, explicit_delta_m=None):
 def _fallback_context():
     return {
         "purpose": (
-            "offline calibration of modeled tip_l to operator-defined "
+            "offline calibration of modeled tip_r to operator-defined "
             "physical claw center/frame"
         ),
         "frame_convention": {
@@ -282,7 +282,7 @@ def build_analyzer_payload(
             "mode": "READ_ONLY_NO_MOTION_COMMANDS",
             "robot_name": robot_name,
             "base_frame": "vega_1u_base_link",
-            "tcp_frame": "tip_l",
+            "tcp_frame": "tip_r",
             "generated_at_utc": datetime.now(timezone.utc).isoformat(),
             "note": (
                 "Robot repositioning between observations was external to this "
@@ -526,12 +526,12 @@ class ReadOnlyVegaTipReader:
 def _print_capture(label, sample):
     pose = sample["pose"]
     print(
-        f"{label} tip_l XYZ m = "
+        f"{label} tip_r XYZ m = "
         f"{tuple(round(float(v), 6) for v in pose.position_m)}",
         flush=True,
     )
     print(
-        f"{label} tip_l QUAT wxyz = "
+        f"{label} tip_r QUAT wxyz = "
         f"{tuple(round(float(v), 8) for v in pose.quaternion_wxyz)}",
         flush=True,
     )
@@ -635,9 +635,9 @@ def main(argv=None):
         parser.error("--fresh-timeout-s must be finite and > 0")
 
     cfg = load_bundle("vega")["robot"]
-    if cfg["working_arm"] != "left" or cfg["kinematics"]["ee_frame"] != "tip_l":
+    if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
         parser.error(
-            "tool-frame recorder currently requires working_arm=left and ee_frame=tip_l"
+            "tool-frame recorder currently requires working_arm=right and ee_frame=tip_r"
         )
 
     length_scale = 0.001 if args.external_length_unit == "mm" else 1.0
