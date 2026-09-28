@@ -16,7 +16,8 @@ class TaskCoordinateReachabilityTests(unittest.TestCase):
         pose = _live_pose(
             (0.193 + 0.1, 0.037 - 0.05, 1.04),
             source_center=(0.193, 0.037), live_center=(0.4, -0.2),
-            ux=(1.0, 0.0), uy=(0.0, 1.0), hover=0.55,
+            ux=(1.0, 0.0), uy=(0.0, 1.0), surface_plane=(0.0, 0.0, 0.50),
+            clearance_m=0.05,
             quat=(1.0, 0.0, 0.0, 0.0),
         )
         self.assertEqual(pose, Pose((0.5, -0.25, 0.55), (1.0, 0.0, 0.0, 0.0)))

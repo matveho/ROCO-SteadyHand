@@ -94,3 +94,17 @@ The default offsets reuse the measured calibration reference distances. If a
 corner target is outside the arm workspace, rerun with smaller explicit
 `--x-offset-m` and `--y-offset-m` values. The tool preflights each target before
 motion and writes `calibration/vega_board_corner_heights.json`.
+
+For the board frame used by task-coordinate motion, run the five-point loop
+after the initial head-camera read:
+
+~~~bash
+python3 tools/vega_board_five_point_calibrate.py \
+  --confirm-physical-motion
+~~~
+
+This visits CENTER, TOP_RIGHT, BOTTOM_RIGHT, and BOTTOM_LEFT. At each point,
+correct the camera estimate with the forward/back/left/right TCP jog prompt,
+then enter the measured board-surface Z in millimetres in
+`vega_1u_base_link`. The output fits the board surface plane and corrected
+axes. Task-coordinate motion refuses to run until this schema is present.

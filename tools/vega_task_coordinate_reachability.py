@@ -39,6 +39,11 @@ def _load_manual(path, cfg):
         raise ValueError("manual calibration belongs to a different robot")
     if raw.get("base_frame") != cfg["kinematics"]["base_frame"]:
         raise ValueError("manual calibration has the wrong base frame")
+    if raw.get("calibration_kind") != "vega_board_five_point_surface":
+        raise ValueError(
+            "task motion requires a completed five-point surface calibration; "
+            "run tools/vega_board_five_point_calibrate.py first"
+        )
     frame = raw.get("corrected_board_frame_xy") or {}
     center = _finite_vector(frame.get("center_base_xy_m"), 2, "live board center")
     ux = _finite_vector(frame.get("board_x_unit_base_xy"), 2, "live board X axis")
@@ -48,10 +53,12 @@ def _load_manual(path, cfg):
     center_pose = (raw.get("manual_corrected") or {}).get("CENTER")
     if not isinstance(center_pose, dict):
         raise ValueError("manual calibration lacks corrected CENTER pose")
-    hover = float(Pose.from_mapping(center_pose).position_m[2])
-    if not math.isfinite(hover):
-        raise ValueError("calibrated hover height is not finite")
-    return center, ux, uy, hover
+    plane = raw.get("board_surface_plane_base") or {}
+    coefficients = plane.get("coefficients") or {}
+    a, b, c = (float(coefficients.get(key)) for key in ("a", "b", "c"))
+    if not all(math.isfinite(v) for v in (a, b, c)):
+        raise ValueError("five-point calibration lacks a finite board surface plane")
+    return center, ux, uy, (a, b, c)
 
 
 def _resolve_point(name, task_data):
@@ -63,13 +70,17 @@ def _resolve_point(name, task_data):
     return part, kind, _finite_vector(task_data["parts"][part][kind], 3, name)
 
 
-def _live_pose(source_xyz, *, source_center, live_center, ux, uy, hover, quat):
+def _live_pose(source_xyz, *, source_center, live_center, ux, uy, surface_plane, clearance_m, quat):
     dx = float(source_xyz[0]) - float(source_center[0])
     dy = float(source_xyz[1]) - float(source_center[1])
+    a, b, c = surface_plane
+    surface_z = a * (live_center[0] + ux[0] * dx + uy[0] * dy) + b * (
+        live_center[1] + ux[1] * dx + uy[1] * dy
+    ) + c
     return Pose(
         (live_center[0] + ux[0] * dx + uy[0] * dy,
          live_center[1] + ux[1] * dx + uy[1] * dy,
-         float(hover)),
+         float(surface_z + clearance_m)),
         tuple(quat),
     )
 
@@ -81,6 +92,8 @@ def main(argv=None):
     p.add_argument("--coordinates", default="configs/task_coordinates.json")
     p.add_argument("--calibration", default="calibration/vega_board_manual.json")
     p.add_argument("--speed-scale", type=float, default=0.35)
+    p.add_argument("--hover-clearance-mm", type=float, default=50.0,
+                   help="TCP clearance above the fitted board surface")
     p.add_argument("--check-only", action="store_true", help="connect and preflight IK, but do not move")
     p.add_argument("--confirm-physical-motion", action="store_true")
     args = p.parse_args(argv)
@@ -88,6 +101,8 @@ def main(argv=None):
         p.error("--confirm-physical-motion is required unless --check-only is used")
     if not 0.15 <= args.speed_scale <= 0.6:
         p.error("--speed-scale must be 0.15..0.6")
+    if not 20.0 <= args.hover_clearance_mm <= 100.0:
+        p.error("--hover-clearance-mm must be 20..100")
 
     cfg = load_bundle("vega")["robot"]
     task_path = Path(args.coordinates)
@@ -98,7 +113,7 @@ def main(argv=None):
     if abs(float(task_data.get("board_width_m")) - 0.386) > 1e-9:
         raise ValueError("task coordinate registration must declare board_width_m=0.386")
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
-    live_center, ux, uy, hover = _load_manual(args.calibration, cfg)
+    live_center, ux, uy, surface_plane = _load_manual(args.calibration, cfg)
     _, ready_pose = configured_right_preset(cfg, "right_ready")
     points = []
     for name in args.points:
@@ -106,12 +121,12 @@ def main(argv=None):
         points.append((name, part, kind, source_xyz,
                        _live_pose(source_xyz, source_center=source_center,
                                   live_center=live_center, ux=ux, uy=uy,
-                                  hover=hover, quat=ready_pose.quaternion_wxyz)))
+                                  surface_plane=surface_plane,
+                                  clearance_m=float(args.hover_clearance_mm) / 1000.0,
+                                  quat=ready_pose.quaternion_wxyz)))
 
     safety = load_vega_skills()["safety"]
     floor = float(safety["min_tcp_z_m"])
-    if hover < floor:
-        raise ValueError(f"calibrated hover z={hover:.6f} is below safety floor {floor:.6f}")
     cfg["allow_robot_init_head_motion"] = True
     cfg["auto_clear_software_estop_on_connect"] = True
     robot = VegaAdapter(cfg)
@@ -122,6 +137,8 @@ def main(argv=None):
         # All IK checks use the taught RIGHT_READY seed; no physical motion occurs
         # until every requested target has passed.
         for name, _, _, source_xyz, target in points:
+            if target.position_m[2] < floor:
+                raise ValueError(f"{name} target z={target.position_m[2]:.6f} is below safety floor {floor:.6f}")
             robot._kinematics.solve(target, ready_q)
             print(name, "SOURCE =", tuple(round(v, 6) for v in source_xyz),
                   "LIVE =", tuple(round(v, 6) for v in target.position_m), flush=True)
