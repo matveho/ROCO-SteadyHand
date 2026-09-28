@@ -89,7 +89,8 @@ def main(argv=None):
 
         camera = VegaHeadCamera()
         camera.connect()
-        frame = camera.read(include_depth=False)
+        print("WAITING FOR HEAD CAMERA FRAMES", flush=True)
+        frame = camera.read(include_depth=False, timeout_s=15.0)
 
         scene = detect_head_task_scene(
             frame.left_rgb,
@@ -196,12 +197,9 @@ def main(argv=None):
 
         print("BOARD AXIS BENCHMARK COMPLETE", flush=True)
         return 0
-    except BaseException:
-        try:
-            robot.stop()
-        except BaseException as stop_error:
-            print(f"STOP FAILED: {stop_error}; use physical e-stop", file=sys.stderr)
-        raise
+    # Perception/planning failures happen before arm motion and must not assert
+    # software e-stop. VegaAdapter motion methods already e-stop if an actual
+    # arm command fails or is interrupted.
     finally:
         if camera is not None:
             try:
