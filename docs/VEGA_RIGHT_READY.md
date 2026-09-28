@@ -108,3 +108,23 @@ correct the camera estimate with the forward/back/left/right TCP jog prompt,
 then enter the measured board-surface Z in millimetres in
 `vega_1u_base_link`. The output fits the board surface plane and corrected
 axes. Task-coordinate motion refuses to run until this schema is present.
+
+## Operator competition pipeline
+
+The menu entry point keeps calibration, position tests, and versioned task
+experiments together:
+
+~~~bash
+python3 tools/vega_competition_pipeline.py \
+  --confirm-head-motion \
+  --confirm-physical-motion
+~~~
+
+Choose **Recalibrate** whenever the board has moved or rotated. The menu runs
+the five-point camera/TCP/height procedure and reloads its output immediately.
+The **Position tests** menu lists the corrected board references and every
+published task point; selected targets are preflighted together before motion.
+The **Competition task versions** menu preserves the battery and all-part
+iterations as named entries. Only the calibrated battery approach-only entry
+currently commands motion; later grasp/place versions remain visible scaffolds
+until their approach, gripper, and verification gates are completed.
