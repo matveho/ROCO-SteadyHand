@@ -2786,3 +2786,27 @@ No dexcontrol / robot access is used by this tool. The workflow should be:
   tools/vega_scene_perception.py and tools/vega_board_axis_benchmark.py now share
   the same startup rule: detect an existing head publisher, otherwise launch
   dexsensor with the explicit config path and robot namespace before connecting.
+
+2026-09-28 BOARD-IMAGING CLAW-OCCLUSION FIX:
+  During the live board-axis benchmark the low left claw appeared in the head
+  image and was detected as one or more dark part-like regions. Operator removed
+  two real parts and the detector still reached nine because the claw filled the
+  count. Therefore part-count==9 is NOT a valid prerequisite for coarse board
+  registration and has been removed from the board-axis benchmark.
+  New shared helper steadyhand/vega_camera_clear.py moves the left tip_l before
+  board imagery to an operator-requested high centered preset:
+    x = 0.50 m in vega_1u_base_link
+    y = 0.00 m
+    z = safety.min_tcp_z_m + 0.80 m (~1.256 m with current floor)
+    speed_scale = 0.90
+    physical gripper axis intended vertical/downward
+  It first raises to at least floor+0.35 m while preserving current orientation,
+  then completes the high centered vertical-claw pose. Head capture starts only
+  after this move completes. tools/vega_board_axis_benchmark.py,
+  tools/vega_board_benchmark.py, and tools/vega_scene_perception.py now use this
+  camera-clear behavior before board shots.
+  IMPORTANT observation: the 2026-09-28 board-axis run was interrupted with
+  Ctrl-C during MOVE CENTER, before the interpolated endpoint/orientation was
+  reached. The operator observed the hand mid-move and not yet vertical; do not
+  treat that interrupted intermediate orientation as endpoint validation.
+  The next physical test must verify the completed camera-clear preset visually.
