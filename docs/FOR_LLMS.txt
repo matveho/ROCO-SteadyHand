@@ -2019,3 +2019,26 @@ Current competition-network workflow:
   steadyhand/cameras/vega.py intrinsics_from_camera_info() now recognizes this
   live nested DexSensor representation. The previous board-benchmark failure
   was only this parser mismatch; camera acquisition itself succeeded.
+
+
+2026-09-27 BOARD BENCHMARK IK FIX:
+  First coarse board registration succeeded and produced:
+    TL  = (0.74135, +0.19529, 0.45600)
+    TR  = (0.74397, -0.19445, 0.45600)
+    BR  = (0.38154, -0.21589, 0.45600)
+    BL  = (0.38324, +0.22124, 0.45600)
+    center = (0.56253, +0.00155, 0.45600)
+    apparent size ~= 0.413 x 0.361 m
+  The first physical benchmark did NOT move because the fixed vertical-claw IK
+  precheck rejected all four coarse yaw candidates at hover_z=0.62. The closest
+  yaw=0 solution missed the strict normal solver threshold by only ~0.43 mm
+  (2.43 mm position error vs 2 mm configured tolerance).
+  tools/vega_board_benchmark.py now:
+    - uses relaxed benchmark-only IK tolerances 6 mm / 0.08 rad;
+    - keeps the normal task config unchanged;
+    - searches 8 vertical-tool yaw angles at 45 deg increments;
+    - searches multiple safe hover heights around 0.64 m automatically;
+    - chooses the lowest joint-motion-cost combination that reaches center +
+      all 4 corners before any physical benchmark move.
+  This is for coarse board navigation only; precision wrist-centering still owns
+  final XY accuracy.
