@@ -1,14 +1,14 @@
 # battery_size1 first autonomous grasp bring-up
 
-Scope: first left-arm `battery_size1` grasp and lift only. No transfer, place,
+Scope: first right-arm `battery_size1` grasp and lift only. No transfer, place,
 release, snap or insertion is performed by these tools.
 
 The bring-up deliberately refuses guessed geometry. Two values must be taught
 on the competition robot before autonomous descent:
 
-1. the `wrist_b` pixel occupied by the chosen battery feature when the jaws
+1. the `wrist_a` pixel occupied by the chosen battery feature when the jaws
    are mechanically aligned over the battery;
-2. the measured `tip_l` Z at the desired battery grasp height.
+2. the measured `tip_r` Z at the desired battery grasp height.
 
 The dedicated calibration file is:
 
@@ -25,8 +25,8 @@ intentionally null.
 Verified inputs used by the tools:
 
 - working arm: LEFT;
-- TCP: `tip_l`;
-- physical left wrist camera: `wrist_b`;
+- TCP: `tip_r`;
+- physical right wrist camera: `wrist_a`;
 - grip current: 1.0 A;
 - grip speed: 240 deg/s;
 - task floor: `configs/skills/vega.json:safety.min_tcp_z_m`;
@@ -56,7 +56,7 @@ the OPEN jaws are mechanically centered over `battery_size1`. Do not descend
 to the grasp height yet. This is a calibration operation; external visual
 inspection is acceptable.
 
-Capture the verified LEFT wrist image while the jaws are mechanically aligned:
+Capture the verified RIGHT wrist image while the jaws are mechanically aligned:
 
 ```bash
 python3 tools/vega_battery_size1_calibrate.py \
@@ -127,7 +127,7 @@ Use the coarse X/Y from the already-established safe hover. For the current
 board-axis workflow, this should be the final measured `REACHED CENTER` X/Y,
 not a commanded/stale board estimate.
 
-In the initial `wrist_b` hover image identify the chosen battery feature and
+In the initial `wrist_a` hover image identify the chosen battery feature and
 supply its current pixel as `--feature U V`:
 
 ```bash
@@ -138,7 +138,7 @@ python3 tools/vega_battery_size1_center.py \
 ```
 
 This tool:
-- uses only `wrist_b`;
+- uses only `wrist_a`;
 - stays at fixed Z/orientation;
 - fits the local 2x2 image Jacobian from measured reversible probes;
 - converges to the taught jaw goal pixel;
@@ -163,7 +163,7 @@ python3 tools/vega_battery_size1_pick.py \
 The pick tool refuses to move unless:
 
 - the calibration file is complete;
-- the calibration belongs to the current robot/base frame and `wrist_b`;
+- the calibration belongs to the current robot/base frame and `wrist_a`;
 - the gripper config is exactly 1.0 A / 240 deg/s;
 - the wrist alignment result converged to the taught goal pixel;
 - the alignment result was generated from the current calibration contents;
