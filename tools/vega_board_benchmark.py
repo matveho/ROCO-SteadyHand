@@ -304,8 +304,8 @@ def main(argv=None):
 
     robot = VegaAdapter(cfg)
     robot.prepare()
-    robot.connect()
     try:
+        robot.connect()
         # Robot() homes the head forward. Re-aim it down AFTER connecting so the
         # head stays on the board during the benchmark and is ready for the next
         # perception step.
@@ -341,6 +341,7 @@ def main(argv=None):
                 center,
                 float(args.hover_z),
                 floor,
+                fixed_yaw,
             )
             print(
                 f"MOVE {label.upper()} ->",
@@ -364,6 +365,12 @@ def main(argv=None):
 
         print("BOARD BENCHMARK COMPLETE")
         return 0
+    except BaseException:
+        try:
+            robot.stop()
+        except BaseException as stop_error:
+            print(f"STOP FAILED: {stop_error}; use physical e-stop", file=sys.stderr)
+        raise
     finally:
         robot.close()
 

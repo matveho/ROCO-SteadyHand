@@ -2127,3 +2127,25 @@ Current competition-network workflow:
        to reduce repeated stop/start motion. Normal task config is unchanged.
   Preferred physical behavior: establish the low plane at board center, then
   traverse center/corners in that same plane like a 3D-printer nozzle.
+
+2026-09-27 WRIST SERVO HANDOFF FOLLOW-UP (after 179f50e):
+  Read-only live SSH inspection confirmed BOTH interpreters lack wrist_cameras.
+  Only video0/video1 named vi-output, zedx 9-0020 / 9-0028 are enumerated.
+  /opt/wrist-cameras and /run/wrist-cameras are absent. No ISX031 module appeared
+  in the inspected loaded-module list. Sony capture is NOT verified on this unit.
+  Immediate blocker: sponsor must confirm capture-board connection and supported
+  driver/API. No kernel, boot or system installation was performed.
+
+  Fixed board benchmark missing fixed_yaw argument (would crash at CENTER).
+  Added stop-on-exception including connection failures, preserving cleanup.
+  Added tools/vega_wrist_servo.py: manual-feature, image-saving XY probe and
+  bounded correction loop from an already-established vertical hover pose.
+  Uses actual measured XY displacement, rejects ill-conditioned calibration,
+  stale frame IDs, tracking failures, and growing image error. Fixed Z/yaw;
+  10 mm correction cap, 40 mm total radius, five corrections maximum.
+  Camera readiness precedes Robot construction. No live servo motion performed:
+  missing Sony hardware/software path prevents meaningful validation.
+  Image-center convergence does NOT prove jaw alignment. A jaw-aligned desired
+  pixel and height-dependent calibration are still required before picking.
+  See docs/WRIST_SERVO.md. Offline suite: 89 tests, OK, 11 Pinocchio skips.
+  Updated two stale gripper fakes for the vendored Motor.grip(speed=...) API.

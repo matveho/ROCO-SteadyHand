@@ -41,9 +41,14 @@ class PixelJacobian:
         eu, ev = (float(x) for x in error_uv)
         a, b = self.du_dx, self.du_dy
         c, d = self.dv_dx, self.dv_dy
+        if not all(math.isfinite(float(v)) for v in (eu, ev, a, b, c, d, gain, max_step_m)):
+            raise ValueError("Wrist servo inputs must be finite")
+        if not 0 < gain <= 1 or max_step_m <= 0:
+            raise ValueError("gain must be in (0,1] and max_step_m positive")
         det = a * d - b * c
-        if not math.isfinite(det) or abs(det) < 1e-6:
-            raise ValueError("Wrist pixel Jacobian is singular")
+        # Scale-independent conditioning guard (Frobenius condition estimate).
+        if abs(det) < 1e-6 or (a*a+b*b+c*c+d*d) / abs(det) > 50:
+            raise ValueError("Wrist pixel Jacobian is singular or poorly conditioned")
 
         # Desired image change is -error.
         dx = float(gain) * ((d * (-eu) - b * (-ev)) / det)
@@ -78,6 +83,8 @@ def image_center(shape):
     if len(shape) < 2:
         raise ValueError("image shape needs H,W")
     h, w = int(shape[0]), int(shape[1])
+    if h <= 0 or w <= 0:
+        raise ValueError("image dimensions must be positive")
     return ((w - 1) / 2.0, (h - 1) / 2.0)
 
 
@@ -86,3 +93,24 @@ def pixel_error(feature_uv, image_shape):
     u, v = (float(x) for x in feature_uv)
     cu, cv = image_center(image_shape)
     return (u - cu, v - cv)
+
+
+def jacobian_from_measured_probes(pixels, xy_positions):
+    """Use actual XY displacement, including tracking cross-coupling.
+
+    Rows are reference, X probe, Y probe; both probes are relative to reference.
+    """
+    import numpy as np
+    uv = np.asarray(pixels, dtype=float)
+    xy = np.asarray(xy_positions, dtype=float)
+    if uv.shape != (3, 2) or xy.shape != (3, 2):
+        raise ValueError("Need three UV and three measured XY pairs")
+    if not np.isfinite(uv).all() or not np.isfinite(xy).all():
+        raise ValueError("Probe measurements must be finite")
+    motion = (xy[1:] - xy[0]).T
+    if np.linalg.svd(motion, compute_uv=False)[-1] < 0.002:
+        raise ValueError("Independent measured probe displacement must exceed 2 mm")
+    j = (uv[1:] - uv[0]).T @ np.linalg.inv(motion)
+    result = PixelJacobian(*j.ravel())
+    result.base_delta_for_pixel_error((0, 0))
+    return result
