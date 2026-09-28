@@ -2128,6 +2128,35 @@ Current competition-network workflow:
   Preferred physical behavior: establish the low plane at board center, then
   traverse center/corners in that same plane like a 3D-printer nozzle.
 
+
+2026-09-27 WRIST XY BENCHMARK SHIPPED (PHYSICAL RESULT STILL PENDING):
+  Rebased onto 179f50e; retained low flat smooth motion and head-down behavior.
+  Corrected its missing fixed_yaw argument in the board planner call.
+  Added --center-only to tools/vega_board_benchmark.py so corners never block
+  getting a downward wrist view over the board region.
+  Added tools/vega_wrist_servo.py and docs/VEGA_WRIST_SERVO.md:
+    - default camera-only mode saves both labeled wrist PNGs and metadata;
+    - --execute requires an explicit verified left --camera label and the
+      existing --confirm-physical-motion gate (includes Robot() head homing);
+    - optional --move-to-board reuses registration and moves only to center;
+    - fixed-template feature tracking, auto near-center corner or --feature U V;
+    - 12 mm +X / return / +Y / return probes using live measured TCP XY;
+    - calibrated local Jacobian, bounded 15 mm corrections, 60 mm local radius;
+    - fixed Z and quaternion, 0.45 speed default, no descent or gripper calls;
+    - fine IK restored/tightened after coarse planner so 10 mm coarse tolerance
+      does not swallow probes or corrections;
+    - reject lost/ambiguous tracking, repeated frame identity, negligible image
+      response, ill-conditioned calibration, pose drift, divergence or stalls;
+    - raw/annotated PNGs, events.jsonl and truthful converged/stopped result.json.
+  Physical left wrist_a/wrist_b mapping is STILL UNKNOWN; do not invent it.
+  Centering an image is not a taught jaw alignment: --goal-pixel exists for that
+  future calibration before battery descent. No physical success is claimed.
+  Development workspace could not reach robot SSH at 192.168.50.20; operator
+  must deploy and run onboard. 16 new offline tests passed with NumPy/OpenCV.
+  Full suite: 101 tests, 11 Pinocchio-dependent skips; stale gripper test mocks
+  updated to accept the speed parameter already present in the vendored driver.
+
+
 2026-09-27 WRIST SERVO HANDOFF FOLLOW-UP (after 179f50e):
   Read-only live SSH inspection confirmed BOTH interpreters lack wrist_cameras.
   Only video0/video1 named vi-output, zedx 9-0020 / 9-0028 are enumerated.
@@ -2149,3 +2178,8 @@ Current competition-network workflow:
   pixel and height-dependent calibration are still required before picking.
   See docs/WRIST_SERVO.md. Offline suite: 89 tests, OK, 11 Pinocchio skips.
   Updated two stale gripper fakes for the vendored Motor.grip(speed=...) API.
+
+MERGE RESOLUTION: Canonical servo is the automated template-tracking implementation
+from fc841b0, with capture-only default, measured probes and bounded motion.
+Use docs/VEGA_WRIST_SERVO.md and --camera (not --left-camera).
+The earlier manual-feature CLI was superseded during this merge.

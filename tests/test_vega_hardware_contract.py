@@ -333,7 +333,7 @@ class Motor:
     def home(self): self.calls.append((self.side, "home"))
     def open(self, speed=150): self.calls.append((self.side, "open", speed))
     def close(self): self.calls.append((self.side, "close"))
-    def grip(self, *, current, speed=60):
+    def grip(self, *, current, speed):
         self.calls.append((self.side, "grip", current, speed)); return {"gripped": True}
     def move_to(self, fraction, *, speed): self.calls.append((self.side, "move_to", fraction, speed))
     def position(self): return 0.5
