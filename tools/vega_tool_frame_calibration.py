@@ -1,4 +1,4 @@
-"""Offline calibration/analyzer for Vega modeled tip_l vs physical claw center.
+"""Offline calibration/analyzer for Vega modeled tip_r vs physical claw center.
 
 No robot, camera, gripper, or DexControl imports are used.
 
@@ -160,14 +160,14 @@ def inspect_urdf(urdf_path):
         }
 
     wanted = {}
-    for name in ("L_ee_j0", "L_ee_fixed", "L_gripper_joint_tip"):
+    for name in ("R_ee_j0", "R_ee_fixed", "R_gripper_joint_tip"):
         if name in joints:
             row = dict(joints[name])
             row["rotation"] = row["rotation"].tolist()
             wanted[name] = row
 
-    if "L_gripper_joint_tip" in joints:
-        nominal = joints["L_gripper_joint_tip"]
+    if "R_gripper_joint_tip" in joints:
+        nominal = joints["R_gripper_joint_tip"]
         t_gripper_tip = np.eye(4)
         t_gripper_tip[:3, :3] = nominal["rotation"]
         t_gripper_tip[:3, 3] = nominal["xyz_m"]
@@ -493,7 +493,7 @@ def _print_report(result):
         print(f"  {name}: {row['parent']} -> {row['child']} xyz={tuple(row['xyz_m'])} rpy={tuple(row['rpy_rad'])}")
     if result["offset_solution"] is not None:
         row = result["offset_solution"]
-        print("SOLVED PHYSICAL CLAW-CENTER OFFSET IN tip_l (m) =",
+        print("SOLVED PHYSICAL CLAW-CENTER OFFSET IN tip_r (m) =",
               tuple(round(float(v), 6) for v in row["translation_tip_to_claw_center_m"]))
         print("OFFSET FIT RMS (mm) =", round(float(row["rms_residual_mm"]), 3))
     else:
@@ -501,9 +501,9 @@ def _print_report(result):
 
     axis = result["axis_solution"]
     if axis is not None:
-        print("PHYSICAL CLAW AXIS IN tip_l =",
+        print("PHYSICAL CLAW AXIS IN tip_r =",
               tuple(round(float(v), 6) for v in axis["physical_claw_axis_in_tip"]))
-        print("TILT FROM NOMINAL -tip_l Z (deg) =",
+        print("TILT FROM NOMINAL -tip_r Z (deg) =",
               round(float(axis["tilt_from_nominal_minus_tip_z_deg"]), 3))
     else:
         print("PHYSICAL CLAW AXIS = NOT MEASURED")
@@ -521,9 +521,9 @@ def _print_report(result):
 
     q = result["corrected_vertical_tip_quaternion_wxyz"]
     if q is None:
-        print("CORRECTED VERTICAL tip_l QUATERNION = WITHHELD (insufficient full orientation measurement)")
+        print("CORRECTED VERTICAL tip_r QUATERNION = WITHHELD (insufficient full orientation measurement)")
     else:
-        print("CORRECTED VERTICAL tip_l QUATERNION wxyz =",
+        print("CORRECTED VERTICAL tip_r QUATERNION wxyz =",
               tuple(round(float(v), 8) for v in q))
 
     print("ASSESSMENT")
