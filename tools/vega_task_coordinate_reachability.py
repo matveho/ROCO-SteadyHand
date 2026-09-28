@@ -23,6 +23,7 @@ from steadyhand.vega_presets import configured_right_preset
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_POINTS = ("battery_size1.pick", "usb_a.pick", "rod_16mm.place", "gear_20teeth.place")
 FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
+DEFAULT_HOVER_CLEARANCE_MM = 100.0
 
 
 def _finite_vector(value, size, name):
@@ -191,8 +192,10 @@ def main(argv=None):
     p.add_argument("--coordinates", default="configs/task_coordinates.json")
     p.add_argument("--calibration", default="calibration/vega_board_manual.json")
     p.add_argument("--speed-scale", type=float, default=0.35)
-    p.add_argument("--hover-clearance-mm", type=float, default=50.0,
-                   help="TCP clearance above the fitted board surface")
+    p.add_argument(
+        "--hover-clearance-mm", type=float, default=DEFAULT_HOVER_CLEARANCE_MM,
+        help="TCP clearance above the fitted board surface (default: 100 mm)",
+    )
     p.add_argument("--check-only", action="store_true", help="connect and preflight IK, but do not move")
     p.add_argument("--confirm-physical-motion", action="store_true")
     args = p.parse_args(argv)

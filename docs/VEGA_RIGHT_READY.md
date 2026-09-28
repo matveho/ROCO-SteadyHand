@@ -142,6 +142,7 @@ python3 tools/vega_competition_pipeline.py \
 # Test selected corrected references directly
 python3 tools/vega_competition_pipeline.py \
   --test-positions board.center board.top_right task.battery_size1.pick \
+  --clearance-mm 100 \
   --confirm-head-motion \
   --confirm-physical-motion
 
@@ -166,7 +167,9 @@ The final physical five-point result is preserved in
 `calibration/vega_board_manual_fallback.json`. If the live calibration file is
 absent, the pipeline uses that fallback automatically. The task-height planner
 uses the fitted plane plus the measured local residual corrections; the final
-fit residual is about 3.7 mm.
+fit residual is about 1.7 mm. Runtime board/task targets default to a 100 mm
+TCP-to-board clearance; pass `--clearance-mm` explicitly when a different
+working height is required.
 
 ## Next productive bring-up: battery wrist centering
 

@@ -37,6 +37,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CALIBRATION = ROOT / "calibration" / "vega_board_manual.json"
 FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
 TASK_COORDINATES = ROOT / "configs" / "task_coordinates.json"
+DEFAULT_TASK_CLEARANCE_MM = 100.0
 
 
 COMPETITION_TASKS = OrderedDict([
@@ -282,7 +283,10 @@ def main(argv=None):
     p.add_argument("--confirm-physical-motion", action="store_true")
     p.add_argument("--check-only", action="store_true", help="preflight menu selections without moving")
     p.add_argument("--speed-scale", type=float, default=0.30)
-    p.add_argument("--clearance-mm", type=float, default=50.0)
+    p.add_argument(
+        "--clearance-mm", type=float, default=DEFAULT_TASK_CLEARANCE_MM,
+        help="TCP clearance above the calibrated board surface (default: 100 mm)",
+    )
     actions = p.add_mutually_exclusive_group()
     actions.add_argument("--recalibrate", action="store_true",
                          help="run five-point calibration directly, without the menu")
