@@ -119,11 +119,36 @@ class VegaAdapter(RobotAdapter):
             stamp = self._state_timestamp()
             self._wait_for_joint_state(newer_than=stamp)
             estop = self._read_estop_status()
-            if estop["button_pressed"] or estop["software_estop_enabled"]:
+            if estop["button_pressed"]:
                 raise RuntimeError(
-                    "Physical or software e-stop is active; resolve with the "
-                    "engineer before commanding"
+                    "Physical e-stop is active; release it before commanding"
                 )
+            if estop["software_estop_enabled"]:
+                if not self.config.get("auto_clear_software_estop_on_connect", False):
+                    raise RuntimeError(
+                        "Software e-stop is active; clear it before commanding or "
+                        "set auto_clear_software_estop_on_connect=true for an "
+                        "operator-supervised physical test"
+                    )
+                print("CLEARING SOFTWARE E-STOP on connect", flush=True)
+                self._robot.estop.deactivate()
+                deadline = time.monotonic() + min(
+                    float(self.config["motion"]["joint_timeout_s"]), 3.0
+                )
+                while True:
+                    estop = self._read_estop_status()
+                    if estop["button_pressed"]:
+                        raise RuntimeError(
+                            "Physical e-stop became active while clearing software e-stop"
+                        )
+                    if not estop["software_estop_enabled"]:
+                        break
+                    if time.monotonic() >= deadline:
+                        raise RuntimeError(
+                            "Software e-stop remained active after deactivate()"
+                        )
+                    time.sleep(0.01)
+                print("SOFTWARE E-STOP CLEARED", flush=True)
         except BaseException:
             self._stop_after_failure()
             try:
