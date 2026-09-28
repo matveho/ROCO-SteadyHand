@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "part": "battery_size1",
+  "robot_name": "dm/vgfcb66075ea-1u",
+  "base_frame": "vega_1u_base_link",
+  "wrist_camera": "wrist_b",
+  "jaw_alignment": {
+    "goal_pixel_uv": null,
+    "image_size_px": null,
+    "source_image": null,
+    "source": null
+  },
+  "grasp": {
+    "tcp_z_m": null,
+    "taught_tip_quaternion_wxyz": null,
+    "source": null
+  },
+  "gripper": {
+    "current_a": 1.0,
+    "speed_dps": 240
+  },
+  "calibration_complete": false
+}
