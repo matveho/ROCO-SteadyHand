@@ -19,16 +19,16 @@ Pull/deploy main first, then run in `~/ROCO-SteadyHand-live`.
    ```
 
    It prints a new `runs/wrist_servo_<UTC>/` directory containing
-   `000_wrist_a.png`, `000_wrist_b.png`, and frame metadata. Identify which
-   image is the physical left wrist (cover that lens and capture again if
-   needed). The labels are intentionally not guessed. The camera wrapper uses
-   the installed `wrist_cameras.WristCameras.get_obs(fresh=True)` API; no head
-   publisher, depth, TensorRT or camera extrinsics are required.
+   `000_wrist_a.png`, `000_wrist_b.png`, and frame metadata. The competition
+   mapping is verified: `wrist_a=RIGHT`, `wrist_b=LEFT`. Startup frames can
+   be black after boot; the tool rejects near-black frames. The camera wrapper
+   uses `wrist_cameras.WristCameras.get_obs(fresh=True)`; no depth, TensorRT,
+   or precise wrist extrinsics are required.
 
-3. Run the local loop using the verified label; this example assumes wrist_a:
+3. Run the local loop using the verified left wrist (wrist_b is the default):
 
    ```bash
-   python3 tools/vega_wrist_servo.py --camera wrist_a --execute --confirm-physical-motion
+   python3 tools/vega_wrist_servo.py --execute --confirm-physical-motion
    ```
 
    The initial feature is a textured corner near image center. To track a
