@@ -79,18 +79,26 @@ def _set_head_and_capture(robot_name, head_j1):
 
 
 def _yaw_quat(yaw):
-    """Top-down tip_l orientation with free rotation about base Z.
+    """tip_l quaternion for a top-down physical gripper with free in-plane yaw.
 
-    The competition/simulation top-down TCP convention is q=(0,1,0,0):
-    180 deg about base X, so the tool's local +Z points downward.  Premultiply
-    by base-Z yaw to rotate the claw in-plane without tilting it.
+    Important frame detail: the organizer's q=(0,1,0,0) top-down convention
+    applies to L_ee_link_gripper_link, NOT to tip_l.  Our physical IK frame is
+    tip_l, whose fixed transform from that gripper link is:
+        rpy = (pi, 0, pi/2)
+    Therefore:
+        R_base_tip = Rz(yaw) * Rx(pi) * R_ee_tip
+                   = Rz(yaw - pi/2)
+    So a physically vertical gripper corresponds to a tip_l frame that looks
+    like a pure base-Z rotation.  The previous implementation incorrectly put
+    a 180-deg X rotation directly on tip_l and made the center effectively
+    unreachable.
     """
-    half = float(yaw) / 2.0
+    half = (float(yaw) - math.pi / 2.0) / 2.0
     return (
-        0.0,
         math.cos(half),
-        math.sin(half),
         0.0,
+        0.0,
+        math.sin(half),
     )
 
 
@@ -171,8 +179,8 @@ def _vertical_target_for_point(
 
     if not candidates:
         raise RuntimeError(
-            f"{label}: no reachable vertical-claw pose found even after "
-            "height/yaw search and corner inset"
+            f"{label}: no reachable vertical-claw pose found after corrected "
+            "gripper-link->tip_l orientation mapping, height/yaw search, and corner inset"
         )
 
     candidates.sort(key=lambda item: item[0])
