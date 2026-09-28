@@ -1,13 +1,28 @@
 import math
 import unittest
 
+from steadyhand.models import Pose
 from tools.vega_board_manual_calibrate import (
     DEFAULT_FORWARD_RISE_ANGLE_DEG,
     _board_parallel_jog_delta,
+    _coarse_target_preserving_orientation,
 )
 
 
 class BoardManualCalibrationTests(unittest.TestCase):
+    def test_coarse_target_preserves_live_orientation(self):
+        current = Pose(
+            (0.72, -0.18, 1.00),
+            (0.61, 0.12, -0.31, 0.72),
+        )
+        target = _coarse_target_preserving_orientation(
+            (0.435, 0.104, 0.456),
+            0.550,
+            current,
+        )
+        self.assertEqual(target.position_m, (0.435, 0.104, 0.55))
+        self.assertEqual(target.quaternion_wxyz, current.quaternion_wxyz)
+
     def test_default_plane_angle_uses_measured_39_61_over_383(self):
         expected = math.degrees(math.atan((61.0 - 39.0) / 383.0))
         self.assertAlmostEqual(DEFAULT_FORWARD_RISE_ANGLE_DEG, expected, places=9)
