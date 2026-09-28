@@ -7,8 +7,10 @@ It supersedes older/stale Day-1 and early Day-2 status below where they conflict
 
 CURRENT REPOSITORY
 ------------------
-Refresh main before every edit. At handoff time:
-  main = e110d1dcc7dfd7f2be69d11df8d0fdc0befb5397
+Refresh main before every edit. At handoff time, immediately before the final FOR_LLMS handoff commit:
+  main was e110d1dcc7dfd7f2be69d11df8d0fdc0befb5397
+  This handoff file itself is committed after that SHA, so ALWAYS refresh main
+  rather than treating the line above as the current branch head.
   latest functional additions:
     e110d1dcc7dfd7f2be69d11df8d0fdc0befb5397
       refreshed wrist-servo docs for verified left stream
