@@ -323,7 +323,7 @@ class Motor:
         return "opened"
     def close(self):
         return "closed"
-    def grip(self, current=0.6):
+    def grip(self, current=0.6, speed=60):
         return {"gripped": True, "peak_current": current, "position": 0.42}
     def move_to(self, fraction, speed=500):
         return fraction

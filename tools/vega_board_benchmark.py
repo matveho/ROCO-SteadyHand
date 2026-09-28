@@ -183,6 +183,8 @@ def main(argv=None):
     p.add_argument("--reuse-registration", action="store_true",
                    help="skip head capture and reuse the saved board JSON")
     p.add_argument("--execute", action="store_true")
+    p.add_argument("--center-only", action="store_true",
+                   help="move only to board center; skip all corner planning")
     p.add_argument("--confirm-physical-motion", action="store_true")
     args = p.parse_args(argv)
 
@@ -329,6 +331,8 @@ def main(argv=None):
             ("bl", corners_base[3]),
             ("center", center),
         ]
+        if args.center_only:
+            points = points[:1]
         # Approach the requested low working plane. Do not rise above it; the
         # user wants the arm operating like a 3D-printer nozzle within 10 cm of
         # the configured floor. The first CENTER move establishes the plane.
