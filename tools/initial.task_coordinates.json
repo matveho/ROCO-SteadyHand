@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-09-29T03:31:45Z",
+  "source_pose_frame": "board_local_annotation",
+  "position_units": "m",
+  "quaternion_order": "wxyz",
+  "board_width_m": 0.36445339189238474,
+  "board_height_m": 0.3775063880204815,
+  "board_coordinate_convention": {
+    "origin": "board center",
+    "x_positive": "rectified image right",
+    "y_positive": "rectified image down",
+    "center_coordinates_are_m": true
+  },
+  "task_coordinate_rotation_deg": 0.0,
+  "source_board_center_xy_m": [
+    0.18222669594619237,
+    0.18875319401024074
+  ],
+  "official_order": [
+    "gear_60teeth",
+    "gear_20teeth",
+    "rod_16mm",
+    "bolt_8mm",
+    "usb_a",
+    "hdmi",
+    "pin",
+    "battery_size1",
+    "battery_size5"
+  ],
+  "parts": {
+    "gear_60teeth": {
+      "pick": [
+        0.08615037325667117,
+        0.3295306119187052,
+        0.0
+      ],
+      "place": [
+        0.23129122738465194,
+        0.3035149102721476,
+        0.0
+      ]
+    },
+    "gear_20teeth": {
+      "pick": [
+        0.14527459914182145,
+        0.29663551565417307,
+        0.0
+      ],
+      "place": [
+        0.22076469870469306,
+        0.34211218209866345,
+        0.0
+      ]
+    },
+    "rod_16mm": {
+      "pick": [
+        0.11513283692586247,
+        0.186936890666284,
+        0.0
+      ],
+      "place": [
+        0.26871888491339463,
+        0.07894896509969157,
+        0.0
+      ]
+    },
+    "bolt_8mm": {
+      "pick": [
+        0.06687703491665896,
+        0.2470755027798559,
+        0.0
+      ],
+      "place": [
+        0.23733423458981354,
+        0.11403739403288783,
+        0.0
+      ]
+    },
+    "usb_a": {
+      "pick": [
+        0.31235108635148456,
+        0.26493541510903945,
+        0.0
+      ],
+      "place": [
+        0.29512588782057925,
+        0.19537439385561578,
+        0.0
+      ]
+    },
+    "hdmi": {
+      "pick": [
+        0.025188279158300075,
+        0.3208740040796903,
+        0.0
+      ],
+      "place": [
+        0.2597908992158931,
+        0.19384354857319666,
+        0.0
+      ]
+    },
+    "pin": {
+      "pick": [
+        0.21526724890291848,
+        0.24229339627443938,
+        0.0
+      ],
+      "place": [
+        0.27164292065782764,
+        0.23996586675980325,
+        0.0
+      ]
+    },
+    "battery_size1": {
+      "pick": [
+        0.08268468258664616,
+        0.0833975113930452,
+        0.0
+      ],
+      "place": [
+        0.1551425977541586,
+        0.09098416451339318,
+        0.0
+      ]
+    },
+    "battery_size5": {
+      "pick": [
+        0.06326340287314852,
+        0.08858148721205733,
+        0.0
+      ],
+      "place": [
+        0.11483217331396536,
+        0.08663054625040767,
+        0.0
+      ]
+    }
+  },
+  "warnings": [
+    "initial/final effective board scales differ; verify the two photographs use the same physical calibration"
+  ],
+  "annotation_project_version": "1.0"
+}
