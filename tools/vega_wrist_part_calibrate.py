@@ -106,6 +106,7 @@ class PartSession:
         self.goal_match_score = None
         self.goal_match_error_px = None
         self.feature_tracking_mode = "strict"
+        self.manual_alignment_override = False
         self.alignment_verified = False
         self.grasp_verified = False
         self.gripper_open_fraction = None
@@ -361,6 +362,7 @@ class PartSession:
             self.goal_match = None
             self.goal_match_score = None
             self.goal_match_error_px = None
+            self.manual_alignment_override = False
             self.alignment_verified = False
             _write_overlay(
                 path.with_name(path.stem + "_reference.png"),
@@ -416,6 +418,7 @@ class PartSession:
             self.goal_match = tuple(float(v) for v in located)
             self.goal_match_score = float(score)
             self.goal_match_error_px = float(error)
+            self.manual_alignment_override = False
             self.alignment_verified = False
             _write_overlay(
                 path.with_name(path.stem + "_goal.png"),
@@ -499,6 +502,25 @@ class PartSession:
         if (self.goal is None or not self.alignment_verified) and not allow_unverified:
             raise RuntimeError("Verify same-feature alignment with 'center' before grab")
         if allow_unverified and (self.goal is None or not self.alignment_verified):
+            if self.reference_feature is None:
+                raise RuntimeError("teach a visible reference feature before grab manual")
+            if self.goal is None:
+                # The operator has deliberately positioned the gripper and
+                # selected the feature at that final pose. Preserve that
+                # supervised pose as the goal so the profile remains usable.
+                self.goal = tuple(self.reference_feature)
+                self.goal_match = tuple(self.reference_feature)
+                self.goal_match_score = self.reference_match_score
+                self.goal_match_error_px = 0.0
+            self.manual_alignment_override = True
+            self.alignment_verified = True
+            self.event(
+                "manual_alignment_override",
+                {
+                    "goal_uv": self.goal,
+                    "reason": "operator_confirmed_current_pose_without_center",
+                },
+            )
             print(
                 "MANUAL ALIGNMENT OVERRIDE: using the current supervised TCP pose; "
                 "visual centering was skipped by the operator.",
@@ -655,7 +677,11 @@ class PartSession:
                         "part": part, "working_arm": WORKING_ARM, "tcp_frame": TCP_FRAME, "wrist_camera": WRIST_CAMERA,
                         "calibration_sha256": cal["sha256"], "coarse_xy_m": list(self.coarse.position_m[:2]),
                         "feature_uv": list(self.reference_feature), "goal_uv": list(self.goal),
-                        "goal_source": "same_feature_second_annotation",
+                        "goal_source": (
+                            "operator_confirmed_current_pose"
+                            if self.manual_alignment_override
+                            else "same_feature_second_annotation"
+                        ),
                         "goal_match_uv": list(self.goal_match) if self.goal_match is not None else None,
                         "goal_match_score": self.goal_match_score,
                         "goal_click_match_error_px": self.goal_match_error_px,
