@@ -777,14 +777,17 @@ def _run_competition_sequence(args, raw=None):
     if raw is None:
         print("\nCOMPETITION RUN MODES")
         print("  p. priority pick/place run (verified parts, easiest-first, bounded retry)")
+        print("  a. attempt pickup of all verified parts (score-first, no placement)")
         print("  c. custom proven sequence (choose numbered pick/place actions)")
-        mode = input("Choose p or c (0 to cancel): ").strip().lower()
+        mode = input("Choose p, a, or c (0 to cancel): ").strip().lower()
         if mode in ("0", "q", "quit", "exit", ""):
             return 0
         if mode in ("p", "priority", "pick", "pick_place"):
             return _priority_competition_actions(args, action="pick_place")
+        if mode in ("a", "all", "pickup", "pick_only"):
+            return _priority_competition_actions(args, action="pick")
         if mode not in ("c", "custom"):
-            print("Choose p for the priority run or c for a custom sequence.", file=sys.stderr)
+            print("Choose p for pick/place, a for all pickups, or c for a custom sequence.", file=sys.stderr)
             return 2
         print("\nCOMPETITION SEQUENCE ACTIONS")
         available_actions = _competition_sequence_actions()
@@ -836,8 +839,8 @@ def main(argv=None):
     actions.add_argument("--competition-sequence", metavar="SEQUENCE",
                          help="run numbered sequence choices such as 1-5,8,9 directly")
     actions.add_argument(
-        "--competition-plan", choices=("priority_pick_place",),
-        help="run verified pick/place profiles in the operator-configured easiest-first order",
+        "--competition-plan", choices=("priority_pick_place", "priority_pick"),
+        help="run verified profiles in the operator-configured easiest-first order",
     )
     args = p.parse_args(argv)
     args.speed_scale_cli = args.speed_scale is not None
@@ -884,7 +887,8 @@ def main(argv=None):
         return _run_competition_sequence(args, args.competition_sequence)
 
     if args.competition_plan is not None:
-        return _priority_competition_actions(args, action="pick_place")
+        action = "pick" if args.competition_plan == "priority_pick" else "pick_place"
+        return _priority_competition_actions(args, action=action)
 
     if args.test_positions is not None or args.competition_task is not None:
         try:
@@ -925,8 +929,9 @@ def main(argv=None):
         print("  3. Wrist camera calibration (per-part feature / yaw / grasp depth)")
         print("  4. Task tests (all part pick and pick-place actions)")
         print("  5. Competition run sequence (choose numbered actions/ranges)")
-        print("  6. Run preserved competition task version")
-        print("  7. Reload operator settings / show readiness")
+        print("  6. Attempt pickup of all calibrated objects (score-first)")
+        print("  7. Run preserved competition task version")
+        print("  8. Reload operator settings / show readiness")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
         if choice in ("0", "q", "quit", "exit"):
@@ -942,7 +947,7 @@ def main(argv=None):
             except Exception as exc:
                 print(f"Calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
-        if choice == "7":
+        if choice == "8":
             try:
                 _reload_operator_settings(args)
             except Exception as exc:
@@ -1008,6 +1013,14 @@ def main(argv=None):
                 print(f"Competition sequence failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         if choice == "6":
+            try:
+                _priority_competition_actions(args, action="pick")
+            except (KeyboardInterrupt, EOFError):
+                print("Pickup run cancelled.")
+            except Exception as exc:
+                print(f"Pickup run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "7":
             selected = _choose(COMPETITION_TASKS, "COMPETITION TASK VERSIONS")
             if selected:
                 for name in selected:

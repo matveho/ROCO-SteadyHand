@@ -142,6 +142,23 @@ class CompetitionPipelineTests(unittest.TestCase):
             self.assertEqual(_priority_competition_actions(args), 0)
         runner.assert_not_called()
 
+    def test_priority_pick_mode_accepts_grasp_verified_profile_without_place(self):
+        args = type("Args", (), {"speed_scale": 0.38, "check_only": False})()
+        plan = {
+            "pick_priority": ["battery_size1", "gear_20teeth"],
+            "default_action": "pick_place",
+            "max_retries_per_part": 1,
+        }
+        profiles = {"parts": {
+            "battery_size1": {"grasp_verified": True},
+        }}
+        with mock.patch("tools.vega_competition_pipeline._load_competition_plan", return_value=plan), \
+             mock.patch("tools.vega_competition_pipeline.load_bundle", return_value={"robot": {}}), \
+             mock.patch("tools.vega_competition_pipeline.load_profiles", return_value=profiles), \
+             mock.patch("tools.vega_competition_pipeline._run_competition_action", return_value=0) as runner:
+            self.assertEqual(_priority_competition_actions(args, action="pick"), 0)
+        runner.assert_called_once_with(args, "battery_size1", "pick", retries=1)
+
     def test_priority_run_invokes_only_one_verified_action(self):
         args = type("Args", (), {"speed_scale": 0.38, "check_only": False})()
         plan = {
