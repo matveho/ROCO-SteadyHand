@@ -646,10 +646,10 @@ class AnnotationApp:
         self.height_var = tk.StringVar(value=f"{DEFAULT_BOARD_HEIGHT_M:.4f}")
         self._labeled_entry(dimensions, "Width (m)", self.width_var, 0)
         self._labeled_entry(dimensions, "Height (m)", self.height_var, 1)
-        self._button(dimensions, "Set 4 board corners", lambda: self._set_mode("board"))
-        self._button(dimensions, "Rectify board", self._rectify_current)
-        self._button(dimensions, "Measured rectangle", lambda: self._set_mode("reference_rectangle"))
-        self._button(dimensions, "Set ruler scale", lambda: self._set_mode("ruler"))
+        self._grid_button(dimensions, "Set 4 board corners", lambda: self._set_mode("board"), row=2)
+        self._grid_button(dimensions, "Rectify board", self._rectify_current, row=3)
+        self._grid_button(dimensions, "Measured rectangle", lambda: self._set_mode("reference_rectangle"), row=4)
+        self._grid_button(dimensions, "Set ruler scale", lambda: self._set_mode("ruler"), row=5)
 
         annotation_frame = ttk.LabelFrame(side, text="Annotation")
         annotation_frame.pack(fill="x", pady=4)
@@ -663,11 +663,11 @@ class AnnotationApp:
         self.shape_var = tk.StringVar(value="circle")
         ttk.Combobox(annotation_frame, textvariable=self.shape_var,
                      values=("circle", "pen"), state="readonly", width=22).grid(row=1, column=1, sticky="ew", padx=4, pady=3)
-        self._button(annotation_frame, "Start circle (center → edge)", lambda: self._set_mode("circle"))
-        self._button(annotation_frame, "Start pen", lambda: self._set_mode("pen"))
-        self._button(annotation_frame, "Close polygon", self._close_polygon)
-        self._button(annotation_frame, "Undo point", self._undo_point)
-        self._button(annotation_frame, "Delete selected", self._delete_selected)
+        self._grid_button(annotation_frame, "Start circle (center → edge)", lambda: self._set_mode("circle"), row=2)
+        self._grid_button(annotation_frame, "Start pen", lambda: self._set_mode("pen"), row=3)
+        self._grid_button(annotation_frame, "Close polygon", self._close_polygon, row=4)
+        self._grid_button(annotation_frame, "Undo point", self._undo_point, row=5)
+        self._grid_button(annotation_frame, "Delete selected", self._delete_selected, row=6)
 
         toggles = ttk.LabelFrame(side, text="Overlay")
         toggles.pack(fill="x", pady=4)
@@ -687,6 +687,11 @@ class AnnotationApp:
 
     def _button(self, parent: Any, label: str, command: Any) -> None:
         self.ttk.Button(parent, text=label, command=command).pack(anchor="w", fill="x", padx=4, pady=2)
+
+    def _grid_button(self, parent: Any, label: str, command: Any, *, row: int) -> None:
+        self.ttk.Button(parent, text=label, command=command).grid(
+            row=row, column=0, columnspan=2, sticky="ew", padx=4, pady=2
+        )
 
     def _labeled_entry(self, parent: Any, label: str, variable: Any, row: int) -> None:
         self.ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=4, pady=3)
