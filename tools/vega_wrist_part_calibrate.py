@@ -653,10 +653,52 @@ class PartSession:
         if allow_unverified and (self.goal is None or not self.alignment_verified):
             if self.reference_feature is None:
                 raise RuntimeError("teach a visible reference feature before grab manual")
-            if self.goal is None:
-                # The operator has deliberately positioned the gripper and
-                # selected the feature at that final pose. Preserve that
-                # supervised pose as the goal so the profile remains usable.
+            # The operator has deliberately positioned the gripper at the
+            # desired grasp pose. Capture the feature at this exact current
+            # pose so a later competition run does not reuse an older goal
+            # pixel and servo the arm away from the manual adjustment.
+            captured_current_goal = False
+            if self.tracker is not None:
+                try:
+                    rgb, path = self.frame("manual alignment snapshot")
+                    feature, score = self.tracker.locate(rgb)
+                    self.goal = tuple(float(v) for v in feature)
+                    self.goal_match = tuple(float(v) for v in feature)
+                    self.goal_match_score = float(score)
+                    self.goal_match_error_px = 0.0
+                    captured_current_goal = True
+                    _write_overlay(
+                        path.with_name(path.stem + "_manual_goal.png"),
+                        rgb,
+                        feature,
+                        feature,
+                        label=self.part,
+                    )
+                    self.event(
+                        "manual_current_pose_goal",
+                        {
+                            "goal_uv": self.goal,
+                            "score": self.goal_match_score,
+                            "source": "fresh_feature_at_current_pose",
+                        },
+                    )
+                    print(
+                        "MANUAL CURRENT-POSE GOAL:",
+                        tuple(round(v, 1) for v in self.goal),
+                        f"score={self.goal_match_score:.3f}",
+                        flush=True,
+                    )
+                except (ValueError, RuntimeError) as exc:
+                    if not _is_visual_alignment_failure(exc):
+                        raise
+                    print(
+                        "MANUAL GOAL IMAGE NOT TRACKED; preserving the current "
+                        f"supervised TCP pose ({exc})",
+                        flush=True,
+                    )
+            if not captured_current_goal and self.goal is None:
+                # If no fresh match was available, preserve the original
+                # supervised reference as the last-resort goal.
                 self.goal = tuple(self.reference_feature)
                 self.goal_match = tuple(self.reference_feature)
                 self.goal_match_score = self.reference_match_score
@@ -679,7 +721,12 @@ class PartSession:
             raise ValueError("A part may already be held; inspect it before another grab")
         hover = self.robot.get_tcp_pose()
         self.last_grasp_clearance = clearance
-        x, y, _ = hover.position_m
+        # Snapshot the operator's actual current hover pose.  In particular,
+        # preserve a deliberate manual ``back`` adjustment made after visual
+        # centering; the grasp approach must not reconstruct an older goal or
+        # let the IK descent's small XY residual erase that adjustment.
+        anchor_x, anchor_y, _ = hover.position_m
+        x, y = anchor_x, anchor_y
         grasp = Pose((x, y, self.surface(x, y) + clearance), hover.quaternion_wxyz)
         # Validate both descent and return before opening/closing.
         if grasp.position_m[2] < self.floor + .005:
@@ -695,6 +742,57 @@ class PartSession:
         else:
             self._set_gripper_fraction(self.gripper_open_fraction)
         self.move(grasp, slow=True)
+        # A Cartesian Z descent is solved as a sequence of joint targets.  On
+        # Vega that can leave the measured TCP a few millimetres off in XY,
+        # even though the requested grasp pose has the same XY as the hover.
+        # Correct that bounded residual while the jaws are still open, before
+        # applying grip pressure.  This is deliberately local and uses the
+        # measured grasp height/orientation; it cannot create a new board move.
+        measured_grasp = self.robot.get_tcp_pose()
+        xy_error = math.dist(
+            measured_grasp.position_m[:2], (anchor_x, anchor_y)
+        )
+        self.event(
+            "grasp_approach_readback",
+            {
+                "anchor_xy_m": [anchor_x, anchor_y],
+                "requested_grasp_tcp": list(grasp.position_m),
+                "measured_grasp_tcp": list(measured_grasp.position_m),
+                "xy_error_m": xy_error,
+            },
+        )
+        if xy_error > 0.001:
+            if xy_error > 0.010:
+                raise RuntimeError(
+                    "Grasp approach drifted more than 10 mm from the manually "
+                    "positioned hover; no grip command issued"
+                )
+            correction = Pose(
+                (anchor_x, anchor_y, measured_grasp.position_m[2]),
+                measured_grasp.quaternion_wxyz,
+            )
+            print(
+                "GRASP XY CORRECTION: returning to the exact manual hover "
+                f"anchor ({xy_error * 1000:.1f} mm residual)",
+                flush=True,
+            )
+            self.move(correction, slow=True)
+            measured_grasp = self.robot.get_tcp_pose()
+            corrected_error = math.dist(
+                measured_grasp.position_m[:2], (anchor_x, anchor_y)
+            )
+            self.event(
+                "grasp_approach_corrected",
+                {
+                    "measured_grasp_tcp": list(measured_grasp.position_m),
+                    "xy_error_m": corrected_error,
+                },
+            )
+            if corrected_error > 0.006:
+                raise RuntimeError(
+                    "Grasp approach could not return to the manually positioned "
+                    f"hover anchor (XY residual {corrected_error * 1000:.1f} mm)"
+                )
         self.holding = True  # Remains true on uncertain grip/error; no blind recovery.
         self.robot.grip(self.part)
         result = self.robot._gripper.last_grip_result()
