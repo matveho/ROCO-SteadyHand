@@ -541,6 +541,13 @@ def main(argv=None):
         raise ValueError("Requires right arm / tip_r")
     cfg["allow_robot_init_head_motion"] = True
     cfg["auto_clear_software_estop_on_connect"] = True
+    # The right-arm state stream routinely settles a few milliradians outside
+    # the nominal 5 mrad gate even when the motion plugin has finished.  This
+    # is the same supervised tolerance used by board calibration and prevents
+    # a false E-stop during the wrist teaching/competition path.
+    cfg["motion"]["joint_reached_tolerance_rad"] = max(
+        float(cfg["motion"]["joint_reached_tolerance_rad"]), 0.020
+    )
     profiles = load_profiles(_resolve(args.profiles), cfg)
     actions = args.sequence or ([f"{args.part}.{args.action}"] if args.part else None)
     if actions and args.mode == "test":
