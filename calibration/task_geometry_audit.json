@@ -1,0 +1,506 @@
+{
+  "schema_version": 1,
+  "report_kind": "vega_task_geometry_audit",
+  "board_size_m": 0.386,
+  "board_motion_model": "horizontal_translation_only_fixed_table_plane",
+  "task_coordinate_rotation_deg": 180.0,
+  "task_coordinate_mirror_x": false,
+  "task_coordinate_mirror_y": false,
+  "clearance_m": 0.1,
+  "hard_floor_m": 0.4560002716867571,
+  "calibration_path": "/home/sharpa/Documents/ChatGPT/SteadyHand/repository-audit/calibration/vega_board_manual.json",
+  "targets": [
+    {
+      "name": "gear_60teeth.pick",
+      "part": "gear_60teeth",
+      "action": "pick",
+      "source_xyz_m": [
+        0.09124361253549337,
+        0.33694480474253347,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.10175638746450662,
+        -0.14394480474253346
+      ],
+      "base_xy_m": [
+        0.5847007528628716,
+        -0.13758821004359337
+      ],
+      "surface_z_m": 0.46172197829654094,
+      "hover_z_m": 0.5617219782965409,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.1057217066097838,
+      "surface_distance_from_floor_m": 0.005721706609783828,
+      "distance_from_board_center_m": 0.17627952008725484,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "gear_60teeth.place",
+      "part": "gear_60teeth",
+      "action": "place",
+      "source_xyz_m": [
+        0.24237979325457698,
+        0.3070682911916755,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.04937979325457699,
+        -0.1140682911916755
+      ],
+      "base_xy_m": [
+        0.5531768877277154,
+        0.01321297400761556
+      ],
+      "surface_z_m": 0.4693554131510961,
+      "hover_z_m": 0.5693554131510961,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.11335514146433895,
+      "surface_distance_from_floor_m": 0.013355141464338971,
+      "distance_from_board_center_m": 0.1242977837181888,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "gear_20teeth.pick",
+      "part": "gear_20teeth",
+      "action": "pick",
+      "source_xyz_m": [
+        0.15386328270282942,
+        0.30330959336322166,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.03913671729717057,
+        -0.11030959336322166
+      ],
+      "base_xy_m": [
+        0.5503842661259496,
+        -0.07533928013767772
+      ],
+      "surface_z_m": 0.46964304985559885,
+      "hover_z_m": 0.5696430498555989,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.11364277816884177,
+      "surface_distance_from_floor_m": 0.01364277816884174,
+      "distance_from_board_center_m": 0.1170465250605842,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "gear_20teeth.place",
+      "part": "gear_20teeth",
+      "action": "place",
+      "source_xyz_m": [
+        0.23134860165259877,
+        0.3461174380484204,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.038348601652598784,
+        -0.15311743804842037
+      ],
+      "base_xy_m": [
+        0.5923440772963393,
+        0.0026085258987004045
+      ],
+      "surface_z_m": 0.46073806055229954,
+      "hover_z_m": 0.5607380605522996,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.10473778886554247,
+      "surface_distance_from_floor_m": 0.004737788865542436,
+      "distance_from_board_center_m": 0.15784665052899144,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "rod_16mm.pick",
+      "part": "rod_16mm",
+      "action": "pick",
+      "source_xyz_m": [
+        0.12193952928418751,
+        0.19114283118639766,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.0710604707158125,
+        0.0018571688136023359
+      ],
+      "base_xy_m": [
+        0.4385725192235489,
+        -0.1084850464465133
+      ],
+      "surface_z_m": 0.4939905169257083,
+      "hover_z_m": 0.5939905169257083,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.13799024523895115,
+      "surface_distance_from_floor_m": 0.03799024523895117,
+      "distance_from_board_center_m": 0.07108473517116781,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "rod_16mm.place",
+      "part": "rod_16mm",
+      "action": "place",
+      "source_xyz_m": [
+        0.2816018078393885,
+        0.07987325493425085,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.08860180783938847,
+        0.11312674506574917
+      ],
+      "base_xy_m": [
+        0.32556740398454465,
+        0.04995360326557644
+      ],
+      "surface_z_m": 0.518647388823772,
+      "hover_z_m": 0.618647388823772,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.1626471171370149,
+      "surface_distance_from_floor_m": 0.06264711713701493,
+      "distance_from_board_center_m": 0.14369391358571498,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "bolt_8mm.pick",
+      "part": "bolt_8mm",
+      "action": "pick",
+      "source_xyz_m": [
+        0.07083082789761176,
+        0.2526345171882232,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.12216917210238823,
+        -0.05963451718822323
+      ],
+      "base_xy_m": [
+        0.5006182196820974,
+        -0.15891973549460164
+      ],
+      "surface_z_m": 0.48011527100592855,
+      "hover_z_m": 0.5801152710059285,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.12411499931917142,
+      "surface_distance_from_floor_m": 0.024114999319171437,
+      "distance_from_board_center_m": 0.13594698324146604,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "bolt_8mm.place",
+      "part": "bolt_8mm",
+      "action": "place",
+      "source_xyz_m": [
+        0.24871251435941638,
+        0.11537247934947346,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.05571251435941637,
+        0.07762752065052654
+      ],
+      "base_xy_m": [
+        0.3614233882520284,
+        0.017453619390133773
+      ],
+      "surface_z_m": 0.5109891707580667,
+      "hover_z_m": 0.6109891707580667,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.15498889907130958,
+      "surface_distance_from_floor_m": 0.054988899071309605,
+      "distance_from_board_center_m": 0.09555059507190994,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "usb_a.pick",
+      "part": "usb_a",
+      "action": "pick",
+      "source_xyz_m": [
+        0.328632,
+        0.259,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.13563199999999997,
+        -0.06599999999999999
+      ],
+      "base_xy_m": [
+        0.5041703127800572,
+        0.09893554628844745
+      ],
+      "surface_z_m": 0.4801858855104727,
+      "hover_z_m": 0.5801858855104727,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.12418561382371557,
+      "surface_distance_from_floor_m": 0.02418561382371559,
+      "distance_from_board_center_m": 0.150837791763205,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "usb_a.place",
+      "part": "usb_a",
+      "action": "place",
+      "source_xyz_m": [
+        0.3092748154907852,
+        0.19766172676676794,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.11627481549078522,
+        -0.004661726766767918
+      ],
+      "base_xy_m": [
+        0.44304690809804054,
+        0.07891021844002401
+      ],
+      "surface_z_m": 0.4934329116799094,
+      "hover_z_m": 0.5934329116799094,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.1374326399931523,
+      "surface_distance_from_floor_m": 0.03743263999315227,
+      "distance_from_board_center_m": 0.11636822768206169,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "hdmi.pick",
+      "part": "hdmi",
+      "action": "pick",
+      "source_xyz_m": [
+        0.026677418762986096,
+        0.3280934296879782,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.16632258123701388,
+        -0.13509342968797824
+      ],
+      "base_xy_m": [
+        0.5765544221017592,
+        -0.20224714224755042
+      ],
+      "surface_z_m": 0.46320829858232987,
+      "hover_z_m": 0.5632082985823299,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.1072080268955728,
+      "surface_distance_from_floor_m": 0.007208026895572761,
+      "distance_from_board_center_m": 0.21427420697369015,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "hdmi.place",
+      "part": "hdmi",
+      "action": "place",
+      "source_xyz_m": [
+        0.2722457965802955,
+        0.19611295921353708,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.07924579658029551,
+        -0.003112959213537066
+      ],
+      "base_xy_m": [
+        0.4419022767930269,
+        0.04186650451197775
+      ],
+      "surface_z_m": 0.4936835747527999,
+      "hover_z_m": 0.5936835747527999,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.13768330306604276,
+      "surface_distance_from_floor_m": 0.037683303066042784,
+      "distance_from_board_center_m": 0.07930691515063942,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "pin.pick",
+      "part": "pin",
+      "action": "pick",
+      "source_xyz_m": [
+        0.22799392165092583,
+        0.24774481685554794,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.03499392165092583,
+        -0.05474481685554793
+      ],
+      "base_xy_m": [
+        0.4940139172596286,
+        -0.0018193523092989734
+      ],
+      "surface_z_m": 0.4822980926334926,
+      "hover_z_m": 0.5822980926334926,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.12629782094673553,
+      "surface_distance_from_floor_m": 0.026297820946735495,
+      "distance_from_board_center_m": 0.06497360637257732,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "pin.place",
+      "part": "pin",
+      "action": "place",
+      "source_xyz_m": [
+        0.2846660277288269,
+        0.24277525141743903,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        -0.09166602772882687,
+        -0.049775251417439006
+      ],
+      "base_xy_m": [
+        0.48842626707087966,
+        0.0547951542532128
+      ],
+      "surface_z_m": 0.4835763377943599,
+      "hover_z_m": 0.5835763377943599,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.1275760661076028,
+      "surface_distance_from_floor_m": 0.02757606610760277,
+      "distance_from_board_center_m": 0.10430837115616043,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "battery_size1.pick",
+      "part": "battery_size1",
+      "action": "pick",
+      "source_xyz_m": [
+        0.08757302905790931,
+        0.08527389315586605,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.1054269709420907,
+        0.10772610684413395
+      ],
+      "base_xy_m": [
+        0.33308487569817746,
+        -0.14400469510721214
+      ],
+      "surface_z_m": 0.5165279691685872,
+      "hover_z_m": 0.6165279691685872,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.1605276974818301,
+      "surface_distance_from_floor_m": 0.06052769748183012,
+      "distance_from_board_center_m": 0.15073075431980762,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "battery_size1.place",
+      "part": "battery_size1",
+      "action": "place",
+      "source_xyz_m": [
+        0.16258044541436098,
+        0.09204935565629681,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.03041955458563904,
+        0.1009506443437032
+      ],
+      "base_xy_m": [
+        0.33904148755228547,
+        -0.06892781334069006
+      ],
+      "surface_z_m": 0.5155873375188748,
+      "hover_z_m": 0.6155873375188747,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.15958706583211762,
+      "surface_distance_from_floor_m": 0.05958706583211765,
+      "distance_from_board_center_m": 0.10543425389595891,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "battery_size5.pick",
+      "part": "battery_size5",
+      "action": "pick",
+      "source_xyz_m": [
+        0.06700355670237783,
+        0.09057450456175865,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.12599644329762216,
+        0.10242549543824134
+      ],
+      "base_xy_m": [
+        0.33860961640047116,
+        -0.16451510501129918
+      ],
+      "surface_z_m": 0.515247000325094,
+      "hover_z_m": 0.6152470003250939,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.15924672863833683,
+      "surface_distance_from_floor_m": 0.059246728638336854,
+      "distance_from_board_center_m": 0.16237637093930912,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    },
+    {
+      "name": "battery_size5.place",
+      "part": "battery_size5",
+      "action": "place",
+      "source_xyz_m": [
+        0.12033745828381394,
+        0.0876447676928352,
+        0.0
+      ],
+      "board_relative_xy_m": [
+        0.07266254171618608,
+        0.10535523230716479
+      ],
+      "base_xy_m": [
+        0.33509809833449333,
+        -0.11121634651833097
+      ],
+      "surface_z_m": 0.5162492227249661,
+      "hover_z_m": 0.6162492227249661,
+      "hover_clearance_m": 0.1,
+      "hover_distance_above_floor_m": 0.16024895103820896,
+      "surface_distance_from_floor_m": 0.06024895103820899,
+      "distance_from_board_center_m": 0.12798269392051856,
+      "inside_calibrated_board_extent": true,
+      "surface_below_hard_floor": false,
+      "hover_below_hard_floor": false
+    }
+  ],
+  "summary": {
+    "target_count": 18,
+    "outside_board_count": 0,
+    "hover_below_floor_count": 0,
+    "surface_below_floor_count": 0
+  }
+}

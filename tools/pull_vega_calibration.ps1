@@ -120,6 +120,28 @@ function Install-JsonArtifact {
     Write-Host ("PULLED {0}  SHA256={1}" -f $CanonicalPath, $hash)
 }
 
+function Install-FileArtifact {
+    param(
+        [Parameter(Mandatory=$true)][string]$Name,
+        [Parameter(Mandatory=$true)][string]$RemotePath,
+        [Parameter(Mandatory=$true)][string]$CanonicalPath,
+        [switch]$Optional
+    )
+    $stagePath = Join-Path $StageRoot $Name
+    $ok = Invoke-ScpPull -RemotePath $RemotePath -Destination $stagePath -Optional:$Optional
+    if (-not $ok) { return }
+    if (Test-Path -LiteralPath $CanonicalPath) {
+        $backupPath = Join-Path $BackupRoot (Split-Path -Leaf $CanonicalPath)
+        Copy-Item -LiteralPath $CanonicalPath -Destination $backupPath -Force
+    }
+    $canonicalParent = Split-Path -Parent $CanonicalPath
+    New-Item -ItemType Directory -Force $canonicalParent | Out-Null
+    Copy-Item -LiteralPath $stagePath -Destination $CanonicalPath -Force
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $CanonicalPath).Hash
+    $ChangedPaths.Add($CanonicalPath) | Out-Null
+    Write-Host ("PULLED {0}  SHA256={1}" -f $CanonicalPath, $hash)
+}
+
 try {
     if (-not (Get-Command scp -ErrorAction SilentlyContinue)) {
         Fail "scp is not available in PATH. Install/use OpenSSH on the Windows laptop."
@@ -148,10 +170,12 @@ powershell.exe -NoProfile -Command "[Console]::Out.Write($env:ROCO_SSH_PASSWORD)
     $env:DISPLAY = "roco-pull-calibration"
 
     $calibrationDir = "$LiveDir/calibration"
-    # The head fallback is the artifact created by tools/vega_head_fallback.py.
+    # The head fallback is optional; the current competition path can run
+    # without it and older robots do not have this file.
     Install-JsonArtifact -Name "head_fallback_profiles.json" `
         -RemotePath "$calibrationDir/head_fallback_profiles.json" `
-        -CanonicalPath (Join-Path $RepoRoot "calibration\head_fallback_profiles.json")
+        -CanonicalPath (Join-Path $RepoRoot "calibration\head_fallback_profiles.json") `
+        -Required:$false
 
     if (-not $SkipBoard) {
         Install-JsonArtifact -Name "vega_board_manual.json" `
@@ -159,7 +183,16 @@ powershell.exe -NoProfile -Command "[Console]::Out.Write($env:ROCO_SSH_PASSWORD)
             -CanonicalPath (Join-Path $RepoRoot "calibration\vega_board_manual.json")
         Install-JsonArtifact -Name "vega_board_manual_fallback.json" `
             -RemotePath "$calibrationDir/vega_board_manual_fallback.json" `
-            -CanonicalPath (Join-Path $RepoRoot "calibration\vega_board_manual_fallback.json")
+            -CanonicalPath (Join-Path $RepoRoot "calibration\vega_board_manual_fallback.json") `
+            -Required:$false
+        Install-JsonArtifact -Name "vega_board_live.json" `
+            -RemotePath "$calibrationDir/vega_board_live.json" `
+            -CanonicalPath (Join-Path $RepoRoot "calibration\vega_board_live.json") `
+            -Required:$false
+        Install-JsonArtifact -Name "task_geometry_audit.json" `
+            -RemotePath "$calibrationDir/task_geometry_audit.json" `
+            -CanonicalPath (Join-Path $RepoRoot "calibration\task_geometry_audit.json") `
+            -Required:$false
     }
 
     if (-not $SkipWrist) {
@@ -181,6 +214,25 @@ powershell.exe -NoProfile -Command "[Console]::Out.Write($env:ROCO_SSH_PASSWORD)
         }
     }
 
+    # These are runtime inputs referenced by the robot config but often
+    # generated onsite and therefore untracked on the Jetson.
+    Install-FileArtifact -Name "vega_1u_competition.urdf" `
+        -RemotePath "$LiveDir/configs/robots/vega_1u_competition.urdf" `
+        -CanonicalPath (Join-Path $RepoRoot "configs\robots\vega_1u_competition.urdf") `
+        -Optional
+
+    $posesStage = Join-Path $StageRoot "poses"
+    if (Invoke-ScpPull -RemotePath "$LiveDir/poses" `
+            -Destination $StageRoot -Recursive -Optional) {
+        if (Test-Path -LiteralPath $posesStage) {
+            $localPoses = Join-Path $RepoRoot "poses"
+            New-Item -ItemType Directory -Force $localPoses | Out-Null
+            Copy-Item -Path (Join-Path $posesStage "*") -Destination $localPoses -Recurse -Force
+            $ChangedPaths.Add($localPoses) | Out-Null
+            Write-Host "MERGED poses\"
+        }
+    }
+
     Write-Host ""
     Write-Host "ROBOT CALIBRATION PULL COMPLETE"
     Write-Host "Backup/staging: $BackupRoot"
@@ -191,14 +243,22 @@ powershell.exe -NoProfile -Command "[Console]::Out.Write($env:ROCO_SSH_PASSWORD)
 
     Push-Location $RepoRoot
     try {
-        $status = @(git status --short -- calibration)
+        $status = @(git status --short)
         if ($status.Count -gt 0) {
             Write-Host ""
             Write-Host "REVIEW THESE CHANGES:"
             $status | ForEach-Object { Write-Host $_ }
             if ($Push) { $Commit = $true }
             if ($Commit) {
-                git add -- calibration
+                $stagePaths = New-Object System.Collections.Generic.List[string]
+                foreach ($changed in $ChangedPaths) {
+                    $relative = $changed.Substring($RepoRoot.Length).TrimStart([char[]]"\\/")
+                    if ($relative -and -not $stagePaths.Contains($relative)) {
+                        $stagePaths.Add($relative) | Out-Null
+                    }
+                }
+                if ($stagePaths.Count -eq 0) { Fail "No pulled paths available to stage" }
+                git add -- $stagePaths.ToArray()
                 if ($LASTEXITCODE -ne 0) { Fail "git add failed" }
                 git commit -m "Record onsite Vega calibration artifacts"
                 if ($LASTEXITCODE -ne 0) { Fail "git commit failed" }
