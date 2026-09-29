@@ -16,9 +16,7 @@ No head intrinsics, depth, head kinematics or final-layout ordering are used.
 
 from __future__ import annotations
 
-import json
 import math
-from pathlib import Path
 
 from steadyhand.board_geometry import BOARD_SIZE_MM
 from steadyhand.board_calibration import file_sha256, load_board_calibration
