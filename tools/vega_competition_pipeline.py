@@ -197,7 +197,9 @@ def _board_targets(runtime, clearance_m):
                 ready_pose.quaternion_wxyz,
             )
         return targets
-    path = CALIBRATION if CALIBRATION.is_file() else FALLBACK_CALIBRATION
+    path = Path(plane.get("calibration_path", "")) if isinstance(plane, dict) else None
+    if path is None or not path.is_file():
+        path = CALIBRATION if CALIBRATION.is_file() else FALLBACK_CALIBRATION
     raw = json.loads(path.read_text(encoding="utf-8"))
     samples = raw.get("samples") or {}
     targets = OrderedDict()
@@ -355,25 +357,71 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle):
 
 
 def _runtime_from_board_scene(runtime, scene):
-    """Replace only the live XY board registration from a fresh head image."""
+    """Replace live XY registration when safe, otherwise keep calibration.
+
+    A head-image retake is an optional board translation update.  It is not a
+    reason to force a new five-point calibration during competition.  If the
+    image has incompatible geometry or lacks a usable transform, the
+    operator-approved runtime frame is retained and the caller can continue
+    with the saved task positions.
+    """
     import numpy as np
 
     bundle, task_data, (_, _, _, old_plane), ready_pose = runtime
+    if not isinstance(scene, dict):
+        print(
+            "BOARD REGISTRATION FALLBACK: fresh scene was invalid; "
+            "keeping the last-known-good calibrated frame.",
+            flush=True,
+        )
+        return runtime
     board = scene.get("board") or {}
+    if not isinstance(board, dict):
+        print(
+            "BOARD REGISTRATION FALLBACK: fresh scene had no usable board; "
+            "keeping the last-known-good calibrated frame.",
+            flush=True,
+        )
+        return runtime
     reference_signature = old_plane.get("camera_geometry_signature")
     current_signature = board.get("corners_px")
-    geometry = compare_board_geometry(
-        reference_signature,
-        board_geometry_signature(current_signature),
-    )
-    if not geometry.get("valid", True):
-        raise RuntimeError(
-            "board image retake is not compatible with the calibrated board "
-            "geometry; run full five-point calibration: " + geometry["reason"]
+    try:
+        geometry = compare_board_geometry(
+            reference_signature,
+            board_geometry_signature(current_signature),
         )
-    matrix = np.asarray(board.get("T_base_board_center"), dtype=float)
+    except Exception as exc:
+        print(
+            "BOARD REGISTRATION FALLBACK: could not validate fresh board "
+            f"geometry ({type(exc).__name__}: {exc}); keeping the "
+            "last-known-good calibrated frame.",
+            flush=True,
+        )
+        return runtime
+    if not geometry.get("valid", True):
+        print(
+            "BOARD REGISTRATION FALLBACK: fresh image would require field "
+            f"recalibration ({geometry.get('reason', 'incompatible geometry')}); "
+            "continuing with the last-known-good calibrated frame.",
+            flush=True,
+        )
+        return runtime
+    try:
+        matrix = np.asarray(board.get("T_base_board_center"), dtype=float)
+    except (TypeError, ValueError) as exc:
+        print(
+            "BOARD REGISTRATION FALLBACK: fresh board transform was invalid "
+            f"({exc}); keeping the last-known-good calibrated frame.",
+            flush=True,
+        )
+        return runtime
     if matrix.shape != (4, 4) or not np.all(np.isfinite(matrix)):
-        raise RuntimeError("fresh board image did not provide a finite board transform")
+        print(
+            "BOARD REGISTRATION FALLBACK: fresh board transform was not "
+            "finite; keeping the last-known-good calibrated frame.",
+            flush=True,
+        )
+        return runtime
     center = matrix[:3, 3].copy()
     # The board is calibrated as a horizontal translation-only object.  A
     # single camera retake may label image edges with a mirrored or rotated
@@ -400,7 +448,12 @@ def _runtime_from_board_scene(runtime, scene):
     for label, key in (("TOP_RIGHT", "tr"), ("BOTTOM_RIGHT", "br"), ("BOTTOM_LEFT", "bl")):
         point = raw_corners.get(key)
         if not isinstance(point, list) or len(point) != 3:
-            raise RuntimeError(f"fresh board image is missing corner {key}")
+            print(
+                "BOARD REGISTRATION FALLBACK: fresh board image is missing "
+                f"corner {key}; keeping the last-known-good calibrated frame.",
+                flush=True,
+            )
+            return runtime
         correction = corrections.get(label, (0.0, 0.0))
         corrected_corners[label] = (
             float(point[0]) + float(correction[0]),

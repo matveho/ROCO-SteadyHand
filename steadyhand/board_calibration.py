@@ -111,8 +111,8 @@ def compare_board_geometry(reference, current, *, max_scale_change=0.15,
     return checks
 
 
-def load_board_calibration(path, robot_config, *, max_age_minutes=720.0,
-                           now=None, fallback_path=DEFAULT_FALLBACK):
+def _load_board_calibration_record(path, robot_config, *, max_age_minutes=720.0,
+                                   now=None, fallback_path=DEFAULT_FALLBACK):
     """Load schema 2 or legacy schema 1 into one normalized dictionary."""
     source = Path(path)
     if not source.is_file() and source.name == "vega_board_manual.json" and Path(fallback_path).is_file():
@@ -172,6 +172,52 @@ def load_board_calibration(path, robot_config, *, max_age_minutes=720.0,
         "camera_geometry_signature": signature,
         "calibration_camera_geometry_signature": signature,
     }
+
+
+def load_board_calibration(path, robot_config, *, max_age_minutes=720.0,
+                           now=None, fallback_path=DEFAULT_FALLBACK):
+    """Load a board calibration, recovering to the permanent frame if needed.
+
+    The active file is written by an onsite calibration process and can be
+    stale, interrupted, or otherwise invalid after a failed run.  The
+    repository's permanent fallback is an operator-approved last-known-good
+    record, so a bad active record must not block a competition run.  Only the
+    canonical active filename gets this recovery; explicitly supplied files
+    (including test fixtures and other robots' records) retain strict
+    validation and their original errors.
+    """
+    source = Path(path)
+    fallback = Path(fallback_path)
+    try:
+        return _load_board_calibration_record(
+            source,
+            robot_config,
+            max_age_minutes=max_age_minutes,
+            now=now,
+            fallback_path=fallback,
+        )
+    except Exception as active_exc:
+        if (
+            source.name != "vega_board_manual.json"
+            or source.resolve() == fallback.resolve()
+            or not fallback.is_file()
+        ):
+            raise
+        try:
+            loaded = _load_board_calibration_record(
+                fallback,
+                robot_config,
+                max_age_minutes=max_age_minutes,
+                now=now,
+                fallback_path=fallback,
+            )
+        except Exception as fallback_exc:
+            raise ValueError(
+                "active and permanent fallback board calibrations are invalid; "
+                f"active={active_exc}; fallback={fallback_exc}"
+            ) from fallback_exc
+        loaded["fallback_reason"] = f"{type(active_exc).__name__}: {active_exc}"
+        return loaded
 
 
 def _validate_identity(value, robot_config):

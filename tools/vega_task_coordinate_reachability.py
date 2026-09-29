@@ -41,7 +41,39 @@ def _finite_vector(value, size, name):
 
 
 def _load_manual(path, cfg):
-    manual = load_board_calibration(path, cfg)
+    """Load the active board record, falling back to the frozen record.
+
+    A live ``vega_board_manual.json`` can be stale or partially written after
+    an interrupted onsite calibration.  That must not make an otherwise
+    usable competition checkout unusable.  The permanent fallback is the
+    operator-approved last-known-good frame and is intentionally used only
+    when loading the active record fails; valid active calibrations still win.
+    """
+    source = Path(path)
+    fallback = ROOT / "calibration" / "vega_board_manual_fallback.json"
+    try:
+        manual = load_board_calibration(source, cfg)
+    except Exception as active_exc:
+        if source.resolve() == fallback.resolve() or not fallback.is_file():
+            raise
+        try:
+            manual = load_board_calibration(fallback, cfg)
+        except Exception as fallback_exc:
+            raise ValueError(
+                "active and permanent fallback board calibrations are invalid; "
+                f"active={active_exc}; fallback={fallback_exc}"
+            ) from fallback_exc
+        print(
+            "CALIBRATION FALLBACK: active board calibration was rejected; "
+            "using the permanent last-known-good board frame.",
+            flush=True,
+        )
+    if manual.get("fallback_reason"):
+        print(
+            "CALIBRATION FALLBACK: active board calibration was rejected; "
+            "using the permanent last-known-good board frame.",
+            flush=True,
+        )
     if manual.get("schema_version") != 2:
         raise ValueError(
             "task motion requires a completed five-point surface calibration; "
@@ -53,6 +85,7 @@ def _load_manual(path, cfg):
     plane["raw_board_y_unit_base_xy"] = manual["raw_board_y_unit_base_xy"]
     plane["axis_dot_raw"] = manual["axis_dot_raw"]
     plane["axis_angle_error_deg"] = manual["axis_angle_error_deg"]
+    plane["calibration_path"] = manual["path"]
     return (
         manual["center_base_xy_m"],
         manual["board_x_unit_base_xy"],
