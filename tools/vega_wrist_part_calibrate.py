@@ -564,7 +564,10 @@ class PartSession:
                 if list(rgb.shape[:2]) != profile["image_shape"]:
                     raise ValueError("Wrist resolution changed; re-teach this part")
                 self.tracker = TemplateTracker.from_saved_template(
-                    rgb, _load_template(profile), profile["template"].get("template_uv")
+                    rgb,
+                    _load_template(profile),
+                    profile["template"].get("template_uv"),
+                    initial_uv=profile.get("feature_uv"),
                 )
                 self.reference_rgb = rgb.copy()
                 self.reference_feature = tuple(profile.get("feature_uv") or self.tracker.uv)

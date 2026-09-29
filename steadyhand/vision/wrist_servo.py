@@ -144,6 +144,7 @@ class TemplateTracker:
 
         self.cv2 = cv2
         self.np = np
+        array = np.asarray(rgb)
         gray = self._gray(rgb)
         self.shape = gray.shape
         self.radius = int(patch_radius)
@@ -167,11 +168,15 @@ class TemplateTracker:
         r = self.radius
         if not (r <= u < gray.shape[1]-r and r <= v < gray.shape[0]-r):
             raise ValueError("Feature patch extends beyond image")
+        self.template_rgb = array[v-r:v+r+1, u-r:u+r+1].copy()
         self.template = gray[v-r:v+r+1, u-r:u+r+1].copy()
-        if float(self.template.std()) < 5:
+        self.color_strength = self._color_strength(self.template_rgb)
+        self.color_preferred = self.color_strength >= 18.0
+        if float(self.template.std()) < 5 and not self.color_preferred:
             raise ValueError("Feature patch is textureless; select a corner/mark")
         self.anchor = (float(r), float(r))
         self.uv = (float(u), float(v))
+        self.last_tracking_mode = "grayscale"
         self.locate(rgb)  # Reject an ambiguous initial patch before probing.
 
     @classmethod
@@ -181,6 +186,7 @@ class TemplateTracker:
         template_rgb,
         template_uv=None,
         *,
+        initial_uv=None,
         search_radius=180,
         min_score=0.75,
         min_margin=0.06,
@@ -206,9 +212,14 @@ class TemplateTracker:
         if template_gray.ndim != 2 or min(template_gray.shape) < 8:
             raise ValueError("saved wrist template is too small")
         obj.shape = gray.shape
+        obj.template_rgb = np.asarray(template_rgb, dtype=np.uint8).copy()
+        if obj.template_rgb.ndim != 3 or obj.template_rgb.shape[2] != 3:
+            raise ValueError("saved wrist template must be RGB")
         obj.template = template_gray.copy()
+        obj.color_strength = obj._color_strength(obj.template_rgb)
+        obj.color_preferred = obj.color_strength >= 18.0
         obj.radius = max(4, min(template_gray.shape) // 2)
-        if float(template_gray.std()) < 5:
+        if float(template_gray.std()) < 5 and not obj.color_preferred:
             raise ValueError("Saved feature patch is textureless")
         if any(t > g for t, g in zip(template_gray.shape, gray.shape)):
             raise ValueError("Saved feature patch is larger than wrist image")
@@ -220,32 +231,114 @@ class TemplateTracker:
                 or not 0 <= obj.anchor[0] < template_gray.shape[1]
                 or not 0 <= obj.anchor[1] < template_gray.shape[0]):
             raise ValueError("Saved feature anchor is outside template")
+        obj.last_tracking_mode = "grayscale"
+        if initial_uv is not None:
+            try:
+                point = tuple(float(v) for v in initial_uv)
+                if len(point) == 2 and all(math.isfinite(v) for v in point):
+                    if (obj.radius <= point[0] < gray.shape[1] - obj.radius
+                            and obj.radius <= point[1] < gray.shape[0] - obj.radius):
+                        obj.uv = point
+                        obj.locate(rgb)
+                        return obj
+            except (TypeError, ValueError, RuntimeError):
+                # The board may have moved farther than the previous wrist
+                # view.  Fall back to the global saved-template search.
+                pass
         obj._locate_global(rgb)
         return obj
 
-    def _validate_match(self, scores, score, x, y, *, exclusion):
+    @staticmethod
+    def _color_strength(rgb):
+        """Return average per-pixel chroma used to prefer color matching."""
+        import numpy as np
+
+        array = np.asarray(rgb, dtype=np.float32)
+        if array.ndim != 3 or array.shape[2] != 3:
+            return 0.0
+        return float(np.mean(np.max(array, axis=2) - np.min(array, axis=2)))
+
+    def _validate_match(self, scores, score, x, y, *, exclusion,
+                        min_score=None, min_margin=None):
+        if min_score is None:
+            min_score = self.min_score
+        if min_margin is None:
+            min_margin = self.min_margin
         alternatives = scores.copy()
         alternatives[max(0, y-exclusion):y+exclusion+1,
                      max(0, x-exclusion):x+exclusion+1] = -1
         margin = score - float(alternatives.max())
-        if not math.isfinite(score) or score < self.min_score or margin < self.min_margin:
+        if not math.isfinite(score) or score < min_score or margin < min_margin:
             raise RuntimeError(
                 f"Feature lost/ambiguous: score={score:.3f}, margin={margin:.3f}"
             )
         return float(score), float(margin)
+
+    def _locate_from_map(self, scores, *, x_offset=0, y_offset=0,
+                         min_score=None, min_margin=None, label="grayscale"):
+        """Locate and validate one score map, retaining the original UV convention."""
+        _, score, _, (x, y) = self.cv2.minMaxLoc(scores)
+        score, margin = self._validate_match(
+            scores, float(score), int(x), int(y),
+            exclusion=max(4, min(self.template.shape) // 4),
+            min_score=min_score,
+            min_margin=min_margin,
+        )
+        self.uv = (
+            float(x_offset + x + self.anchor[0]),
+            float(y_offset + y + self.anchor[1]),
+        )
+        self.last_tracking_mode = label
+        return self.uv, score
+
+    def _color_match(self, rgb, *, x_offset=0, y_offset=0):
+        """Match RGB/chroma when grayscale texture is weak or repetitive.
+
+        The color path is deliberately a fallback.  It uses the same saved
+        patch and bounded search window, but preserves chroma information that
+        grayscale matching loses on the slim blue battery and similar parts.
+        Its threshold is relaxed only enough to survive camera exposure noise;
+        the candidate still needs a measurable local margin.
+        """
+        import numpy as np
+
+        image = np.asarray(rgb, dtype=np.uint8)
+        template = np.asarray(self.template_rgb, dtype=np.uint8)
+        if image.ndim != 3 or template.ndim != 3 or image.shape[2] != 3 or template.shape[2] != 3:
+            raise RuntimeError("color feature fallback needs RGB images")
+        if float(self.template.std()) < 5:
+            # CCOEFF is undefined for a constant grayscale patch.  A
+            # normalized squared-color distance remains useful for a uniform
+            # blue/black battery surface and still produces a bounded score.
+            scores = 1.0 - self.cv2.matchTemplate(
+                image, template, self.cv2.TM_SQDIFF_NORMED
+            )
+        else:
+            scores = self.cv2.matchTemplate(image, template, self.cv2.TM_CCOEFF_NORMED)
+        return self._locate_from_map(
+            scores,
+            x_offset=x_offset,
+            y_offset=y_offset,
+            min_score=(self.min_score if getattr(self, "color_preferred", False)
+                       else max(0.62, self.min_score - 0.10)),
+            min_margin=(max(0.018, self.min_margin * 0.50)
+                        if getattr(self, "color_preferred", False)
+                        else max(0.012, self.min_margin * 0.25)),
+            label="color",
+        )
 
     def _locate_global(self, rgb):
         gray = self._gray(rgb)
         if gray.shape != self.shape:
             raise ValueError("Wrist image size changed during servo")
         scores = self.cv2.matchTemplate(gray, self.template, self.cv2.TM_CCOEFF_NORMED)
-        _, score, _, (x, y) = self.cv2.minMaxLoc(scores)
-        score, _ = self._validate_match(
-            scores, float(score), int(x), int(y),
-            exclusion=max(4, min(self.template.shape) // 4),
-        )
-        self.uv = (float(x + self.anchor[0]), float(y + self.anchor[1]))
-        return self.uv, score
+        try:
+            return self._locate_from_map(scores)
+        except RuntimeError as grayscale_error:
+            try:
+                return self._color_match(rgb)
+            except (RuntimeError, ValueError):
+                raise grayscale_error
 
     def _gray(self, rgb):
         array = self.np.asarray(rgb)
@@ -261,14 +354,28 @@ class TemplateTracker:
         u, v = (int(round(x)) for x in self.uv)
         x0, y0 = max(0, u-s-r), max(0, v-s-r)
         x1, y1 = min(gray.shape[1], u+s+r+1), min(gray.shape[0], v+s+r+1)
-        scores = self.cv2.matchTemplate(gray[y0:y1, x0:x1], self.template,
-                                        self.cv2.TM_CCOEFF_NORMED)
-        _, score, _, (x, y) = self.cv2.minMaxLoc(scores)
-        score, _ = self._validate_match(
-            scores, float(score), int(x), int(y), exclusion=max(4, r//2)
-        )
-        self.uv = (float(x0+x+self.anchor[0]), float(y0+y+self.anchor[1]))
-        return self.uv, score
+        if getattr(self, "color_preferred", False):
+            try:
+                return self._color_match(
+                    rgb[y0:y1, x0:x1], x_offset=x0, y_offset=y0,
+                )
+            except (RuntimeError, ValueError):
+                pass
+        gray_region = gray[y0:y1, x0:x1]
+        scores = self.cv2.matchTemplate(gray_region, self.template,
+                                         self.cv2.TM_CCOEFF_NORMED)
+        try:
+            return self._locate_from_map(
+                scores, x_offset=x0, y_offset=y0,
+                label="grayscale",
+            )
+        except RuntimeError as grayscale_error:
+            try:
+                return self._color_match(
+                    rgb[y0:y1, x0:x1], x_offset=x0, y_offset=y0,
+                )
+            except (RuntimeError, ValueError):
+                raise grayscale_error
 
     def verify_selected(self, rgb, selected_uv, *, max_error_px=18.0):
         """Verify that an operator's second click is the original feature.
@@ -395,14 +502,26 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         raise ValueError("Goal pixel must contain two finite coordinates")
     if not (0 <= goal[0] < rgb.shape[1] and 0 <= goal[1] < rgb.shape[0]):
         raise ValueError("Goal pixel is outside image")
-    report("reference", feature_uv=uv0, goal_uv=goal, tcp=origin.position_m)
+    report(
+        "reference",
+        feature_uv=uv0,
+        goal_uv=goal,
+        tcp=origin.position_m,
+        tracking_mode=getattr(tracker, "last_tracking_mode", "grayscale"),
+    )
 
     def observe(label):
         rgb = capture_rgb()
         uv, score = tracker.locate(rgb)
         actual = robot.get_tcp_pose()
         check_pose(actual)
-        report(label, feature_uv=uv, score=score, tcp=actual.position_m)
+        report(
+            label,
+            feature_uv=uv,
+            score=score,
+            tcp=actual.position_m,
+            tracking_mode=getattr(tracker, "last_tracking_mode", "grayscale"),
+        )
         return uv, actual
 
     # Probe waypoints are prechecked when using the physical Vega adapter.
