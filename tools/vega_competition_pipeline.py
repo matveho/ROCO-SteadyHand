@@ -764,6 +764,8 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
             skipped.append((part, reason))
     print("\nPRIORITY COMPETITION PLAN", flush=True)
     print(f"Action: {chosen_action}; bounded retries per part: {plan['max_retries_per_part']}", flush=True)
+    if no_cv:
+        print("Positioning: saved arm hover -> shifted live task target fallback (no wrist CV)", flush=True)
     print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a in actions) or "none"), flush=True)
     if skipped:
         print("Not yet eligible:", flush=True)
@@ -941,7 +943,8 @@ def main(argv=None):
     if args.competition_plan is not None:
         action = "pick" if args.competition_plan != "priority_pick_place" else "pick_place"
         return _priority_competition_actions(
-            args, action=action, no_cv=args.competition_plan == "priority_pick_no_cv"
+            args, action=action,
+            no_cv=(args.competition_plan == "priority_pick_no_cv" or action == "pick"),
         )
 
     if args.test_positions is not None or args.competition_task is not None:
@@ -983,7 +986,7 @@ def main(argv=None):
         print("  3. Wrist camera calibration (per-part feature / yaw / grasp depth)")
         print("  4. Task tests (all part pick and pick-place actions)")
         print("  5. Competition run sequence (choose numbered actions/ranges)")
-        print("  6. Attempt pickup of all calibrated objects (score-first + no-CV retry)")
+        print("  6. Attempt pickup of all calibrated objects (saved/task positions; no CV)")
         print("  7. Run preserved competition task version")
         print("  8. Reload operator settings / show readiness")
         print("  9. Attempt pickup of all calibrated objects (NO CV only)")
@@ -1069,7 +1072,7 @@ def main(argv=None):
             continue
         if choice == "6":
             try:
-                _priority_competition_actions(args, action="pick")
+                _priority_competition_actions(args, action="pick", no_cv=True)
             except (KeyboardInterrupt, EOFError):
                 print("Pickup run cancelled.")
             except Exception as exc:

@@ -1078,7 +1078,9 @@ class PartSession:
                         if any(word in message for word in ("feature", "lost", "ambiguous", "tracking", "centering stalled")):
                             print(
                                 "VISUAL ALIGNMENT STOPPED: no further motion was issued; "
-                                "capture another image or teach a different feature.",
+                                "capture another image or teach a different feature. "
+                                "If the TCP is already over the part, use 'grab manual'; "
+                                "competition pickup does not require centering.",
                                 flush=True,
                             )
                             continue
