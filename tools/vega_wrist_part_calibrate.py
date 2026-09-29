@@ -205,7 +205,23 @@ class PartSession:
         self.runtime = _runtime_from_board_scene(runtime, scene)
         ready_q, _ = configured_right_preset(self.cfg, "right_ready")
         self.robot.move_joints(ready_q, speed_scale=self.args.speed_scale)
-        self.targets = _task_targets(self.runtime, self.runtime[1], .100)
+        # The reflected task frame is retained for the verified competition
+        # path (where saved arm hovers are preferred).  Teaching and release
+        # setup must use the physically validated frame, however: these are
+        # the paths that create new coarse/place poses when no saved profile
+        # exists.  Without this split, option 3/10 sends the arm to the
+        # mirror image while option 6 appears correct because it uses an old
+        # saved hover.
+        teaching_task_data = dict(self.runtime[1])
+        teaching_frame_override = getattr(self.args, "mode", "calibrate") in ("calibrate", "drop")
+        if teaching_frame_override:
+            teaching_task_data["task_coordinate_mirror_y"] = False
+            print(
+                "TEACHING TARGET FRAME: validated physical orientation "
+                "(task_coordinate_mirror_y=false); competition saved poses unchanged.",
+                flush=True,
+            )
+        self.targets = _task_targets(self.runtime, teaching_task_data, .100)
         # Use the fresh head-camera scene to correct each part's coarse XY
         # before the wrist profile is used.  This handles the organizer's
         # per-part +/-1 cm variation while retaining the saved grasp depth,
@@ -215,7 +231,7 @@ class PartSession:
         try:
             from tools.vega_head_fallback import match_expected_parts
             self.head_observations = match_expected_parts(
-                scene, self.runtime, self.targets, task_data=self.runtime[1]
+                scene, self.runtime, self.targets, task_data=teaching_task_data
             )
         except Exception as exc:
             self.head_observations = {}
