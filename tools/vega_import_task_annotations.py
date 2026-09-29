@@ -70,9 +70,9 @@ def convert(project, *, rotation_deg=180):
         "source_board_center_xy_m": [BOARD_SIZE_M/2]*2,
         "task_coordinate_rotation_deg": rotation_deg,
         "task_coordinate_mirror_x": False,
-        "task_coordinate_mirror_y": True,
+        "task_coordinate_mirror_y": False,
         "board_coordinate_convention": {"origin": "rectified image top-left", "x_positive": "image right", "y_positive": "image down", "runtime_x_positive": "robot-view board right", "runtime_y_positive": "robot-view board near edge"},
-        "registration_notes": "Per-image rectified pixel fractions normalized to 386 mm. Apply the reviewed 180-degree board mapping plus the verified forward/back reflection; preserve left/right so batteries and gears stay on the robot-right side. Annotation Z is ignored; accepted board calibration owns Z.",
+        "registration_notes": "Per-image rectified pixel fractions normalized to 386 mm. Apply the physically verified 180-degree board mapping without a forward/back reflection; preserve left/right so batteries and gears stay on the robot-right side. Annotation Z is ignored; accepted board calibration owns Z.",
         "official_order": list(PART_NAMES), "parts": parts,
         "legacy_secondary_points": _legacy_secondary_points(),
         "physical_layout_expectations": {

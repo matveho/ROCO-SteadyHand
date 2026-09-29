@@ -600,6 +600,33 @@ class PartSession:
             except (RuntimeError, ValueError) as exc:
                 self.alignment_verified = False
                 last_error = exc
+                # A probe that the arm did not physically reach cannot be
+                # used to estimate an image Jacobian.  Leave the TCP where
+                # the adapter stopped and keep the teaching session alive so
+                # the operator can use the already-supervised pose with
+                # ``grab manual``.  In particular, do not issue a blind
+                # return/retry after a missed physical waypoint.
+                if "tcp missed servo waypoint" in str(exc).lower():
+                    self.alignment_fallback_used = True
+                    self.event(
+                        "alignment_fallback",
+                        {
+                            "reason": str(exc),
+                            "fallback": "manual_current_pose",
+                        },
+                    )
+                    print(
+                        "VISUAL CENTERING UNAVAILABLE: the arm did not reach "
+                        "a local probe, so no Jacobian was accepted. No further "
+                        "motion was issued; if the gripper is already over the "
+                        "part, use 'grab manual' to continue teaching.",
+                        flush=True,
+                    )
+                    return {
+                        "status": "manual_fallback",
+                        "reason": str(exc),
+                        "tcp_position_m": self.robot.get_tcp_pose().position_m,
+                    }
                 if attempt >= len(settings) or not _is_visual_alignment_failure(exc):
                     raise
                 print(
