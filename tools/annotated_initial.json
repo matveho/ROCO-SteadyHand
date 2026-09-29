@@ -1,0 +1,685 @@
+{
+  "schema_version": 1,
+  "tool": {
+    "name": "steadyhand-board-annotation",
+    "version": "1.0"
+  },
+  "exported_at_utc": "2026-09-29T03:22:30Z",
+  "part_order": [
+    "gear_60teeth",
+    "gear_20teeth",
+    "rod_16mm",
+    "bolt_8mm",
+    "usb_a",
+    "hdmi",
+    "pin",
+    "battery_size1",
+    "battery_size5"
+  ],
+  "board": {
+    "width_m": 0.36445339189238474,
+    "height_m": 0.3775063880204815,
+    "coordinate_frame": "board_local_annotation",
+    "origin": "board center for exported task points; top-left retained in audit fields",
+    "x_positive": "rectified image right",
+    "y_positive": "rectified image down"
+  },
+  "states": {
+    "initial": {
+      "image_path": "/home/noctiluca/Downloads/5033284557033114756.jpg",
+      "board_width_m": 0.386,
+      "board_height_m": 0.4,
+      "board_points_source_px": [
+        [
+          355.29128367670353,
+          83.20811410459586
+        ],
+        [
+          2061.4258003169566,
+          109.71689381933436
+        ],
+        [
+          2058.446909667194,
+          1808.4209191759107
+        ],
+        [
+          326.0044374009508,
+          1803.73502377179
+        ]
+      ],
+      "homography_image_to_board": [
+        0.6125946286169885,
+        0.010427599020307057,
+        -218.51719282390195,
+        -0.010054980399018067,
+        0.6471497106812467,
+        -50.275660075810144,
+        -7.58029195547951e-06,
+        8.80229369403204e-06,
+        1.0
+      ],
+      "homography_board_to_image": [
+        1.633085235673724,
+        -0.031146635618862748,
+        355.2912836767035,
+        0.026317510129783186,
+        1.5406517895960785,
+        83.20811410459584,
+        1.2147608421131875e-05,
+        -1.3797370123682657e-05,
+        1.0
+      ],
+      "rectified_size_px": [
+        1062,
+        1100
+      ],
+      "ruler": {
+        "endpoints_source_or_board_px": [
+          [
+            594.6258320126782,
+            399.9328050713153
+          ],
+          [
+            623.7348652931853,
+            400.3546751188589
+          ]
+        ],
+        "endpoints_board_px": [
+          [
+            594.6258320126782,
+            399.9328050713153
+          ],
+          [
+            623.7348652931853,
+            400.3546751188589
+          ]
+        ],
+        "length_m": 0.01,
+        "meters_per_pixel": 0.00034349989810780843,
+        "use_for_coordinates": true
+      },
+      "reference_rectangle": null,
+      "annotations": [
+        {
+          "id": "annotation_10",
+          "part_name": "battery_size5",
+          "kind": "polygon",
+          "closed": true,
+          "points_board_px": [
+            [
+              159.25594294770204,
+              330.3242472266243
+            ],
+            [
+              201.86481774960376,
+              332.43359746434226
+            ],
+            [
+              208.61473851030107,
+              186.04469096671946
+            ],
+            [
+              167.27147385103007,
+              181.40412044374006
+            ]
+          ],
+          "center_board_px": [
+            184.17298875964477,
+            257.8792241279087
+          ],
+          "area_board_px2": 6222.872693709331,
+          "center_board_m_from_tl": [
+            0.06326340287314852,
+            0.08858148721205733
+          ],
+          "center_board_m": [
+            -0.11896329307304385,
+            -0.10017170679818341
+          ],
+          "source_geometry_px": [
+            [
+              606.6726425952673,
+              597.8822379254727
+            ],
+            [
+              676.0425853247076,
+              601.9700362318625
+            ],
+            [
+              690.2048761361315,
+              375.34071583216416
+            ],
+            [
+              623.1031812655895,
+              367.2638290383464
+            ]
+          ],
+          "state": "initial"
+        },
+        {
+          "id": "annotation_11",
+          "part_name": "battery_size1",
+          "kind": "polygon",
+          "closed": true,
+          "points_board_px": [
+            [
+              194.2711568938193,
+              148.4982567353407
+            ],
+            [
+              293.41061806656097,
+              160.73248811410457
+            ],
+            [
+              288.348177496038,
+              334.96481774960375
+            ],
+            [
+              187.521236133122,
+              326.1055467511885
+            ]
+          ],
+          "center_board_px": [
+            240.7123933431134,
+            242.78758699040617
+          ],
+          "area_board_px2": 17651.316770753532,
+          "center_board_m_from_tl": [
+            0.08268468258664616,
+            0.0833975113930452
+          ],
+          "center_board_m": [
+            -0.09954201335954621,
+            -0.10535568261719554
+          ],
+          "source_geometry_px": [
+            [
+              667.7197300546961,
+              317.00634914421784
+            ],
+            [
+              828.3341610475836,
+              338.10746730377036
+            ],
+            [
+              816.6691732293484,
+              607.5406389630361
+            ],
+            [
+              652.8225772453222,
+              591.87312540149
+            ]
+          ],
+          "state": "initial"
+        },
+        {
+          "id": "annotation_12",
+          "part_name": "pin",
+          "kind": "circle",
+          "closed": true,
+          "center_board_px": [
+            626.6879556259904,
+            705.3667194928684
+          ],
+          "radius_board_px": 19.543104339714215,
+          "points_board_px": [
+            [
+              626.6879556259904,
+              705.3667194928684
+            ],
+            [
+              616.1412044374008,
+              688.9137876386686
+            ]
+          ],
+          "center_board_m_from_tl": [
+            0.21526724890291848,
+            0.24229339627443938
+          ],
+          "center_board_m": [
+            0.033040552956726116,
+            0.053540202264198644
+          ],
+          "source_geometry_px": [
+            [
+              1359.6380102845922,
+              1188.9453847526847
+            ],
+            [
+              1342.7581596476173,
+              1163.1498862758078
+            ]
+          ],
+          "state": "initial",
+          "radius_m": 0.006713054349402101
+        },
+        {
+          "id": "annotation_13",
+          "part_name": "hdmi",
+          "kind": "polygon",
+          "closed": true,
+          "points_board_px": [
+            [
+              93.02234548335973,
+              906.1768621236131
+            ],
+            [
+              94.70982567353406,
+              961.4418383518223
+            ],
+            [
+              53.78843106180665,
+              962.707448494453
+            ],
+            [
+              52.10095087163232,
+              906.1768621236131
+            ]
+          ],
+          "center_board_px": [
+            73.3283453562908,
+            934.131293334425
+          ],
+          "area_board_px2": 2288.483012499979,
+          "center_board_m_from_tl": [
+            0.025188279158300075,
+            0.3208740040796903
+          ],
+          "center_board_m": [
+            -0.1570384167878923,
+            0.13212081006944956
+          ],
+          "source_geometry_px": [
+            [
+              484.49038272775624,
+              1498.8049314047123
+            ],
+            [
+              485.90145652383285,
+              1586.1639008258592
+            ],
+            [
+              418.4318338223283,
+              1587.8745964297987
+            ],
+            [
+              417.1032134088226,
+              1498.4690468037668
+            ]
+          ],
+          "state": "initial"
+        },
+        {
+          "id": "annotation_14",
+          "part_name": "usb_a",
+          "kind": "polygon",
+          "closed": true,
+          "points_board_px": [
+            [
+              892.4660855784467,
+              742.4912836767035
+            ],
+            [
+              927.9031695721076,
+              742.4912836767035
+            ],
+            [
+              926.2156893819333,
+              799.8656101426305
+            ],
+            [
+              890.7786053882725,
+              800.2874801901742
+            ]
+          ],
+          "center_board_px": [
+            909.3192984105408,
+            771.2823688404376
+          ],
+          "area_board_px2": 2040.2977995332913,
+          "center_board_m_from_tl": [
+            0.31235108635148456,
+            0.26493541510903945
+          ],
+          "center_board_m": [
+            0.1301243904052922,
+            0.07618222109879871
+          ],
+          "source_geometry_px": [
+            [
+              1788.5707653705658,
+              1249.870075007903
+            ],
+            [
+              1845.6140026419798,
+              1250.264247016142
+            ],
+            [
+              1842.5706898866454,
+              1339.6098193146433
+            ],
+            [
+              1785.4770589934421,
+              1339.9116921637035
+            ]
+          ],
+          "state": "initial"
+        },
+        {
+          "id": "annotation_15",
+          "part_name": "bolt_8mm",
+          "kind": "circle",
+          "closed": true,
+          "center_board_px": [
+            194.6930269413629,
+            719.2884310618065
+          ],
+          "radius_board_px": 19.62942789885193,
+          "points_board_px": [
+            [
+              194.6930269413629,
+              719.2884310618065
+            ],
+            [
+              214.09904912836762,
+              716.3353407290015
+            ]
+          ],
+          "center_board_m_from_tl": [
+            0.06687703491665896,
+            0.2470755027798559
+          ],
+          "center_board_m": [
+            -0.11534966102953341,
+            0.058322308769615167
+          ],
+          "source_geometry_px": [
+            [
+              655.7954883853267,
+              1205.6185108696789
+            ],
+            [
+              687.6296806599514,
+              1201.2141378087997
+            ]
+          ],
+          "state": "initial",
+          "radius_m": 0.00674270648317021
+        },
+        {
+          "id": "annotation_16",
+          "part_name": "rod_16mm",
+          "kind": "circle",
+          "closed": true,
+          "center_board_px": [
+            335.1757527733755,
+            544.2123613312202
+          ],
+          "radius_board_px": 22.784888436660705,
+          "points_board_px": [
+            [
+              335.1757527733755,
+              544.2123613312202
+            ],
+            [
+              357.9567353407289,
+              544.6342313787637
+            ]
+          ],
+          "center_board_m_from_tl": [
+            0.11513283692586247,
+            0.186936890666284
+          ],
+          "center_board_m": [
+            -0.0670938590203299,
+            -0.0018163033439567433
+          ],
+          "source_geometry_px": [
+            [
+              888.76626514439,
+              933.6800199202606
+            ],
+            [
+              925.832993329551,
+              934.67973203035
+            ]
+          ],
+          "state": "initial",
+          "radius_m": 0.007826606856390734
+        },
+        {
+          "id": "annotation_17",
+          "part_name": "gear_20teeth",
+          "kind": "circle",
+          "closed": true,
+          "center_board_px": [
+            422.9247226624405,
+            863.5679873217114
+          ],
+          "radius_board_px": 29.142641202074163,
+          "points_board_px": [
+            [
+              422.9247226624405,
+              863.5679873217114
+            ],
+            [
+              411.9561014263074,
+              890.5676703645006
+            ]
+          ],
+          "center_board_m_from_tl": [
+            0.14527459914182145,
+            0.29663551565417307
+          ],
+          "center_board_m": [
+            -0.03695209680437092,
+            0.10788232164393233
+          ],
+          "source_geometry_px": [
+            [
+              1026.01995864287,
+              1434.5183717026619
+            ],
+            [
+              1007.6514615040185,
+              1476.8607354914361
+            ]
+          ],
+          "state": "initial",
+          "radius_m": 0.010010494283504895
+        },
+        {
+          "id": "annotation_18",
+          "part_name": "gear_60teeth",
+          "kind": "circle",
+          "closed": true,
+          "center_board_px": [
+            250.80174326465922,
+            959.3324881141044
+          ],
+          "radius_board_px": 90.15985730244248,
+          "points_board_px": [
+            [
+              250.80174326465922,
+              959.3324881141044
+            ],
+            [
+              317.0353407290015,
+              898.1613312202851
+            ]
+          ],
+          "center_board_m_from_tl": [
+            0.08615037325667117,
+            0.3295306119187052
+          ],
+          "center_board_m": [
+            -0.0960763226895212,
+            0.14077741790846446
+          ],
+          "source_geometry_px": [
+            [
+              742.5583183316353,
+              1583.9457175181028
+            ],
+            [
+              852.3422056484172,
+              1488.014755409318
+            ]
+          ],
+          "state": "initial",
+          "radius_m": 0.030969901796803537
+        }
+      ],
+      "pixel_operations": [
+        {
+          "operation": "rotate_90_clockwise"
+        },
+        {
+          "operation": "rotate_90_clockwise"
+        }
+      ],
+      "image_sha256": "d7b9348cb2613436895b0486a3a63e7e4c17c3023cf37c6cbca81041e3caefac",
+      "processed_image_size_px": [
+        2560,
+        1920
+      ],
+      "processed_image_sha256": "82f90a36e1ed339b0f0f73f9f5535dddfd0b310fbe4d9dbdbaf420355bb3064c",
+      "effective_dimensions_m": [
+        0.36445339189238474,
+        0.3775063880204815
+      ]
+    },
+    "final": {
+      "image_path": null,
+      "board_width_m": 0.386,
+      "board_height_m": 0.4,
+      "board_points_source_px": [],
+      "homography_image_to_board": null,
+      "homography_board_to_image": null,
+      "rectified_size_px": null,
+      "ruler": null,
+      "reference_rectangle": null,
+      "annotations": [],
+      "pixel_operations": [],
+      "effective_dimensions_m": [
+        0.36445339189238474,
+        0.3775063880204815
+      ]
+    }
+  },
+  "task_coordinates": {
+    "schema_version": 1,
+    "generated_at_utc": "2026-09-29T03:22:30Z",
+    "source_pose_frame": "board_local_annotation",
+    "position_units": "m",
+    "quaternion_order": "wxyz",
+    "board_width_m": 0.36445339189238474,
+    "board_height_m": 0.3775063880204815,
+    "board_coordinate_convention": {
+      "origin": "board center",
+      "x_positive": "rectified image right",
+      "y_positive": "rectified image down",
+      "center_coordinates_are_m": true
+    },
+    "task_coordinate_rotation_deg": 0.0,
+    "source_board_center_xy_m": [
+      0.18222669594619237,
+      0.18875319401024074
+    ],
+    "official_order": [
+      "gear_60teeth",
+      "gear_20teeth",
+      "rod_16mm",
+      "bolt_8mm",
+      "usb_a",
+      "hdmi",
+      "pin",
+      "battery_size1",
+      "battery_size5"
+    ],
+    "parts": {
+      "gear_60teeth": {
+        "pick": [
+          0.08615037325667117,
+          0.3295306119187052,
+          0.0
+        ]
+      },
+      "gear_20teeth": {
+        "pick": [
+          0.14527459914182145,
+          0.29663551565417307,
+          0.0
+        ]
+      },
+      "rod_16mm": {
+        "pick": [
+          0.11513283692586247,
+          0.186936890666284,
+          0.0
+        ]
+      },
+      "bolt_8mm": {
+        "pick": [
+          0.06687703491665896,
+          0.2470755027798559,
+          0.0
+        ]
+      },
+      "usb_a": {
+        "pick": [
+          0.31235108635148456,
+          0.26493541510903945,
+          0.0
+        ]
+      },
+      "hdmi": {
+        "pick": [
+          0.025188279158300075,
+          0.3208740040796903,
+          0.0
+        ]
+      },
+      "pin": {
+        "pick": [
+          0.21526724890291848,
+          0.24229339627443938,
+          0.0
+        ]
+      },
+      "battery_size1": {
+        "pick": [
+          0.08268468258664616,
+          0.0833975113930452,
+          0.0
+        ]
+      },
+      "battery_size5": {
+        "pick": [
+          0.06326340287314852,
+          0.08858148721205733,
+          0.0
+        ]
+      }
+    },
+    "warnings": [
+      "gear_60teeth: no final annotation",
+      "gear_20teeth: no final annotation",
+      "rod_16mm: no final annotation",
+      "bolt_8mm: no final annotation",
+      "usb_a: no final annotation",
+      "hdmi: no final annotation",
+      "pin: no final annotation",
+      "battery_size1: no final annotation",
+      "battery_size5: no final annotation"
+    ],
+    "annotation_project_version": "1.0"
+  },
+  "chat_handoff": {
+    "purpose": "Offline board annotation handoff for robot-code integration",
+    "instructions": "Use the task_coordinates object for board-local XY. Review source_pose_frame and map it through the live board calibration before robot motion. Attach the source images separately.",
+    "source_images_to_attach": [
+      "/home/noctiluca/Downloads/5033284557033114756.jpg"
+    ]
+  }
+}
