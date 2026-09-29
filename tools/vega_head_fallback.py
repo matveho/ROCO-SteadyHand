@@ -306,19 +306,17 @@ class HeadFallbackSession:
 
     def move(self, target, *, slow=False):
         current = self.robot.get_tcp_pose()
-        if current is None or target.position_m[2] < self.floor + 0.005:
-            raise RuntimeError("invalid current pose or target below TCP floor")
+        if current is None:
+            raise RuntimeError("invalid current pose")
         distance, angle = pose_distance(current, target)
         count = max(1, math.ceil(distance / 0.025), math.ceil(angle / 0.12))
         seed = self.robot._read_joint_positions()
         for index in range(1, count + 1):
             waypoint = interpolate_pose(current, target, index / count)
-            if waypoint.position_m[2] < self.floor + 0.005:
-                raise RuntimeError("planned waypoint below TCP floor")
             seed = self.robot._kinematics.solve(waypoint, seed)
         move_tcp_segmented(self.robot, target, speed_scale=0.25 if slow else SPEED_SCALE,
                            max_translation_step_m=0.025, max_orientation_step_rad=0.12,
-                           min_tcp_z_m=self.floor + 0.005)
+                           min_tcp_z_m=None)
 
     def select_part(self, part):
         if self.holding:
@@ -340,8 +338,6 @@ class HeadFallbackSession:
             if not math.isfinite(depth) or not 0 <= depth <= 100:
                 raise ValueError("saved grasp depth must be 0..100.0 mm below hover")
             self.grasp_clearance_m = HOVER_CLEARANCE_M - depth / 1000.0
-            if self.surface(*xy) + self.grasp_clearance_m < self.floor + 0.005:
-                raise ValueError("saved grasp depth would cross TCP floor")
         print(f"SELECTED {part}: {self.observation['selection']} target={tuple(round(v, 4) for v in self.hover_pose.position_m)}", flush=True)
         self.move(self.hover_pose)
 
@@ -372,8 +368,6 @@ class HeadFallbackSession:
         if not math.isfinite(depth) or not 0 <= depth <= 100:
             raise ValueError("depth must be 0..100.0 mm below hover")
         clearance = HOVER_CLEARANCE_M - depth / 1000.0
-        if self.surface(*self.hover_pose.position_m[:2]) + clearance < self.floor + 0.005:
-            raise ValueError("depth would cross TCP floor")
         self.grasp_clearance_m = clearance
         grasp_z = self.surface(*self.hover_pose.position_m[:2]) + clearance
         print(

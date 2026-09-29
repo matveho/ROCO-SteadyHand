@@ -132,12 +132,6 @@ def _vertical_target_for_point(
     robot._kinematics.config["max_seed_delta_rad"] = 2.4
     robot._kinematics.config["max_iterations"] = 140
 
-    if not (float(floor) + 0.03 <= float(hover_z) <= float(floor) + 0.10 + 1e-9):
-        raise ValueError(
-            f"benchmark hover_z={float(hover_z):.4f} must stay 3-10 cm above "
-            f"configured floor {float(floor):.4f}"
-        )
-
     seed = robot._read_joint_positions()
     point = np.asarray(point, dtype=float)
     center = np.asarray(center, dtype=float)
@@ -206,12 +200,6 @@ def main(argv=None):
         if args.plane_z is None
         else float(args.plane_z)
     )
-    if not (floor + 0.03 <= float(args.hover_z) <= floor + 0.10 + 1e-9):
-        raise SystemExit(
-            f"--hover-z must stay 3-10 cm above hard TCP floor {floor:.6f} m; "
-            f"requested {float(args.hover_z):.6f} m"
-        )
-
     output = Path(args.output)
     if not output.is_absolute():
         output = ROOT / output
@@ -375,7 +363,7 @@ def main(argv=None):
                 speed_scale=float(args.speed_scale),
                 max_translation_step_m=0.20,
                 max_orientation_step_rad=0.80,
-                min_tcp_z_m=floor,
+                min_tcp_z_m=None,
             )
             actual = robot.get_tcp_pose()
             print(

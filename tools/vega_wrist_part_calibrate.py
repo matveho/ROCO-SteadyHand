@@ -311,12 +311,10 @@ class PartSession:
         seed = self.robot._read_joint_positions()
         for i in range(1, count + 1):
             pose = interpolate_pose(before, target, i/count)
-            if pose.position_m[2] < self.floor + .005:
-                raise ValueError("Target intersects the configured TCP floor + 5 mm; no motion issued")
             seed = self.robot._kinematics.solve(pose, seed)
         move_tcp_segmented(self.robot, target, speed_scale=.25 if slow else self.args.speed_scale,
                            max_translation_step_m=.020, max_orientation_step_rad=.08,
-                           min_tcp_z_m=self.floor + .005)
+                           min_tcp_z_m=None)
 
     def frame(self, label="wrist"):
         rgb = self.capture()
@@ -1004,8 +1002,6 @@ class PartSession:
         x, y = anchor_x, anchor_y
         grasp = Pose((x, y, self.surface(x, y) + clearance), hover.quaternion_wxyz)
         # Validate both descent and return before opening/closing.
-        if grasp.position_m[2] < self.floor + .005:
-            raise ValueError("Grasp intersects TCP floor + 5 mm; no gripper command issued")
         seed = self.robot._read_joint_positions()
         for i in range(1, 11):
             seed = self.robot._kinematics.solve(interpolate_pose(hover, grasp, i/10), seed)
@@ -1094,8 +1090,6 @@ class PartSession:
             (x, y, self.surface(x, y) + clearance),
             hover.quaternion_wxyz,
         )
-        if release.position_m[2] < self.floor + .005:
-            raise ValueError("Return intersects TCP floor + 5 mm; retaining part")
         seed = self.robot._read_joint_positions()
         for i in range(1, 11):
             seed = self.robot._kinematics.solve(interpolate_pose(hover, release, i / 10), seed)
@@ -1127,8 +1121,6 @@ class PartSession:
         quat = _yaw_pose(self.runtime[3], settings["yaw_deg"]).quaternion_wxyz
         hover = Pose((x, y, self.surface(x, y)+.100), quat)
         release = Pose((x, y, self.surface(x, y)+settings["clearance_m"]), quat)
-        if release.position_m[2] < self.floor + .005:
-            raise ValueError("Place intersects TCP floor + 5 mm; retaining part")
         # Validate placement descent before transporting the held part.
         seed = self.robot._read_joint_positions()
         seed = self.robot._kinematics.solve(hover, seed)
@@ -1384,8 +1376,6 @@ class PartSession:
                 elif command in ("down", "up") and len(raw) == 2:
                     amount = _number(raw[1], .1, 20.0) / 1000.0
                     target_z = z + amount if command == "up" else z - amount
-                    if target_z < self.floor + .005:
-                        raise ValueError("drop target would cross the configured TCP floor")
                     if target_z <= self.surface(x, y) + .001:
                         raise ValueError("drop target must remain at least 1 mm above the board")
                     target = Pose((x, y, target_z), current.quaternion_wxyz)

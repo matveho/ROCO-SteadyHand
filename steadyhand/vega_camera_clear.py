@@ -210,11 +210,6 @@ def move_camera_clear_for_image(
     current = robot.get_tcp_pose()
     if current is None:
         raise RuntimeError("camera image-clear move requires current TCP pose")
-    if float(current.position_m[2]) < floor_m:
-        raise RuntimeError(
-            f"Current TCP z={float(current.position_m[2]):.4f} is below "
-            f"configured floor {floor_m:.4f}"
-        )
 
     print(
         "CAMERA IMAGE CLEAR: START ->",
@@ -263,7 +258,7 @@ def move_camera_clear_for_image(
                 speed_scale=float(speed_scale),
                 max_translation_step_m=0.08,
                 max_orientation_step_rad=0.10,
-                min_tcp_z_m=floor_m,
+                min_tcp_z_m=None,
             )
             actual = robot.get_tcp_pose()
             print(
@@ -296,7 +291,7 @@ def move_camera_clear_for_image(
                     robot, target, speed_scale=float(speed_scale),
                     max_translation_step_m=0.08,
                     max_orientation_step_rad=0.10,
-                    min_tcp_z_m=floor_m,
+                    min_tcp_z_m=None,
                 )
                 return robot.get_tcp_pose()
             finally:
@@ -313,8 +308,6 @@ def move_camera_clear_for_image(
             f"validated joint move ({delta:.3f} rad > {max_delta:.3f} rad); "
             "manually place the arm at RIGHT_READY or RIGHT_CAMERA_CLEAR and rerun"
         )
-    if float(measured_pose.position_m[2]) < floor_m:
-        raise RuntimeError("configured RIGHT_CAMERA_CLEAR pose is below the TCP floor")
     print(
         "CAMERA IMAGE CLEAR: MEASURED JOINT PRESET ->",
         tuple(round(float(v), 6) for v in target_q),
@@ -391,7 +384,7 @@ def move_verticalize_after_image(
             speed_scale=float(speed_scale),
             max_translation_step_m=0.15,
             max_orientation_step_rad=0.45,
-            min_tcp_z_m=floor_m,
+            min_tcp_z_m=None,
         )
 
         actual = robot.get_tcp_pose()
@@ -420,11 +413,6 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
 
     if current is None:
         raise RuntimeError("camera-clear move requires current TCP pose")
-    if float(current.position_m[2]) < floor_m:
-        raise RuntimeError(
-            f"Current TCP z={float(current.position_m[2]):.4f} is below "
-            f"configured floor {floor_m:.4f}; recover upward before camera-clear move"
-        )
 
     print(
         "CAMERA CLEAR: START ->",
@@ -439,8 +427,6 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
             )
         except (KeyError, ValueError) as exc:
             raise RuntimeError(f"right_camera_clear preset is invalid: {exc}") from exc
-        if float(measured_pose.position_m[2]) < floor_m:
-            raise RuntimeError("configured RIGHT_CAMERA_CLEAR pose is below the TCP floor")
         delta = preset_max_delta(robot._read_joint_positions(), target_q)
         max_delta = float(robot.config["motion"]["max_total_delta_rad"])
         if delta > max_delta:
@@ -515,7 +501,7 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
                         speed_scale=speed_scale,
                         max_translation_step_m=0.04,
                         max_orientation_step_rad=0.80,
-                        min_tcp_z_m=floor_m,
+                        min_tcp_z_m=None,
                     )
                 finally:
                     kin_cfg["position_tolerance_m"] = old_position_tol
@@ -564,7 +550,7 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
             speed_scale=speed_scale,
             max_translation_step_m=0.12,
             max_orientation_step_rad=0.45,
-            min_tcp_z_m=floor_m,
+            min_tcp_z_m=None,
         )
 
         target = _highest_reachable_camera_clear_pose(robot, floor_m=floor_m)
@@ -580,7 +566,7 @@ def move_camera_clear(robot, *, floor_m: float, speed_scale: float = CAMERA_CLEA
             speed_scale=speed_scale,
             max_translation_step_m=0.15,
             max_orientation_step_rad=0.45,
-            min_tcp_z_m=floor_m,
+            min_tcp_z_m=None,
         )
 
         actual = robot.get_tcp_pose()

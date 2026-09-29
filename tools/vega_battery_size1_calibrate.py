@@ -180,10 +180,6 @@ def main(argv=None):
             robot.prepare()
             robot.connect()
             pose = robot.get_tcp_pose()
-            if not floor + 0.060 <= pose.position_m[2] <= floor + 0.120:
-                raise RuntimeError(
-                    "jaw goal pixel must be taught at a 60-120 mm safe hover"
-                )
             vertical = quaternion_to_matrix(pose.quaternion_wxyz)[2][2]
             if vertical < math.cos(0.12):
                 raise RuntimeError(
@@ -217,11 +213,6 @@ def main(argv=None):
             robot.prepare()
             robot.connect()
             pose = robot.get_tcp_pose()
-            if pose.position_m[2] < floor:
-                raise RuntimeError(
-                    f"current TCP z={pose.position_m[2]:.6f} is below task floor "
-                    f"{floor:.6f}; refusing to record"
-                )
             vertical = quaternion_to_matrix(pose.quaternion_wxyz)[2][2]
             if vertical < math.cos(0.12):
                 raise RuntimeError(

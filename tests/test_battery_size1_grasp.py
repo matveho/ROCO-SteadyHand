@@ -204,7 +204,7 @@ class CalibrationContractTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "1.0 A"):
                 load_calibration(path, self.cfg, floor_m=self.floor)
 
-    def test_missing_goal_or_grasp_and_below_floor_are_refused(self):
+    def test_missing_goal_is_refused_but_low_taught_grasp_is_allowed(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "cal.json"
             value = blank_calibration(self.cfg)
@@ -213,18 +213,21 @@ class CalibrationContractTests(unittest.TestCase):
                 load_calibration(path, self.cfg, floor_m=self.floor)
 
             complete_calibration(path, grasp_z=self.floor - 0.001)
-            with self.assertRaisesRegex(ValueError, "below task floor"):
-                load_calibration(path, self.cfg, floor_m=self.floor)
+            loaded = load_calibration(path, self.cfg, floor_m=self.floor)
+            self.assertAlmostEqual(loaded["grasp"]["tcp_z_m"], self.floor - 0.001)
 
-    def test_jaw_goal_pixel_is_bound_to_safe_taught_hover(self):
+    def test_jaw_goal_pixel_accepts_operator_taught_hover_without_floor_band(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "cal.json"
             complete_calibration(path)
             bad = json.loads(path.read_text())
             bad["jaw_alignment"]["taught_hover_tcp_z_m"] = self.floor + 0.040
             path.write_text(json.dumps(bad))
-            with self.assertRaisesRegex(ValueError, "60-120 mm"):
-                load_calibration(path, self.cfg, floor_m=self.floor)
+            loaded = load_calibration(path, self.cfg, floor_m=self.floor)
+            self.assertAlmostEqual(
+                loaded["jaw_alignment"]["taught_hover_tcp_z_m"],
+                self.floor + 0.040,
+            )
 
     def test_alignment_result_must_match_calibration_goal_digest_and_live_pose(self):
         with tempfile.TemporaryDirectory() as directory:

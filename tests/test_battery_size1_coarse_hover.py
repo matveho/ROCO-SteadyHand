@@ -192,7 +192,7 @@ class BatteryCoarseHoverContractTests(unittest.TestCase):
                     manual,
                 )
 
-    def test_accepted_hover_comes_from_manual_center_and_enforces_band(self):
+    def test_accepted_hover_comes_from_manual_center_without_floor_band(self):
         with tempfile.TemporaryDirectory() as directory:
             manual_path = self._write_manual(directory)
             manual = self._validated_manual(manual_path)
@@ -217,14 +217,8 @@ class BatteryCoarseHoverContractTests(unittest.TestCase):
             ][2] = 0.500
             manual_path.write_text(json.dumps(bad))
             manual_bad = self._validated_manual(manual_path)
-            with self.assertRaisesRegex(
-                ValueError,
-                "safe-hover band",
-            ):
-                accepted_hover_from_manual(
-                    manual_bad,
-                    floor_m=0.456,
-                )
+            low_hover = accepted_hover_from_manual(manual_bad, floor_m=0.456)
+            self.assertAlmostEqual(low_hover["z_m"], 0.500)
 
     def test_hover_plan_is_strict_xy_only_at_accepted_hover(self):
         q = (
@@ -282,21 +276,18 @@ class BatteryCoarseHoverContractTests(unittest.TestCase):
                         floor_m=0.456,
                     )
 
-    def test_hover_plan_refuses_below_floor_start(self):
+    def test_hover_plan_allows_start_below_legacy_floor(self):
         current = Pose(
             (0.45, 0.02, 0.450),
             (1.0, 0.0, 0.0, 0.0),
         )
-        with self.assertRaisesRegex(
-            ValueError,
-            "below configured floor",
-        ):
-            plan_hover_stages(
-                current,
-                (0.535, 0.080),
-                hover_z_m=0.550,
-                floor_m=0.456,
-            )
+        stages = plan_hover_stages(
+            current,
+            (0.535, 0.080),
+            hover_z_m=0.450,
+            floor_m=0.456,
+        )
+        self.assertEqual(stages[0][1].position_m[2], 0.450)
 
 
 if __name__ == "__main__":

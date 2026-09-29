@@ -94,24 +94,14 @@ def move_tcp_segmented(
             raise ValueError(f"{label} must be finite and positive")
     if not math.isfinite(float(speed_scale)) or not 0 < float(speed_scale) <= 1:
         raise ValueError("speed_scale must be in (0, 1]")
-    if min_tcp_z_m is not None:
-        min_tcp_z_m = float(min_tcp_z_m)
-        if not math.isfinite(min_tcp_z_m):
-            raise ValueError("min_tcp_z_m must be finite when configured")
+    # ``min_tcp_z_m`` is retained in the public signature for compatibility
+    # with older callers and artifact schemas.  The current Vega workflow no
+    # longer treats a provisional floor as a motion gate; board height and
+    # grasp/place teaching remain operator-controlled.
+    min_tcp_z_m = None
     current = robot.get_tcp_pose()
     if current is None:
         raise ExecutionError("Robot adapter cannot provide current TCP pose")
-    if min_tcp_z_m is not None and float(current.position_m[2]) < min_tcp_z_m:
-        raise ExecutionError(
-            f"Current TCP z={float(current.position_m[2]):.6f} m is below "
-            f"configured floor {min_tcp_z_m:.6f} m; recover upward manually "
-            "before task execution"
-        )
-    if min_tcp_z_m is not None and float(target.position_m[2]) < min_tcp_z_m:
-        raise ExecutionError(
-            f"Refusing TCP target z={float(target.position_m[2]):.6f} m below "
-            f"configured floor {min_tcp_z_m:.6f} m"
-        )
 
     dist, angle = pose_distance(current, target)
     n = max(
@@ -123,11 +113,6 @@ def move_tcp_segmented(
         if before_waypoint is not None:
             before_waypoint()
         waypoint = interpolate_pose(current, target, index / n)
-        if min_tcp_z_m is not None and float(waypoint.position_m[2]) < min_tcp_z_m:
-            raise ExecutionError(
-                f"Refusing TCP waypoint z={float(waypoint.position_m[2]):.6f} m below "
-                f"configured floor {min_tcp_z_m:.6f} m"
-            )
         robot.move_tcp(waypoint, speed_scale=speed_scale)
         # Check contact before logging: slow/failing storage must not delay it.
         if after_waypoint is not None:
@@ -210,9 +195,6 @@ def validate_execution(goal, skill, safety, speed_scale=1.0):
         raise ValueError(f"{goal.name}: unknown release mode {goal.release_mode!r}")
     if not math.isfinite(float(speed_scale)) or not 0 < float(speed_scale) <= 1:
         raise ValueError("speed_scale must be in (0, 1]")
-    min_tcp_z_m = safety.get("min_tcp_z_m")
-    if min_tcp_z_m is not None and not math.isfinite(float(min_tcp_z_m)):
-        raise ValueError("safety.min_tcp_z_m must be finite when configured")
     if goal.release_mode == "snap":
         if safety.get("force_delta_limit") is None:
             raise ExecutionError(f"{goal.name}: insertion requires verified force_delta_limit")
@@ -224,15 +206,9 @@ def validate_execution(goal, skill, safety, speed_scale=1.0):
             raise ExecutionError("Insertion requires a validated max_contact_step_m")
     pick_tcp = object_pose_to_tcp(goal.pick_pose, skill)
     place_tcp = object_pose_to_tcp(goal.place_pose, skill)
-    min_tcp_z_m = safety.get("min_tcp_z_m")
-    if min_tcp_z_m is not None:
-        floor = float(min_tcp_z_m)
-        for label, pose in (("pick", pick_tcp), ("place", place_tcp)):
-            if float(pose.position_m[2]) < floor:
-                raise ExecutionError(
-                    f"{goal.name}: {label} TCP z={float(pose.position_m[2]):.6f} m "
-                    f"is below configured floor {floor:.6f} m"
-                )
+    # The old provisional floor check was deliberately removed.  The current
+    # right-arm board model is corrected by supervised part teaching rather
+    # than by rejecting low TCP targets.
 
 
 def execute_part(robot, goal, skill, *, safety=None, speed_scale=1.0, event=None,

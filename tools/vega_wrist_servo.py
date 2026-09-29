@@ -86,7 +86,7 @@ def move_to_board(robot, args, floor):
                                         floor, math.radians(args.claw_yaw_deg))
     move_tcp_segmented(robot, target, speed_scale=args.speed_scale,
                        max_translation_step_m=0.20, max_orientation_step_rad=0.80,
-                       min_tcp_z_m=floor)
+                       min_tcp_z_m=None)
     print("REACHED BOARD REGION", robot.get_tcp_pose().position_m, flush=True)
 
 
@@ -170,8 +170,6 @@ def main(argv=None):
         if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
             raise ValueError("This benchmark requires the right arm / tip_r")
         floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
-        if not floor+0.06 <= args.hover_z <= floor+0.10+1e-9:
-            raise ValueError("--hover-z must be 60–100 mm above task floor")
         cfg["allow_robot_init_head_motion"] = True
         cfg["auto_clear_software_estop_on_connect"] = True
         cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.30)

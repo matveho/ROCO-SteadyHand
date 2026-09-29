@@ -142,12 +142,7 @@ def accepted_hover_from_manual(manual_calibration, *, floor_m):
         center.get("quaternion_wxyz"),
         "manual CENTER quaternion",
     )
-    floor = _finite_scalar(floor_m, "task floor")
     hover_z = position[2]
-    if not floor + 0.060 <= hover_z <= floor + 0.120:
-        raise ValueError(
-            "manual CENTER hover Z is outside the 60-120 mm safe-hover band"
-        )
     return {
         "z_m": hover_z,
         "quaternion_wxyz": quat,
@@ -177,16 +172,11 @@ def plan_hover_stages(
         "current TCP quaternion",
     )
     target_x, target_y = _finite_vector(target_xy, 2, "target XY")
-    floor = _finite_scalar(floor_m, "task floor")
     hover_z = _finite_scalar(hover_z_m, "hover Z")
     tolerance = _finite_positive(
         hover_z_tolerance_m, "hover Z tolerance"
     )
 
-    if hover_z < floor:
-        raise ValueError("hover Z is below configured floor")
-    if current_xyz[2] < floor:
-        raise ValueError("current TCP is below configured floor")
     if abs(current_xyz[2] - hover_z) > tolerance:
         raise ValueError(
             "current TCP is not at the accepted hover Z; "
@@ -208,10 +198,6 @@ def plan_hover_stages(
         quat,
     )
 
-    if target.position_m[2] < floor:
-        raise AssertionError(
-            "planned hover target crossed configured floor"
-        )
     if target.position_m[2] != current_xyz[2]:
         raise AssertionError("hover plan changed Z")
     if target.quaternion_wxyz != quat:

@@ -19,8 +19,6 @@ def plan_step(kin, seed, delta, floor):
         raise ValueError('Require positive shoulder step <= 0.5 rad')
     if len(seed) != 7 or not all(math.isfinite(v) for v in seed):
         raise ValueError('Require seven finite measured right joint positions')
-    if not math.isfinite(floor):
-        raise ValueError('Require finite provisional floor')
     goal = list(seed)
     goal[0] += delta
     samples = []
@@ -31,8 +29,6 @@ def plan_step(kin, seed, delta, floor):
         pose = kin.forward(q)
         if not all(math.isfinite(v) for v in pose.position_m):
             raise ValueError('Nonfinite FK along shoulder step')
-        if pose.position_m[2] < floor + 0.30:
-            raise ValueError('Shoulder preparation must remain at least 0.30 m above provisional floor')
         samples.append(pose.position_m)
     if any(b[2] < a[2]-1e-6 for a,b in zip(samples,samples[1:])):
         raise ValueError('Positive shoulder step would lower TCP; refusing this startup route')

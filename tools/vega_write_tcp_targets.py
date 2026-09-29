@@ -27,9 +27,6 @@ def main(argv=None):
     norm = math.sqrt(sum(v*v for v in quat))
     if abs(norm - 1.0) > 0.001:
         raise SystemExit("--quat must be unit length")
-    if pick[2] < args.min_z or place[2] < args.min_z:
-        raise SystemExit(f"pick/place z must be >= hard floor {args.min_z:.9f} m")
-
     value = {
         "schema_version": 1,
         "robot_id": "vega",

@@ -207,11 +207,6 @@ def main(argv=None):
         robot.connect()
 
         start = robot.get_tcp_pose()
-        if float(start.position_m[2]) < floor:
-            raise RuntimeError(
-                f"live TCP z={float(start.position_m[2]):.6f} is below "
-                f"configured floor {floor:.6f}"
-            )
 
         orientation_error = quaternion_angle(
             start.quaternion_wxyz,
@@ -275,7 +270,7 @@ def main(argv=None):
                     speed_scale=float(args.speed_scale),
                     max_translation_step_m=0.08,
                     max_orientation_step_rad=0.10,
-                    min_tcp_z_m=floor,
+                    min_tcp_z_m=None,
                 )
                 actual = robot.get_tcp_pose()
                 if (
@@ -343,10 +338,6 @@ def main(argv=None):
         ):
             raise RuntimeError(
                 "measured final Z no longer matches accepted hover reference"
-            )
-        if float(final_pose.position_m[2]) < floor:
-            raise RuntimeError(
-                "measured final TCP is below configured floor"
             )
 
         result = dict(audit)

@@ -214,8 +214,6 @@ def main(argv=None):
         # All IK checks use the taught RIGHT_READY seed; no physical motion occurs
         # until every requested target has passed.
         for name, _, _, source_xyz, target in points:
-            if target.position_m[2] < floor:
-                raise ValueError(f"{name} target z={target.position_m[2]:.6f} is below safety floor {floor:.6f}")
             robot._kinematics.solve(target, ready_q)
             print(name, "SOURCE =", tuple(round(v, 6) for v in source_xyz),
                   "LIVE =", tuple(round(v, 6) for v in target.position_m), flush=True)
@@ -229,7 +227,7 @@ def main(argv=None):
             move_tcp_segmented(robot, target, speed_scale=args.speed_scale,
                                max_translation_step_m=0.04,
                                max_orientation_step_rad=0.15,
-                               min_tcp_z_m=floor)
+                               min_tcp_z_m=None)
             measured = robot.get_tcp_pose()
             print(name, "MEASURED TIP_R =", tuple(round(v, 6) for v in measured.position_m), flush=True)
         return 0

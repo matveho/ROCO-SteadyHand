@@ -445,8 +445,6 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
     quat = origin.quaternion_wxyz
     if not all(math.isfinite(v) for v in origin.position_m):
         raise ValueError("Non-finite live TCP pose")
-    if z < floor_m + 0.06:
-        raise ValueError("Wrist servo requires at least 60 mm clearance above TCP floor")
     if reference_quaternion_wxyz is not None:
         if quaternion_angle(quat, reference_quaternion_wxyz) > 0.025:
             raise ValueError("TCP does not match the measured ready/yaw orientation")
@@ -477,7 +475,7 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
             raise RuntimeError("Requested XY exceeds local servo radius; coarse approach needed")
         move_tcp_segmented(robot, pose, speed_scale=speed_scale,
                            max_translation_step_m=0.02, max_orientation_step_rad=0.05,
-                           min_tcp_z_m=floor_m)
+                           min_tcp_z_m=None)
         actual = robot.get_tcp_pose()
         check_pose(actual)
         position_error = math.dist(actual.position_m, pose.position_m)

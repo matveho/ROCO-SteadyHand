@@ -179,13 +179,6 @@ def _interactive_teach_orientation(robot, *, floor, speed_scale=0.60, max_step_d
     # Camera-clear's validated fallback leaves the TCP about 0.30-0.35 m
     # above the measured floor. That provides substantial free-space clearance
     # for the small orientation-only teach steps without forcing another lift.
-    min_teach_z = float(floor) + ORIENTATION_TEACH_MIN_ABOVE_FLOOR_M
-    if float(current.position_m[2]) < min_teach_z:
-        raise RuntimeError(
-            f"orientation teach requires TCP z >= {min_teach_z:.3f} m; "
-            f"current z={float(current.position_m[2]):.3f} m"
-        )
-
     print("", flush=True)
     print("=== TEACH BOARD-WORKING CLAW ORIENTATION ===", flush=True)
     print(
@@ -261,7 +254,7 @@ def _interactive_teach_orientation(robot, *, floor, speed_scale=0.60, max_step_d
             speed_scale=float(speed_scale),
             max_translation_step_m=0.02,
             max_orientation_step_rad=math.radians(5.0),
-            min_tcp_z_m=floor,
+            min_tcp_z_m=None,
         )
         _print_pose("MEASURED", robot.get_tcp_pose())
 
@@ -283,9 +276,8 @@ def _capture_current_right_ready(robot, *, floor):
         flush=True,
     )
     print(
-        f"Keep the TCP at or above z={minimum_z:.3f} m, leave comfortable joint "
-        "margins, and keep the board visible. No arm motion will be commanded "
-        "by this step.",
+        "Leave comfortable joint margins and keep the board visible. No arm "
+        "motion will be commanded by this step.",
         flush=True,
     )
     input("When RIGHT_READY is physically established, press Enter to record it: ")
@@ -296,12 +288,6 @@ def _capture_current_right_ready(robot, *, floor):
     pose = robot.get_tcp_pose()
     if pose is None:
         raise RuntimeError("RIGHT_READY requires a measured tip_r pose")
-    if float(pose.position_m[2]) < minimum_z:
-        raise RuntimeError(
-            f"RIGHT_READY TCP z={float(pose.position_m[2]):.6f} m is below "
-            f"the required high-pose minimum {minimum_z:.6f} m"
-        )
-
     print("RIGHT_READY JOINTS =", list(joints), flush=True)
     _print_pose("RIGHT_READY TIP_R", pose)
     return joints, pose
@@ -313,8 +299,6 @@ def _move_configured_right_ready(robot, *, floor, speed_scale=0.45):
         target_q, measured_pose = configured_right_preset(robot.config, "right_ready")
     except (KeyError, ValueError) as exc:
         raise RuntimeError(f"right_ready preset is invalid: {exc}") from exc
-    if float(measured_pose.position_m[2]) < float(floor):
-        raise RuntimeError("configured RIGHT_READY pose is below the TCP floor")
     current_q = robot._read_joint_positions()
     delta = preset_max_delta(current_q, target_q)
     max_delta = float(robot.config["motion"]["max_total_delta_rad"])
@@ -329,7 +313,7 @@ def _move_configured_right_ready(robot, *, floor, speed_scale=0.45):
     robot.move_joints(target_q, speed_scale=float(speed_scale))
     joints = tuple(float(v) for v in robot._read_joint_positions())
     pose = robot.get_tcp_pose()
-    if pose is None or float(pose.position_m[2]) < float(floor):
+    if pose is None:
         raise RuntimeError("measured RIGHT_READY move did not produce a valid TCP pose")
     print("RIGHT_READY JOINTS =", list(joints), flush=True)
     _print_pose("RIGHT_READY TIP_R", pose)
@@ -424,13 +408,6 @@ def _interactive_adjust(
             ),
             tuple(float(v) for v in current.quaternion_wxyz),
         )
-        if float(target.position_m[2]) < float(floor):
-            print(
-                f"JOG REJECTED: compensated target z={target.position_m[2]:.6f} "
-                f"is below floor {float(floor):.6f}",
-                flush=True,
-            )
-            continue
         print(
             f"JOG {cmd.upper()} {mm:g} mm "
             f"(dx={dx*1000:+.1f}, dy={dy*1000:+.1f}, "
@@ -459,7 +436,7 @@ def _interactive_adjust(
             speed_scale=float(speed_scale),
             max_translation_step_m=min(0.05, max_jog_mm / 1000.0),
             max_orientation_step_rad=0.10,
-            min_tcp_z_m=floor,
+            min_tcp_z_m=None,
         )
         actual = robot.get_tcp_pose()
         event = {
@@ -552,11 +529,6 @@ def main(argv=None):
     cfg = load_bundle("vega")["robot"]
     safety = dict(load_vega_skills().get("safety") or {})
     floor = float(safety["min_tcp_z_m"])
-    if not floor + 0.03 <= float(args.hover_z) <= floor + 0.12:
-        p.error(
-            f"--hover-z must stay 3-12 cm above floor {floor:.6f}; "
-            f"got {float(args.hover_z):.6f}"
-        )
 
     cfg["allow_robot_init_head_motion"] = True
     cfg["auto_clear_software_estop_on_connect"] = True
@@ -731,7 +703,7 @@ def main(argv=None):
                 speed_scale=float(args.coarse_speed_scale),
                 max_translation_step_m=0.12,
                 max_orientation_step_rad=0.10,
-                min_tcp_z_m=floor,
+                min_tcp_z_m=None,
             )
             reached = robot.get_tcp_pose()
             _print_pose(f"COARSE REACHED {label}", reached)

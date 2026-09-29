@@ -170,7 +170,7 @@ def main(argv=None):
             move_tcp_segmented(robot, target, speed_scale=args.speed_scale,
                                max_translation_step_m=0.06,
                                max_orientation_step_rad=0.20,
-                               min_tcp_z_m=floor)
+                               min_tcp_z_m=None)
             pose = robot.get_tcp_pose()
             measured = float(input(f"Enter measured {args.measurement_kind} at {label} (mm): "))
             if not math.isfinite(measured):

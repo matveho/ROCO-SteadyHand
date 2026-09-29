@@ -83,22 +83,18 @@ class ExecutorSafetyTests(unittest.TestCase):
             self.assertLessEqual(angle, 0.1 + 1e-12)
             previous = pose
 
-    def test_tcp_floor_refuses_target_below_limit(self):
+    def test_tcp_floor_argument_no_longer_blocks_target(self):
         robot = MockAdapter()
         robot.connect()
-        with self.assertRaisesRegex(ExecutionError, "configured floor"):
-            move_tcp_segmented(
-                robot,
-                Pose((0.0, 0.0, -0.001), (1.0, 0.0, 0.0, 0.0)),
-                speed_scale=0.2,
-                max_translation_step_m=0.01,
-                max_orientation_step_rad=0.1,
-                min_tcp_z_m=0.0,
-            )
-        self.assertFalse(
-            any(command[0] == "move_tcp" for command in robot.commands),
-            "floor violation must be rejected before any TCP command",
+        move_tcp_segmented(
+            robot,
+            Pose((0.0, 0.0, -0.001), (1.0, 0.0, 0.0, 0.0)),
+            speed_scale=0.2,
+            max_translation_step_m=0.01,
+            max_orientation_step_rad=0.1,
+            min_tcp_z_m=0.0,
         )
+        self.assertTrue(any(command[0] == "move_tcp" for command in robot.commands))
 
     def test_unknown_grasp_stops_before_lift_without_operator_verifier(self):
         robot = UnknownVerificationRobot()

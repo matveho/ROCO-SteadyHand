@@ -271,14 +271,12 @@ def main(argv=None):
         start = robot.get_tcp_pose()
         coarse_xy = tuple(float(v) for v in args.coarse_xy)
         start_xy_error = math.dist(start.position_m[:2], coarse_xy)
-        min_hover_z = floor + 0.060
-        max_hover_z = floor + 0.120
         start_record = {
             "coarse_xy_base_m": coarse_xy,
             "measured_tcp_position_m": start.position_m,
             "measured_tcp_quaternion_wxyz": start.quaternion_wxyz,
             "xy_error_to_supplied_coarse_m": start_xy_error,
-            "allowed_hover_z_m": [min_hover_z, max_hover_z],
+            "allowed_hover_z_m": None,
         }
         (output / "start_state.json").write_text(
             json.dumps(start_record, indent=2) + "\n",
@@ -291,12 +289,6 @@ def main(argv=None):
                 f"Live TCP is {start_xy_error:.4f} m from supplied --coarse-xy; "
                 "establish the coarse hover first"
             )
-        if not min_hover_z <= float(start.position_m[2]) <= max_hover_z:
-            raise RuntimeError(
-                f"Live TCP z={float(start.position_m[2]):.4f} m is not a low safe hover "
-                f"({min_hover_z:.4f}..{max_hover_z:.4f} m); establish the hover first"
-            )
-
         # Small 8-10 mm probes require tighter IK convergence than coarse board
         # navigation. This changes solver tolerances only; no pose is commanded here.
         robot._kinematics.config["position_tolerance_m"] = 0.0007

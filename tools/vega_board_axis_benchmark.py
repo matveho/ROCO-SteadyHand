@@ -56,11 +56,6 @@ def main(argv=None):
     cfg = load_bundle("vega")["robot"]
     safety = dict(load_vega_skills().get("safety") or {})
     floor = float(safety["min_tcp_z_m"])
-    if not floor + 0.03 <= float(args.hover_z) <= floor + 0.10 + 1e-9:
-        p.error(
-            f"--hover-z must stay 3-10 cm above floor {floor:.6f}; "
-            f"got {float(args.hover_z):.6f}"
-        )
 
     if cfg["working_arm"] != "right" or cfg["kinematics"]["ee_frame"] != "tip_r":
         raise SystemExit("benchmark requires right arm / tip_r")
@@ -198,7 +193,7 @@ def main(argv=None):
                 speed_scale=float(args.speed_scale),
                 max_translation_step_m=0.20,
                 max_orientation_step_rad=0.80,
-                min_tcp_z_m=floor,
+                min_tcp_z_m=None,
             )
             actual = robot.get_tcp_pose()
             print(

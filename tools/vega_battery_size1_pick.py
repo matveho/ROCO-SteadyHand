@@ -155,8 +155,6 @@ def main(argv=None):
                 "live aligned tip orientation differs from the operator-taught "
                 "vertical grasp orientation"
             )
-        if start.position_m[2] < floor:
-            raise RuntimeError("live TCP starts below the measured task floor")
         if start.position_m[2] < grasp_z + args.pregrasp_offset_m + 0.005:
             raise RuntimeError(
                 "aligned hover is too low for the configured pregrasp approach; "
@@ -164,8 +162,6 @@ def main(argv=None):
             )
 
         pregrasp_z = grasp_z + float(args.pregrasp_offset_m)
-        if grasp_z < floor or pregrasp_z < floor:
-            raise RuntimeError("grasp/pregrasp target violates the measured task floor")
         if pregrasp_z >= start.position_m[2]:
             raise RuntimeError("pregrasp target must be below the current safe hover")
 
@@ -181,12 +177,6 @@ def main(argv=None):
             (start.position_m[0], start.position_m[1], start.position_m[2]),
             start.quaternion_wxyz,
         )
-
-        # Every arm segment is vertical and every endpoint is at/above floor.
-        # Therefore no interpolated point can cross below the measured floor.
-        for label, pose in (("start", start), ("pregrasp", pregrasp), ("grasp", grasp), ("lift", lift)):
-            if pose.position_m[2] < floor:
-                raise RuntimeError(f"{label} TCP target is below measured task floor")
 
         run["status"] = "ready"
         run["pre_tcp"] = {
@@ -227,8 +217,6 @@ def main(argv=None):
         event("descent_start", target_tcp=grasp.position_m, speed_scale=args.descent_speed)
         robot.move_tcp(grasp, speed_scale=args.descent_speed)
         grasp_actual = robot.get_tcp_pose()
-        if grasp_actual.position_m[2] < floor:
-            raise RuntimeError("measured TCP crossed below task floor after descent")
         event("descent_reached", measured_tcp=grasp_actual.position_m)
 
         robot.grip(PART_NAME, current_a=VERIFIED_GRIP_CURRENT_A)

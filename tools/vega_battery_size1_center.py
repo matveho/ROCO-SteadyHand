@@ -143,8 +143,6 @@ def main(argv=None):
                 f"live TCP is {xy_error:.4f} m from --coarse-xy; "
                 "establish the coarse hover first"
             )
-        if not floor + 0.060 <= start.position_m[2] <= floor + 0.120:
-            raise RuntimeError("battery jaw centering requires a 60-120 mm safe hover")
         taught_hover_z = float(
             calibration["jaw_alignment"]["taught_hover_tcp_z_m"]
         )

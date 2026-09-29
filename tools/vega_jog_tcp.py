@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.config import load_bundle
 from steadyhand.models import Pose
-from steadyhand.skill_config import load_vega_skills
 
 
 def main(argv=None):
@@ -42,8 +41,6 @@ def main(argv=None):
     bundle = load_bundle("vega")
     cfg = bundle["robot"]
     cfg["allow_robot_init_head_motion"] = True
-    safety = dict(load_vega_skills().get("safety") or {})
-    floor = float(safety["min_tcp_z_m"])
 
     robot = VegaAdapter(cfg)
     robot.prepare()
@@ -54,23 +51,6 @@ def main(argv=None):
             tuple(a + b for a, b in zip(before.position_m, delta)),
             before.quaternion_wxyz,
         )
-
-        # If a calibration/contact probe left the tip below the normal floor,
-        # permit only a straight-up recovery to or above the floor.
-        if before.position_m[2] < floor:
-            if abs(args.dx) > 1e-12 or abs(args.dy) > 1e-12 or args.dz <= 0:
-                raise RuntimeError(
-                    "TCP starts below the normal floor; only a straight +Z recovery is allowed"
-                )
-            if target.position_m[2] < floor:
-                raise RuntimeError(
-                    f"Recovery target z={target.position_m[2]:.6f} m must reach floor "
-                    f"{floor:.6f} m or higher"
-                )
-        elif target.position_m[2] < floor:
-            raise RuntimeError(
-                f"Refusing target z={target.position_m[2]:.6f} m below floor {floor:.6f} m"
-            )
 
         print("before =", before.position_m)
         print("target =", target.position_m)

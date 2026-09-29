@@ -172,7 +172,9 @@ def load_calibration(path, robot_config, *, floor_m):
     if not (0 <= goal[0] < width and 0 <= goal[1] < height):
         raise ValueError("jaw goal pixel lies outside the taught image")
 
-    floor = _finite_scalar(floor_m, "task floor")
+    # ``floor_m`` remains accepted for artifact/API compatibility.  The
+    # provisional TCP floor is no longer a runtime gate for the right-arm
+    # competition workflow.
     hover_z = _finite_scalar(
         jaw.get("taught_hover_tcp_z_m"),
         "jaw taught_hover_tcp_z_m",
@@ -181,21 +183,12 @@ def load_calibration(path, robot_config, *, floor_m):
         jaw.get("taught_tip_quaternion_wxyz"),
         "jaw taught tip quaternion",
     )
-    if not floor + 0.060 <= hover_z <= floor + 0.120:
-        raise ValueError(
-            "jaw goal pixel must be taught at a 60-120 mm safe hover"
-        )
     if jaw.get("source") != "operator_taught_current_tcp":
         raise ValueError(
             "jaw goal pixel must be operator-taught with a measured current TCP"
         )
 
     grasp_z = _finite_scalar(grasp.get("tcp_z_m"), "grasp tcp_z_m")
-    if grasp_z < floor:
-        raise ValueError(
-            f"taught grasp TCP z={grasp_z:.6f} m is below task floor "
-            f"{floor:.6f} m"
-        )
     quat = _unit_quaternion(
         grasp.get("taught_tip_quaternion_wxyz"),
         "taught tip quaternion",

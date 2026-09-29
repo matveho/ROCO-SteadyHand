@@ -196,8 +196,6 @@ def _main_once(argv=None):
     safety = dict(load_vega_skills().get("safety") or {})
     floor = float(safety["min_tcp_z_m"])
     hover_z = floor + 0.08 if args.hover_z is None else float(args.hover_z)
-    if not floor + 0.03 <= hover_z <= floor + 0.15:
-        p.error(f"--hover-z must stay 3..15 cm above floor {floor:.6f}")
     cfg["allow_robot_init_head_motion"] = True
     cfg["auto_clear_software_estop_on_connect"] = True
     cfg["motion"]["max_step_rad"] = max(float(cfg["motion"]["max_step_rad"]), 0.45)
@@ -303,7 +301,7 @@ def _main_once(argv=None):
             move_tcp_segmented(
                 robot, target, speed_scale=float(args.coarse_speed_scale),
                 max_translation_step_m=0.05, max_orientation_step_rad=0.15,
-                min_tcp_z_m=floor,
+                min_tcp_z_m=None,
             )
             reached = robot.get_tcp_pose()
             _print_pose(f"REACHED {label}", reached)

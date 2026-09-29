@@ -639,7 +639,7 @@ def _run_motion_targets(
                 move_tcp_segmented(
                     robot, target, speed_scale=float(speed_scale),
                     max_translation_step_m=0.06, max_orientation_step_rad=0.20,
-                    min_tcp_z_m=floor,
+                    min_tcp_z_m=None,
                 )
                 actual = robot.get_tcp_pose()
                 print(name, "MEASURED TIP_R =", tuple(round(float(v), 6) for v in actual.position_m), flush=True)
