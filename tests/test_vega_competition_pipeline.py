@@ -103,6 +103,26 @@ class CompetitionPipelineTests(unittest.TestCase):
             )
         self.assertEqual(runner.call_count, 1)
 
+    def test_pick_returned_status_is_success(self):
+        args = type("Args", (), {"speed_scale": 0.38})()
+
+        def run_pick(command):
+            output = Path(command[command.index("--output") + 1])
+            output.mkdir(parents=True, exist_ok=True)
+            (output / "run_summary.json").write_text(
+                json.dumps({"status": "pick_complete_returned", "holding_may_be_true": False})
+            )
+            return 0
+
+        with mock.patch(
+            "tools.vega_competition_pipeline.run_wrist_part_calibration",
+            side_effect=run_pick,
+        ):
+            self.assertEqual(
+                _run_competition_action(args, "battery_size1", "pick", retries=0),
+                0,
+            )
+
     def test_malformed_run_summary_blocks_success(self):
         args = type("Args", (), {"speed_scale": 0.38})()
 

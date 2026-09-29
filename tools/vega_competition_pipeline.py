@@ -704,7 +704,14 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False):
                     file=sys.stderr, flush=True,
                 )
                 return 2
-            if summary.get("status") not in ("completed",):
+            # Pick-only competition actions intentionally return the part to
+            # its source so the next part can be attempted.  That path has a
+            # distinct successful terminal status; treating it as an error
+            # made option 6 stop after the first successful pickup.
+            successful_statuses = {"completed"}
+            if action == "pick":
+                successful_statuses.add("pick_complete_returned")
+            if summary.get("status") not in successful_statuses:
                 print(
                     f"Action returned success but run summary is {summary.get('status')!r}; stopping for inspection.",
                     file=sys.stderr, flush=True,
