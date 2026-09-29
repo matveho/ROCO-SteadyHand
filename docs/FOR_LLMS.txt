@@ -102,7 +102,7 @@ flat table, at the configured fixed table-plane height; its height/orientation
 must not be re-estimated from each photo.
 
 Task coordinates (`configs/task_coordinates.json`) now come from the reviewed
-initial/final annotation project in `tools/initial.json`. The importer
+initial/final annotation project in `tools/outputs/initial.json`. The importer
 (`tools/vega_import_task_annotations.py`) normalizes each rectified image to
 the hardcoded 386 mm board and applies a 180-degree board-local rotation. This
 was reviewed against the physical view: both batteries are on the near side,

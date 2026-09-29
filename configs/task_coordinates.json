@@ -239,7 +239,7 @@
       "image_sha256": "097d6542b11535aa6ee6b24f475ea972089e49813e7e214fe9a4b74988271caa"
     },
     "project": {
-      "path": "tools/initial.json",
+      "path": "tools/outputs/initial.json",
       "sha256": "06248533a0e216911dcc6c3f80b06f0c11d62fa0c5a4a4cb9027211e4d474b19"
     }
   },

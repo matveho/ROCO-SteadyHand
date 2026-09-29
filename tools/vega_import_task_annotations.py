@@ -90,7 +90,7 @@ def convert(project, *, rotation_deg=180):
 
 def main(argv=None):
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--project", default="tools/initial.json")
+    p.add_argument("--project", default="tools/outputs/initial.json")
     p.add_argument("--output", default="configs/task_coordinates.json")
     args=p.parse_args(argv)
     source=ROOT/args.project

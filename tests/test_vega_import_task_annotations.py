@@ -10,7 +10,7 @@ class AnnotationImportTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         root = Path(__file__).resolve().parents[1]
-        cls.project = json.loads((root / "tools/initial.json").read_text(encoding="utf-8"))
+        cls.project = json.loads((root / "tools/outputs/initial.json").read_text(encoding="utf-8"))
         cls.task = convert(cls.project)
 
     def test_import_is_fixed_386_and_rotated_for_robot_view(self):
