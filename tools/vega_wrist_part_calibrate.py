@@ -620,6 +620,8 @@ class PartSession:
                     or "centering stalled" in failure_text
                     or "pixel error increased" in failure_text
                     or "feature did not return" in failure_text
+                    or "ill-conditioned" in failure_text
+                    or "feature barely moved" in failure_text
                 ):
                     self.alignment_fallback_used = True
                     self.event(
@@ -1464,6 +1466,7 @@ class PartSession:
                             "feature", "lost", "ambiguous", "tracking",
                             "centering stalled", "pixel error increased",
                             "tcp missed servo waypoint", "feature did not return",
+                            "ill-conditioned", "feature barely moved",
                         )):
                             self.alignment_fallback_used = True
                             print(
