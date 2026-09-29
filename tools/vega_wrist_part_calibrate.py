@@ -126,6 +126,8 @@ class PartSession:
         self.holding = False
         self.runtime = None
         self.targets = None
+        self.head_scene = None
+        self.head_observations = {}
         self.tracker = None
         self.goal = None
         self.goal_match = None
@@ -204,6 +206,49 @@ class PartSession:
         ready_q, _ = configured_right_preset(self.cfg, "right_ready")
         self.robot.move_joints(ready_q, speed_scale=self.args.speed_scale)
         self.targets = _task_targets(self.runtime, self.runtime[1], .100)
+        # Use the fresh head-camera scene to correct each part's coarse XY
+        # before the wrist profile is used.  This handles the organizer's
+        # per-part +/-1 cm variation while retaining the saved grasp depth,
+        # yaw, jaw opening, and wrist feature.  If segmentation is unavailable
+        # the existing reviewed task coordinate remains the bounded fallback.
+        self.head_scene = scene
+        try:
+            from tools.vega_head_fallback import match_expected_parts
+            self.head_observations = match_expected_parts(
+                scene, self.runtime, self.targets, task_data=self.runtime[1]
+            )
+        except Exception as exc:
+            self.head_observations = {}
+            print(
+                "HEAD PART PERCEPTION UNAVAILABLE: keeping reviewed task "
+                f"coordinates ({type(exc).__name__}: {exc})",
+                flush=True,
+            )
+        for part, observation in self.head_observations.items():
+            if observation.get("selection") != "head_detection":
+                continue
+            xy = observation.get("selected_xy_m")
+            if not isinstance(xy, list) or len(xy) != 2:
+                continue
+            name = f"task.{part}.pick"
+            target = self.targets.get(name)
+            if target is None:
+                continue
+            x, y = (float(xy[0]), float(xy[1]))
+            self.targets[name] = Pose(
+                (x, y, self.surface(x, y) + .100),
+                target.quaternion_wxyz,
+            )
+            print(
+                "HEAD PART DETECTION: "
+                f"{part} -> ({x:.4f}, {y:.4f}) m; coarse target updated",
+                flush=True,
+            )
+        if self.output is not None:
+            (self.output / "head_observations.json").write_text(
+                json.dumps(self.head_observations, indent=2, default=str) + "\n",
+                encoding="utf-8",
+            )
         scene_path = self.output / f"board_{time.time_ns()}.json"
         scene_path.write_text(json.dumps(scene, indent=2, default=str) + "\n")
         self.board_scene_paths.append(scene_path.name)
@@ -626,8 +671,12 @@ class PartSession:
             # teaching hover remains a bounded fallback if the live target is
             # unreachable.  With an unchanged calibration preserve the proven
             # saved-hover-first behavior.
-            if self.calibration_hash_mismatch:
-                candidates = (("live task target after field recalibration", coarse),
+            detected_live_xy = (
+                self.head_observations.get(part, {}).get("selection")
+                == "head_detection"
+            )
+            if self.calibration_hash_mismatch or detected_live_xy:
+                candidates = (("live head-camera target", coarse),
                               ("recorded arm hover fallback", recorded))
             else:
                 candidates = (("recorded arm hover", recorded), ("live task target", coarse))
