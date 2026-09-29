@@ -163,6 +163,7 @@ class PartSession:
         self.part = None
         self.action = None
         self.board_scene_paths = []
+        self.drop_evidence_photos = []
 
     def start(self):
         self.status = "starting"
@@ -197,6 +198,7 @@ class PartSession:
                 "grasp_verified": getattr(self, "grasp_verified", False),
                 "grasp_clearance_m": getattr(self, "last_grasp_clearance", None),
                 "drop_release_photo": getattr(self, "drop_release_photo", None),
+                "drop_evidence_photos": list(getattr(self, "drop_evidence_photos", [])),
                 "board_scene_paths": list(self.board_scene_paths),
                 "events_path": "events.jsonl",
                 "calibration_path": "calibration/vega_board_manual.json",
@@ -1198,6 +1200,17 @@ class PartSession:
                 "captured_at_utc": datetime.now(timezone.utc).isoformat(),
             }
             self.drop_evidence_photos.append(record)
+            # Write after every successful capture so an interrupted teach
+            # still leaves a self-describing evidence set for later CV work.
+            manifest = self.output / "drop_evidence_manifest.json"
+            manifest.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "part": self.part,
+                    "photos": list(self.drop_evidence_photos),
+                }, indent=2, default=str) + "\n",
+                encoding="utf-8",
+            )
             print(f"DROP EVIDENCE PHOTO [{label}] = {destination}", flush=True)
             return relative
         except Exception as exc:
