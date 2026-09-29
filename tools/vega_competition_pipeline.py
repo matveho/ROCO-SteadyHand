@@ -55,6 +55,7 @@ DEFAULT_TASK_CLEARANCE_MM = 100.0
 TASK_FORWARD_OFFSET_M = 0.012
 DEFAULT_PIPELINE_SPEED_SCALE = 0.38
 COMPETITION_PLAN = ROOT / "configs" / "competition_plan.json"
+COMPETITION_ACTIONS = ROOT / "configs" / "competition_actions.json"
 
 
 COMPETITION_TASKS = OrderedDict([
@@ -139,6 +140,65 @@ def _load_competition_plan():
         "default_action": action,
         "pipeline_speed_scale": speed,
         "task_clearance_mm": clearance,
+    }
+
+
+def _load_competition_actions():
+    """Load the one operator-editable competition routine configuration."""
+    defaults = {
+        "order": list(DEFAULT_PICK_PRIORITY),
+        "retries_per_action": 1,
+        "use_wrist_cv": True,
+        "retry_without_wrist_cv": True,
+        "pipeline_speed_scale": DEFAULT_PIPELINE_SPEED_SCALE,
+        "task_clearance_mm": DEFAULT_TASK_CLEARANCE_MM,
+        "visual_center_backoff_mm": 15.0,
+        "parts": {part: {"enabled": True, "mode": "auto"} for part in PART_NAMES},
+    }
+    if not COMPETITION_ACTIONS.is_file():
+        return defaults
+    value = json.loads(COMPETITION_ACTIONS.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or value.get("schema_version", 1) != 1:
+        raise ValueError("competition_actions.json must use schema_version 1")
+    order = value.get("order", defaults["order"])
+    if not isinstance(order, list) or set(order) != set(PART_NAMES) or len(order) != len(PART_NAMES):
+        raise ValueError("competition_actions.json order must list every known part exactly once")
+    parts = value.get("parts", defaults["parts"])
+    if not isinstance(parts, dict) or set(parts) != set(PART_NAMES):
+        raise ValueError("competition_actions.json parts must configure every known part")
+    normalized_parts = {}
+    for part in PART_NAMES:
+        entry = parts[part]
+        if not isinstance(entry, dict):
+            raise ValueError(f"competition_actions.json entry for {part} must be an object")
+        mode = entry.get("mode", "auto")
+        if mode not in ("auto", "pick", "pick_place"):
+            raise ValueError(f"competition action mode for {part} must be auto, pick, or pick_place")
+        normalized_parts[part] = {"enabled": bool(entry.get("enabled", True)), "mode": mode}
+    try:
+        retries = int(value.get("retries_per_action", defaults["retries_per_action"]))
+        speed = float(value.get("pipeline_speed_scale", defaults["pipeline_speed_scale"]))
+        clearance = float(value.get("task_clearance_mm", defaults["task_clearance_mm"]))
+        backoff = float(value.get("visual_center_backoff_mm", defaults["visual_center_backoff_mm"]))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("competition_actions.json numeric settings are invalid") from exc
+    if not 0 <= retries <= 2:
+        raise ValueError("retries_per_action must be 0..2")
+    if not 0.25 <= speed <= 0.70:
+        raise ValueError("pipeline_speed_scale must be 0.25..0.70")
+    if not 20.0 <= clearance <= 100.0:
+        raise ValueError("task_clearance_mm must be 20..100")
+    if not 0.0 <= backoff <= 30.0:
+        raise ValueError("visual_center_backoff_mm must be 0..30")
+    return {
+        "order": order,
+        "retries_per_action": retries,
+        "use_wrist_cv": bool(value.get("use_wrist_cv", True)),
+        "retry_without_wrist_cv": bool(value.get("retry_without_wrist_cv", True)),
+        "pipeline_speed_scale": speed,
+        "task_clearance_mm": clearance,
+        "visual_center_backoff_mm": backoff,
+        "parts": normalized_parts,
     }
 
 
@@ -904,6 +964,80 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
     return 0
 
 
+def _configured_competition_run(args):
+    """Run the single JSON-configured, calibration-gated competition routine."""
+    settings = _load_competition_actions()
+    if not getattr(args, "speed_scale_cli", False):
+        args.speed_scale = settings["pipeline_speed_scale"]
+    if not getattr(args, "clearance_mm_cli", False):
+        args.clearance_mm = settings["task_clearance_mm"]
+        args.clearance_m = settings["task_clearance_mm"] / 1000.0
+    cfg = load_bundle("vega")["robot"]
+    profiles = load_profiles(ROOT / "calibration" / "wrist_part_profiles.json", cfg)
+    actions = []
+    skipped = []
+    for part in settings["order"]:
+        entry = settings["parts"][part]
+        if not entry["enabled"]:
+            skipped.append((part, "disabled in competition_actions.json"))
+            continue
+        profile = (profiles.get("parts") or {}).get(part)
+        if not isinstance(profile, dict) or not profile.get("grasp_verified"):
+            skipped.append((part, "no verified pickup calibration"))
+            continue
+        mode = entry["mode"]
+        if mode == "auto":
+            mode = "pick_place" if profile.get("place") and profile.get("place_verified") else "pick"
+        if mode == "pick_place" and not (profile.get("place") and profile.get("place_verified")):
+            # A missing drop calibration must never prevent a verified pickup
+            # from earning the first competition point.
+            print(f"{part}: place calibration missing; using pickup action", flush=True)
+            mode = "pick"
+        actions.append((part, mode))
+    print("\nCONFIGURED COMPETITION RUN", flush=True)
+    print(f"Actions JSON: {COMPETITION_ACTIONS}", flush=True)
+    print(f"Retries per action: {settings['retries_per_action']}", flush=True)
+    print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a in actions) or "none"), flush=True)
+    for part, reason in skipped:
+        print(f"Skipped: {part} ({reason})", flush=True)
+    if not actions:
+        print("No enabled verified actions are ready.", file=sys.stderr)
+        return 2
+    if args.check_only:
+        print("CHECK-ONLY: no robot, camera, or gripper motion will be commanded.", flush=True)
+        return 0
+    completed = 0
+    failed = []
+    for part, action in actions:
+        result = _run_competition_action(
+            args, part, action,
+            retries=settings["retries_per_action"],
+            no_cv=not settings["use_wrist_cv"],
+        )
+        if result == 0:
+            completed += 1
+            continue
+        if result == 3:
+            return result
+        failed.append((part, action))
+    if settings["retry_without_wrist_cv"] and failed:
+        print("\nCONFIGURED NO-CV RETRIES", flush=True)
+        for part, action in failed:
+            result = _run_competition_action(
+                args, part, action,
+                retries=settings["retries_per_action"], no_cv=True,
+            )
+            if result == 0:
+                completed += 1
+            elif result == 3:
+                return result
+    print(
+        f"CONFIGURED RUN FINISHED: {completed}/{len(actions)} actions completed.",
+        flush=True,
+    )
+    return 0
+
+
 def _run_competition_sequence(args, raw=None):
     if args.check_only:
         print("Competition runs require physical motion; remove --check-only.")
@@ -976,6 +1110,10 @@ def main(argv=None):
     actions.add_argument("--competition-sequence", metavar="SEQUENCE",
                          help="run numbered sequence choices such as 1-5,8,9 directly")
     actions.add_argument(
+        "--competition-run", action="store_true",
+        help="run the single JSON-configured routine in configs/competition_actions.json",
+    )
+    actions.add_argument(
         "--competition-plan",
         choices=("priority_pick_place", "priority_pick", "priority_pick_no_cv"),
         help="run verified profiles in the operator-configured easiest-first order",
@@ -1039,6 +1177,9 @@ def main(argv=None):
             no_cv=(args.competition_plan == "priority_pick_no_cv"),
         )
 
+    if args.competition_run:
+        return _configured_competition_run(args)
+
     if args.test_positions is not None or args.competition_task is not None:
         try:
             runtime = _load_runtime()
@@ -1077,11 +1218,8 @@ def main(argv=None):
         print("  2. Test calibrated board/task positions")
         print("  3. Wrist camera calibration (per-part feature / yaw / grasp depth)")
         print("  4. Task tests (all part pick and pick-place actions)")
-        print("  5. Competition run sequence (choose numbered actions/ranges)")
-        print("  6. Attempt pickup of all calibrated objects (saved/task positions; no CV)")
-        print("  7. Run preserved competition task version")
+        print("  5. Run configured competition routine (configs/competition_actions.json)")
         print("  8. Reload operator settings / show readiness")
-        print("  9. Attempt pickup of all calibrated objects (NO CV only)")
         print(" 10. Calibrate drop-off position (saved pickup -> 40 mm descent -> release/save)")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
@@ -1157,27 +1295,11 @@ def main(argv=None):
             continue
         if choice == "5":
             try:
-                _run_competition_sequence(args)
+                _configured_competition_run(args)
             except (KeyboardInterrupt, EOFError):
                 print("Competition sequence cancelled.")
             except Exception as exc:
                 print(f"Competition sequence failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice == "6":
-            try:
-                _priority_competition_actions(args, action="pick", no_cv=True)
-            except (KeyboardInterrupt, EOFError):
-                print("Pickup run cancelled.")
-            except Exception as exc:
-                print(f"Pickup run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice == "9":
-            try:
-                _priority_competition_actions(args, action="pick", no_cv=True)
-            except (KeyboardInterrupt, EOFError):
-                print("No-CV pickup run cancelled.")
-            except Exception as exc:
-                print(f"No-CV pickup run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         if choice == "10":
             try:

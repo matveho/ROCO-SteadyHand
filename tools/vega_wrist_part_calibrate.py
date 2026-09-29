@@ -45,6 +45,17 @@ from tools.vega_wrist_fine_center import WristAOnlyCapture
 from steadyhand.vision.wrist_review import select_pixel
 
 ROOT = Path(__file__).resolve().parents[1]
+COMPETITION_ACTIONS = ROOT / "configs" / "competition_actions.json"
+
+
+def _competition_center_backoff_m():
+    """Return the measured forward correction for competition centering."""
+    try:
+        value = json.loads(COMPETITION_ACTIONS.read_text(encoding="utf-8"))
+        millimetres = float(value.get("visual_center_backoff_mm", 15.0))
+    except (OSError, TypeError, ValueError, json.JSONDecodeError):
+        millimetres = 15.0
+    return max(0.0, min(30.0, millimetres)) / 1000.0
 
 
 def _is_visual_alignment_failure(exc):
@@ -610,6 +621,34 @@ class PartSession:
                 self.alignment_verified = result.get("status") == "converged"
                 if self.alignment_verified:
                     self.alignment_fallback_used = False
+                    if getattr(self.args, "competition", False):
+                        # The wrist image goal is consistently about 15 mm
+                        # forward of the physical grasp center on this setup.
+                        # Apply the operator-editable correction only after a
+                        # verified visual convergence; saved coarse hovers and
+                        # calibration teaching remain unchanged.
+                        backoff = _competition_center_backoff_m()
+                        if backoff > 0.0:
+                            current = self.robot.get_tcp_pose()
+                            corrected_x = current.position_m[0] - backoff
+                            clearance = current.position_m[2] - self.surface(
+                                current.position_m[0], current.position_m[1]
+                            )
+                            corrected = Pose(
+                                (
+                                    corrected_x,
+                                    current.position_m[1],
+                                    self.surface(corrected_x, current.position_m[1]) + clearance,
+                                ),
+                                current.quaternion_wxyz,
+                            )
+                            self.move(corrected, slow=True)
+                            result["competition_center_backoff_m"] = backoff
+                            print(
+                                "COMPETITION CENTER BACKOFF: "
+                                f"moved {backoff * 1000:.0f} mm back from the visual goal",
+                                flush=True,
+                            )
                     print("ALIGNMENT VERIFIED: same feature reproduced at the taught goal", flush=True)
                 return result
             except (RuntimeError, ValueError) as exc:
@@ -813,6 +852,19 @@ class PartSession:
                 self.goal = tuple(profile["goal_uv"]) if profile.get("goal_uv") is not None else None
                 _write_overlay(path.with_name(path.stem + "_match.png"), rgb, self.tracker.uv, self.goal, label=part)
             except (RuntimeError, ValueError) as exc:
+                if getattr(self.args, "mode", "calibrate") == "calibrate" and _is_visual_alignment_failure(exc):
+                    # Re-teaching must never be blocked by a stale/occluded
+                    # saved template check.  The next teach_feature() prompt
+                    # captures a fresh image and asks for a new annotation.
+                    self.tracker = None
+                    self.reference_feature = None
+                    self.reference_rgb = None
+                    print(
+                        "SAVED TEMPLATE CHECK SKIPPED: feature was not reliable; "
+                        "continue with a fresh feature annotation.",
+                        flush=True,
+                    )
+                    return None
                 if not competition or not _is_visual_alignment_failure(exc):
                     raise
                 # The saved profile still carries the feature/goal metadata;

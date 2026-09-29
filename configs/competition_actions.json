@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "description": "Single operator-editable competition routine. Set enabled=false to skip a part.",
+  "order": [
+    "battery_size1",
+    "gear_20teeth",
+    "gear_60teeth",
+    "pin",
+    "bolt_8mm",
+    "battery_size5",
+    "rod_16mm",
+    "usb_a",
+    "hdmi"
+  ],
+  "retries_per_action": 1,
+  "use_wrist_cv": true,
+  "retry_without_wrist_cv": true,
+  "pipeline_speed_scale": 0.38,
+  "task_clearance_mm": 100.0,
+  "visual_center_backoff_mm": 15.0,
+  "parts": {
+    "battery_size1": {"enabled": true, "mode": "auto"},
+    "gear_20teeth": {"enabled": true, "mode": "auto"},
+    "gear_60teeth": {"enabled": true, "mode": "auto"},
+    "pin": {"enabled": true, "mode": "auto"},
+    "bolt_8mm": {"enabled": true, "mode": "auto"},
+    "battery_size5": {"enabled": true, "mode": "auto"},
+    "rod_16mm": {"enabled": true, "mode": "auto"},
+    "usb_a": {"enabled": true, "mode": "auto"},
+    "hdmi": {"enabled": true, "mode": "auto"}
+  }
+}
