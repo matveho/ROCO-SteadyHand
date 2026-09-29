@@ -83,8 +83,8 @@
     },
     "usb_a": {
       "pick": [
-        0.33081738848866044,
-        0.27089626421511276,
+        0.328632,
+        0.259000,
         0.0
       ],
       "place": [
@@ -215,6 +215,16 @@
       "battery_size5.pick",
       "battery_size1.pick"
     ]
+  },
+  "onsite_manual_corrections": {
+    "usb_a.pick": {
+      "measured_from_forward_left_corner_mm": {
+        "towards_robot": 115.0,
+        "right_relative_to_robot": 57.0
+      },
+      "global_runtime_forward_offset_mm": 12.0,
+      "note": "Source XY compensates for the existing +12 mm base-X runtime task offset so the commanded point lands at the measured board location."
+    }
   },
   "annotation_provenance": {
     "initial": {
