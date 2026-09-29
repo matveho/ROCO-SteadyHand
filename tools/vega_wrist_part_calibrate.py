@@ -691,6 +691,19 @@ class PartSession:
                     f"({sx:.4f}, {sy:.4f}) m",
                     flush=True,
                 )
+        elif competition and profile:
+            saved_xy = profile.get("coarse_xy_m")
+            if isinstance(saved_xy, (list, tuple)) and len(saved_xy) == 2:
+                sx, sy = (float(v) for v in saved_xy)
+                coarse = Pose(
+                    (sx, sy, self.surface(sx, sy) + float(profile.get("hover_clearance_m", .100))),
+                    self.runtime[3].quaternion_wxyz,
+                )
+                print(
+                    "COMPETITION COARSE HOVER: saved verified physical pose "
+                    f"({sx:.4f}, {sy:.4f}) m",
+                    flush=True,
+                )
         self.coarse = coarse
         if profile:
             # A field recalibration changes the board surface/registration hash.
