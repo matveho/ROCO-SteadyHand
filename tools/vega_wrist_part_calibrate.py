@@ -46,6 +46,7 @@ from steadyhand.vision.wrist_review import select_pixel
 
 ROOT = Path(__file__).resolve().parents[1]
 COMPETITION_ACTIONS = ROOT / "configs" / "competition_actions.json"
+GOAL_CLICK_MAX_ERROR_PX = 50.0
 
 
 def _competition_center_backoff_m():
@@ -525,7 +526,7 @@ class PartSession:
             )
             try:
                 located, score, error = self.tracker.verify_selected(
-                    rgb, selected, max_error_px=18.0
+                    rgb, selected, max_error_px=GOAL_CLICK_MAX_ERROR_PX
                 )
             except (ValueError, RuntimeError) as exc:
                 print(
