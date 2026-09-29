@@ -16,6 +16,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters.vega import VegaAdapter
+from steadyhand.board_calibration import load_board_calibration
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
@@ -36,19 +37,11 @@ def _finite_vector(value, size, name):
 
 
 def _load_frame(path, config):
-    raw = json.loads(Path(path).read_text(encoding="utf-8"))
-    if raw.get("robot_name") != config.get("robot_name"):
-        raise ValueError("manual calibration belongs to a different robot")
-    if raw.get("base_frame") != config["kinematics"]["base_frame"]:
-        raise ValueError("manual calibration has the wrong base frame")
-    corrected = raw.get("corrected_board_frame_xy") or {}
-    center = _finite_vector(corrected.get("center_base_xy_m"), 2, "board center")
-    ux = _finite_vector(corrected.get("board_x_unit_base_xy"), 2, "board X unit")
-    uy = _finite_vector(corrected.get("board_y_unit_base_xy"), 2, "board Y unit")
-    nx = math.hypot(*ux)
-    ny = math.hypot(*uy)
-    if abs(nx - 1.0) > 0.03 or abs(ny - 1.0) > 0.03:
-        raise ValueError("manual board axes are not unit vectors")
+    manual = load_board_calibration(path, config)
+    raw = manual["raw"]
+    center = manual["center_base_xy_m"]
+    ux = manual["board_x_unit_base_xy"]
+    uy = manual["board_y_unit_base_xy"]
     center_pose = (raw.get("manual_corrected") or {}).get("CENTER")
     if not isinstance(center_pose, dict):
         raise ValueError("manual calibration lacks corrected CENTER pose")
@@ -142,9 +135,11 @@ def main(argv=None):
         corner_quaternion = ready_pose.quaternion_wxyz
     except (KeyError, ValueError):
         corner_quaternion = center_pose.quaternion_wxyz
-    frame = raw["corrected_board_frame_xy"]
-    x_offset = float(args.x_offset_m if args.x_offset_m is not None else frame["x_reference_distance_m"])
-    y_offset = float(args.y_offset_m if args.y_offset_m is not None else frame["y_reference_distance_m"])
+    frame = raw.get("corrected_board_frame_xy") or {}
+    x_default = frame.get("x_reference_distance_m", float(frame.get("width_m", 0.2)) / 2.0)
+    y_default = frame.get("y_reference_distance_m", float(frame.get("height_m", 0.2)) / 2.0)
+    x_offset = float(args.x_offset_m if args.x_offset_m is not None else x_default)
+    y_offset = float(args.y_offset_m if args.y_offset_m is not None else y_default)
     if not (0.03 <= x_offset <= 0.30 and 0.03 <= y_offset <= 0.30):
         p.error("corner offsets must each be within 0.03..0.30 m")
 

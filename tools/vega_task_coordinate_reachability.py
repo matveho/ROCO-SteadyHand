@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters.vega import VegaAdapter
+from steadyhand.board_calibration import load_board_calibration
 from steadyhand.board_geometry import validate_task_board_geometry
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
@@ -76,60 +77,24 @@ def _fit_plane_from_samples(samples):
 
 
 def _load_manual(path, cfg):
-    path = Path(path)
-    if not path.is_file() and path.name == "vega_board_manual.json" and FALLBACK_CALIBRATION.is_file():
-        print(f"USING PERMANENT BOARD CALIBRATION FALLBACK: {FALLBACK_CALIBRATION}", flush=True)
-        path = FALLBACK_CALIBRATION
-    raw = json.loads(path.read_text(encoding="utf-8"))
-    if raw.get("robot_name") != cfg.get("robot_name"):
-        raise ValueError("manual calibration belongs to a different robot")
-    if raw.get("base_frame") != cfg["kinematics"]["base_frame"]:
-        raise ValueError("manual calibration has the wrong base frame")
-    if raw.get("calibration_kind") != "vega_board_five_point_surface":
+    manual = load_board_calibration(path, cfg)
+    if manual.get("schema_version") != 2:
         raise ValueError(
             "task motion requires a completed five-point surface calibration; "
             "run tools/vega_board_five_point_calibrate.py first"
         )
-    frame = raw.get("corrected_board_frame_xy") or {}
-    center = _finite_vector(frame.get("center_base_xy_m"), 2, "live board center")
-    ux = _finite_vector(frame.get("board_x_unit_base_xy"), 2, "live board X axis")
-    uy = _finite_vector(frame.get("board_y_unit_base_xy"), 2, "live board Y axis")
-    if abs(math.hypot(*ux) - 1.0) > 0.03 or abs(math.hypot(*uy) - 1.0) > 0.03:
-        raise ValueError("live board axes must be unit vectors")
-    center_pose = (raw.get("manual_corrected") or {}).get("CENTER")
-    if not isinstance(center_pose, dict):
-        raise ValueError("manual calibration lacks corrected CENTER pose")
-    plane = raw.get("board_surface_plane_base") or {}
-    coefficients = plane.get("coefficients") or {}
-    a, b, c = (float(coefficients.get(key)) for key in ("a", "b", "c"))
-    if not all(math.isfinite(v) for v in (a, b, c)):
-        raise ValueError("five-point calibration lacks a finite board surface plane")
-    anchors = []
-    samples = raw.get("samples") or {}
-    reconstructed = _fit_plane_from_samples(samples)
-    if reconstructed is not None:
-        # The first completed run recorded clearances under the old field name
-        # and therefore contains an invalid low-Z plane. Reconstruct from the
-        # measured TCP Z and the entered TCP-to-board clearance.
-        a, b, c = reconstructed
-    for label in ("CENTER", "TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT"):
-        sample = samples.get(label) or {}
-        pose = sample.get("tip_r_pose") or {}
-        position = pose.get("position_m") or []
-        measured_mm = sample.get("measured_clearance_mm")
-        measured_is_clearance = measured_mm is not None
-        if measured_mm is None:
-            measured_mm = sample.get("measured_surface_z_mm")
-        if len(position) == 3 and measured_mm is not None:
-            x, y = float(position[0]), float(position[1])
-            measured_z = float(measured_mm) / 1000.0
-            if measured_is_clearance or measured_z < 0.2:
-                measured_z = float(position[2]) - measured_z
-            plane_z = a * x + b * y + c
-            if all(math.isfinite(v) for v in (x, y, measured_z, plane_z)):
-                anchors.append({"label": label, "x_m": x, "y_m": y,
-                                "residual_m": measured_z - plane_z})
-    return center, ux, uy, {"coefficients": (a, b, c), "anchors": anchors}
+    plane = dict(manual["surface_plane"])
+    plane["camera_geometry_signature"] = manual.get("calibration_camera_geometry_signature")
+    plane["raw_board_x_unit_base_xy"] = manual["raw_board_x_unit_base_xy"]
+    plane["raw_board_y_unit_base_xy"] = manual["raw_board_y_unit_base_xy"]
+    plane["axis_dot_raw"] = manual["axis_dot_raw"]
+    plane["axis_angle_error_deg"] = manual["axis_angle_error_deg"]
+    return (
+        manual["center_base_xy_m"],
+        manual["board_x_unit_base_xy"],
+        manual["board_y_unit_base_xy"],
+        plane,
+    )
 
 
 def calibrated_surface_z(x, y, surface_model):

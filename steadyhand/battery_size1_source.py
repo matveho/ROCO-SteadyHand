@@ -16,22 +16,17 @@ No head intrinsics, depth, head kinematics or final-layout ordering are used.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-import hashlib
 import json
 import math
 from pathlib import Path
 
 from steadyhand.board_geometry import BOARD_SIZE_MM
+from steadyhand.board_calibration import file_sha256, load_board_calibration
 
 
 PART_NAME = "battery_size1"
 MEASURED_BOARD_WIDTH_MM = BOARD_SIZE_MM
 SCHEMA_VERSION = 1
-
-
-def file_sha256(path) -> str:
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def load_manual_board_calibration(
@@ -41,81 +36,15 @@ def load_manual_board_calibration(
     max_age_minutes=720.0,
     now=None,
 ):
-    """Validate the manually corrected board XY frame for this competition robot."""
-    source = Path(path)
-    value = json.loads(source.read_text(encoding="utf-8"))
-    if not isinstance(value, dict):
-        raise ValueError("manual board calibration must be a JSON object")
-    if value.get("schema_version") != 1:
-        raise ValueError("manual board calibration schema_version must be 1")
-    if value.get("robot_name") != robot_config.get("robot_name"):
-        raise ValueError("manual board calibration belongs to a different robot")
-    kin = robot_config.get("kinematics") or {}
-    if value.get("base_frame") != kin.get("base_frame"):
-        raise ValueError("manual board calibration has the wrong base frame")
-    if value.get("tcp_frame") != kin.get("ee_frame"):
-        raise ValueError("manual board calibration has the wrong TCP frame")
+    """Validate either the current five-point or legacy manual calibration.
 
-    generated = value.get("generated_at_utc")
-    if not isinstance(generated, str):
-        raise ValueError("manual board calibration has no generated_at_utc")
-    try:
-        stamp = datetime.fromisoformat(generated.replace("Z", "+00:00"))
-    except ValueError as exc:
-        raise ValueError("manual board calibration has invalid generated_at_utc") from exc
-    if stamp.tzinfo is None:
-        raise ValueError("manual board calibration timestamp must include timezone")
-    current = now or datetime.now(timezone.utc)
-    if current.tzinfo is None:
-        raise ValueError("now must be timezone-aware")
-    age_s = (current.astimezone(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds()
-    max_age_s = _finite_positive(max_age_minutes, "max calibration age") * 60.0
-    if age_s < -300:
-        raise ValueError("manual board calibration timestamp is unexpectedly in the future")
-    if age_s > max_age_s:
-        raise ValueError(
-            f"manual board calibration is stale: age={age_s/60.0:.1f} min, "
-            f"limit={max_age_s/60.0:.1f} min"
-        )
-
-    frame = value.get("corrected_board_frame_xy")
-    if not isinstance(frame, dict):
-        raise ValueError("manual board calibration lacks corrected_board_frame_xy")
-    center = _finite_vector(frame.get("center_base_xy_m"), 2, "board center")
-    ux = _finite_vector(frame.get("board_x_unit_base_xy"), 2, "board +X unit")
-    uy = _finite_vector(frame.get("board_y_unit_base_xy"), 2, "board +Y unit")
-    nx = math.hypot(*ux)
-    ny = math.hypot(*uy)
-    if abs(nx - 1.0) > 0.03 or abs(ny - 1.0) > 0.03:
-        raise ValueError("manual board XY axes are not unit vectors")
-    dot = ux[0] * uy[0] + ux[1] * uy[1]
-    if abs(dot) > 0.25:
-        raise ValueError(
-            f"manual board XY axes are implausibly non-perpendicular (dot={dot:.3f})"
-        )
-
-    nominal = _finite_positive(
-        value.get("nominal_axis_offset_m"),
-        "manual nominal_axis_offset_m",
+    The public return shape remains compatible with the battery pipeline while
+    exposing the normalized surface/axis provenance used by newer callers.
+    """
+    manual = load_board_calibration(
+        path, robot_config, max_age_minutes=max_age_minutes, now=now,
     )
-    for field in ("x_reference_distance_m", "y_reference_distance_m"):
-        distance = _finite_positive(frame.get(field), field)
-        if not 0.45 * nominal <= distance <= 1.75 * nominal:
-            raise ValueError(
-                f"manual {field}={distance:.4f} m is inconsistent with "
-                f"nominal offset {nominal:.4f} m"
-            )
-
-    return {
-        "raw": value,
-        "path": str(source),
-        "sha256": file_sha256(source),
-        "generated_at_utc": generated,
-        "age_minutes": max(0.0, age_s / 60.0),
-        "center_base_xy_m": center,
-        "board_x_unit_base_xy": ux,
-        "board_y_unit_base_xy": uy,
-    }
+    return manual
 
 
 def dimensions_from_measured_width(

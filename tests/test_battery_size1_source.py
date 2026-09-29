@@ -71,6 +71,14 @@ class SourceGeometryTests(unittest.TestCase):
                     max_age_minutes=720,
                 )
 
+    def test_current_five_point_fallback_is_accepted_by_source_localizer(self):
+        path = Path(__file__).parents[1] / "calibration" / "vega_board_manual_fallback.json"
+        loaded = load_manual_board_calibration(path, self.cfg)
+        self.assertTrue(loaded["is_permanent_fallback"])
+        self.assertEqual(loaded["schema_version"], 2)
+        base = base_xy_from_board_offset(loaded, (0.0, 0.0))
+        self.assertEqual(base, loaded["center_base_xy_m"])
+
     def test_measured_width_requires_explicit_axis_and_second_dimension(self):
         self.assertEqual(MEASURED_BOARD_WIDTH_MM, 386.0)
         self.assertEqual(

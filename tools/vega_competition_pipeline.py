@@ -21,6 +21,11 @@ from steadyhand.board_geometry import (
     configured_board_plane_z,
     validate_task_board_geometry,
 )
+from steadyhand.board_calibration import (
+    board_geometry_signature,
+    compare_board_geometry,
+    orthonormalize_xy_axes,
+)
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
@@ -223,6 +228,17 @@ def _runtime_from_board_scene(runtime, scene):
 
     bundle, task_data, (_, _, _, old_plane), ready_pose = runtime
     board = scene.get("board") or {}
+    reference_signature = old_plane.get("camera_geometry_signature")
+    current_signature = board.get("corners_px")
+    geometry = compare_board_geometry(
+        reference_signature,
+        board_geometry_signature(current_signature),
+    )
+    if not geometry.get("valid", True):
+        raise RuntimeError(
+            "board image retake is not compatible with the calibrated board "
+            "geometry; run full five-point calibration: " + geometry["reason"]
+        )
     matrix = np.asarray(board.get("T_base_board_center"), dtype=float)
     if matrix.shape != (4, 4) or not np.all(np.isfinite(matrix)):
         raise RuntimeError("fresh board image did not provide a finite board transform")
@@ -231,8 +247,7 @@ def _runtime_from_board_scene(runtime, scene):
     uy = matrix[:3, 1].copy()
     ux[2] = 0.0
     uy[2] = 0.0
-    ux /= np.linalg.norm(ux[:2])
-    uy /= np.linalg.norm(uy[:2])
+    ux_xy, uy_xy, _, _ = orthonormalize_xy_axes(ux[:2], uy[:2])
 
     calibration_cfg = (bundle["robot"].get("board_calibration") or {})
     corrections = calibration_cfg.get("camera_target_corrections_m") or {}
@@ -242,6 +257,8 @@ def _runtime_from_board_scene(runtime, scene):
     plane = {
         "coefficients": tuple(old_plane["coefficients"]),
         "anchors": [],
+        "camera_geometry_signature": reference_signature,
+        "last_retake_geometry": geometry,
     }
     raw_corners = board.get("corners_base_m_coarse") or {}
     corrected_corners = {}
@@ -257,8 +274,8 @@ def _runtime_from_board_scene(runtime, scene):
     plane["board_corners_xy"] = corrected_corners
     return bundle, task_data, (
         tuple(float(v) for v in center[:2]),
-        tuple(float(v) for v in ux[:2]),
-        tuple(float(v) for v in uy[:2]),
+        tuple(float(v) for v in ux_xy),
+        tuple(float(v) for v in uy_xy),
         plane,
     ), ready_pose
 

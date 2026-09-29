@@ -109,10 +109,11 @@ def _base_record(*, args, cfg, manual, image_path, copied_image, battery_uv, met
         "robot_name": cfg["robot_name"],
         "base_frame": cfg["kinematics"]["base_frame"],
         "manual_board_calibration": {
-            "path": str(_resolve(args.manual_calibration)),
+            "path": manual["path"],
             "sha256": manual["sha256"],
             "generated_at_utc": manual["generated_at_utc"],
             "age_minutes": manual["age_minutes"],
+            "permanent_fallback": manual["is_permanent_fallback"],
             "operator_confirmed_board_unchanged": True,
         },
         "source_image": {

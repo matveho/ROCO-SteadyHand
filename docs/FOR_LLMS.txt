@@ -243,6 +243,9 @@ success is claimed by this handoff.
 -----------
 Core runtime:
   `steadyhand/board_geometry.py` — single 386 mm/fixed-table-plane contract.
+  `steadyhand/board_calibration.py` — canonical schema 1/2 loader, explicit
+    permanent-fallback freshness policy, rigid board-axis normalization, and
+    image-retake geometry checks.
   `steadyhand/adapters/vega.py` — dexcontrol adapter, state/readback, E-stop.
   `steadyhand/executor.py` — segmented Cartesian motion and safety guards.
   `steadyhand/vega_camera_clear.py` — measured high right-arm camera-clear.
@@ -256,6 +259,11 @@ Calibration/operation tools:
   `vega_board_manual_calibrate.py` — lower-level supervised ready/jog route.
   `vega_competition_pipeline.py` — menu, direct actions, recovery, task list.
   `vega_task_coordinate_reachability.py` — offline target/IK preflight.
+  `vega_task_geometry_audit.py` — no-hardware audit of every pick/place/
+    connect/grade target, fitted surface Z, hover Z, floor margin, and board
+    extent.
+  `vega_battery_handoff_validate.py` — saved battery source/hover/wrist/grasp/
+    pick provenance gate; reports READY FOR NEXT STAGE or BLOCKED.
   `vega_capture_board_view.py` / `vega_scene_perception.py` — head capture/CV.
   `vega_wrist_fine_center.py` — right wrist precision benchmark.
   `vega_battery_size1_*` — source, hover, calibration, centering, pick stages.
@@ -277,7 +285,14 @@ Configuration/evidence:
   interchangeable without a measured tool transform.
 - Board camera corrections and the fitted plane are valid for the current
   calibration process. A moved board requires a fresh image; a new physical
-  surface/height result requires the five-point process.
+  surface/height result requires the five-point process. The `r` retake path
+  may update XY only when image scale/aspect/rotation remains compatible with
+  the calibration image; otherwise it stops and asks for full calibration.
+- Battery source localization and task motion consume the same canonical board
+  calibration loader. The dated record is accepted only when it explicitly
+  contains `permanent_fallback: true`; live records still require freshness.
+  Runtime board axes are rigid orthonormalized while raw measured vectors and
+  angular residual are retained for audit.
 - The head camera and wrist camera timestamps use different clock conventions;
   do not fuse them as hardware-synchronized measurements.
 - Gripper control is through the vendored DexMate setup driver, right scope,

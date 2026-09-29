@@ -23,6 +23,7 @@ from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.cameras.vega import VegaHeadCamera
 from steadyhand.config import load_bundle
 from steadyhand.board_geometry import configured_board_plane_z
+from steadyhand.board_calibration import orthonormalize_xy_axes
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
@@ -137,12 +138,17 @@ def _corrected_frame(samples):
     y_len = float(np.linalg.norm(y_vec[:2]))
     if x_len < 0.03 or y_len < 0.03:
         raise ValueError("corrected corner references are too close to define a board")
-    ux = x_vec[:2] / x_len
-    uy = y_vec[:2] / y_len
+    raw_x = [float(v) for v in x_vec[:2]]
+    raw_y = [float(v) for v in y_vec[:2]]
+    ux, uy, axis_dot, axis_angle_error_deg = orthonormalize_xy_axes(raw_x, raw_y)
     return {
         "center_base_xy_m": [float(v) for v in center[:2]],
         "board_x_unit_base_xy": [float(v) for v in ux],
         "board_y_unit_base_xy": [float(v) for v in uy],
+        "raw_board_x_unit_base_xy": [float(v) for v in (x_vec[:2] / x_len)],
+        "raw_board_y_unit_base_xy": [float(v) for v in (y_vec[:2] / y_len)],
+        "axis_dot_raw": float(axis_dot),
+        "axis_angle_error_deg": float(axis_angle_error_deg),
         "width_m": x_len,
         "height_m": y_len,
         "inferred_top_left_base_m": [float(v) for v in tl],
