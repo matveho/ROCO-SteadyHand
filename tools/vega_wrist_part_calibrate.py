@@ -215,7 +215,7 @@ class PartSession:
         try:
             from tools.vega_head_fallback import match_expected_parts
             self.head_observations = match_expected_parts(
-                scene, self.runtime, self.targets
+                scene, self.runtime, self.targets, task_data=self.runtime[1]
             )
         except Exception as exc:
             self.head_observations = {}

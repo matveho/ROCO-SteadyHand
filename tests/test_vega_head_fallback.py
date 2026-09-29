@@ -42,6 +42,28 @@ class HeadFallbackTests(unittest.TestCase):
         observations = match_expected_parts({"board": {}, "parts": []}, self.runtime, self.targets)
         self.assertTrue(all(item["selection"] == "expected_coordinate" for item in observations.values()))
 
+    def test_board_frame_matching_survives_board_pose_change(self):
+        scene = {
+            "board": {"center_base_m_coarse": [0.8, 0.3, 0.456]},
+            "parts": [{
+                "center_base_m_coarse": [0.81, 0.31, 0.456],
+                "center_board_m": [0.05, 0.02, 0.0],
+            }],
+        }
+        task_data = {
+            "source_board_center_xy_m": [0.193, 0.193],
+            "task_coordinate_rotation_deg": 0.0,
+            "parts": {
+                part: {"pick": [0.193, 0.193, 0.0]}
+                for part in (
+                    "gear_60teeth", "gear_20teeth", "rod_16mm", "bolt_8mm",
+                    "usb_a", "hdmi", "pin", "battery_size1", "battery_size5",
+                )
+            },
+        }
+        observations = match_expected_parts(scene, self.runtime, self.targets, task_data=task_data)
+        self.assertEqual(observations["gear_60teeth"]["selection"], "head_detection")
+
     def test_profiles_round_trip(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "head_profiles.json"

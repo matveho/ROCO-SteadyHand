@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
+from steadyhand.board_geometry import board_relative_task_xy
 from steadyhand.geometry import interpolate_pose, matrix_to_quaternion, pose_distance, quaternion_to_matrix
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
@@ -144,21 +145,65 @@ def _detection_positions(scene, runtime):
         except (TypeError, ValueError):
             continue
         if all(math.isfinite(v) for v in xy):
-            result.append({"index": index, "xy_m": xy})
+            board_xy = item.get("center_board_m")
+            try:
+                if not isinstance(board_xy, (list, tuple)) or len(board_xy) < 2:
+                    raise ValueError("missing board-relative part center")
+                board_xy = _finite_pair(board_xy[:2], "scene board-relative part center")
+            except (TypeError, ValueError):
+                board_xy = None
+            result.append({"index": index, "xy_m": xy, "board_xy_m": board_xy})
     return result
 
 
-def match_expected_parts(scene, runtime, expected_targets):
-    """Use a conservative nearest match; otherwise keep the expected point."""
+def match_expected_parts(scene, runtime, expected_targets, task_data=None):
+    """Match current detections, preferably in board coordinates.
+
+    When task data is supplied, association is made in the live rectified
+    board frame, so board translation/rotation does not turn a known part into
+    a wrong robot-frame match.  The returned XY remains the freshly observed
+    base-frame center used for coarse motion.
+    """
     detections = _detection_positions(scene, runtime)
     used = set()
     observations = {}
+    source_center = None
+    rotation = 0.0
+    mirror_x = False
+    mirror_y = False
+    if isinstance(task_data, dict):
+        try:
+            source_center = _finite_pair(
+                task_data.get("source_board_center_xy_m"),
+                "task source board center",
+            )
+            rotation = float(task_data.get("task_coordinate_rotation_deg", 0.0))
+            mirror_x = bool(task_data.get("task_coordinate_mirror_x", False))
+            mirror_y = bool(task_data.get("task_coordinate_mirror_y", False))
+        except (TypeError, ValueError):
+            source_center = None
     for part in PART_NAMES:
         expected_xy = tuple(float(v) for v in expected_targets[f"task.{part}.pick"].position_m[:2])
-        candidates = sorted(
-            (math.dist(item["xy_m"], expected_xy), item)
-            for item in detections if item["index"] not in used
-        )
+        expected_board_xy = None
+        if source_center is not None:
+            try:
+                expected_source = (task_data["parts"][part]["pick"])
+                expected_board_xy = board_relative_task_xy(
+                    expected_source[:2], source_center,
+                    rotation_deg=rotation, mirror_x=mirror_x, mirror_y=mirror_y,
+                )
+            except (KeyError, TypeError, ValueError):
+                expected_board_xy = None
+        scored = []
+        for item in detections:
+            if item["index"] in used:
+                continue
+            if expected_board_xy is not None and item.get("board_xy_m") is not None:
+                distance = math.dist(item["board_xy_m"], expected_board_xy)
+            else:
+                distance = math.dist(item["xy_m"], expected_xy)
+            scored.append((distance, item))
+        candidates = sorted(scored)
         selected = None
         reason = "expected_coordinate"
         if candidates and candidates[0][0] <= DETECTION_RADIUS_M:
