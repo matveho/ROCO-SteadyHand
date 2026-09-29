@@ -222,24 +222,32 @@ class PartSession:
                 flush=True,
             )
         self.targets = _task_targets(self.runtime, teaching_task_data, .100)
-        # Use the fresh head-camera scene to correct each part's coarse XY
-        # before the wrist profile is used.  This handles the organizer's
-        # per-part +/-1 cm variation while retaining the saved grasp depth,
-        # yaw, jaw opening, and wrist feature.  If segmentation is unavailable
-        # the existing reviewed task coordinate remains the bounded fallback.
+        # During teaching/drop setup, do not let the generic dark-object
+        # association select a similarly shaped object on the reflected side
+        # of the board.  The reviewed task map (or a saved physical hover in
+        # begin_part) is the authoritative coarse target.  Competition test
+        # runs may still use fresh head detections for board translation.
         self.head_scene = scene
-        try:
-            from tools.vega_head_fallback import match_expected_parts
-            self.head_observations = match_expected_parts(
-                scene, self.runtime, self.targets, task_data=teaching_task_data
-            )
-        except Exception as exc:
+        if teaching_frame_override:
             self.head_observations = {}
             print(
-                "HEAD PART PERCEPTION UNAVAILABLE: keeping reviewed task "
-                f"coordinates ({type(exc).__name__}: {exc})",
+                "TEACHING COARSE TARGETS: reviewed task map only; "
+                "live part association disabled.",
                 flush=True,
             )
+        else:
+            try:
+                from tools.vega_head_fallback import match_expected_parts
+                self.head_observations = match_expected_parts(
+                    scene, self.runtime, self.targets, task_data=teaching_task_data
+                )
+            except Exception as exc:
+                self.head_observations = {}
+                print(
+                    "HEAD PART PERCEPTION UNAVAILABLE: keeping reviewed task "
+                    f"coordinates ({type(exc).__name__}: {exc})",
+                    flush=True,
+                )
         for part, observation in self.head_observations.items():
             if observation.get("selection") != "head_detection":
                 continue
@@ -655,6 +663,19 @@ class PartSession:
         validate_task_coordinate_extent(self.runtime[1], names=[f"{part}.pick"])
         self.yaw = float(profile["yaw_deg"]) if profile else float(initial_yaw or 0.0)
         coarse = self.targets[f"task.{part}.pick"]
+        if getattr(self.args, "mode", "calibrate") == "calibrate" and profile:
+            saved_xy = profile.get("coarse_xy_m")
+            if isinstance(saved_xy, (list, tuple)) and len(saved_xy) == 2:
+                sx, sy = (float(v) for v in saved_xy)
+                coarse = Pose(
+                    (sx, sy, self.surface(sx, sy) + float(profile.get("hover_clearance_m", .100))),
+                    self.runtime[3].quaternion_wxyz,
+                )
+                print(
+                    "CALIBRATION START: using the part's last verified coarse hover "
+                    f"({sx:.4f}, {sy:.4f}) m",
+                    flush=True,
+                )
         self.coarse = coarse
         if profile:
             # A field recalibration changes the board surface/registration hash.
@@ -1265,7 +1286,7 @@ class PartSession:
                 continue
 
     def teach(self, part, old=None):
-        self.begin_part(part, None, initial_yaw=(old or {}).get("yaw_deg"))
+        self.begin_part(part, old, initial_yaw=(old or {}).get("yaw_deg"))
         grasp = old.get("grasp_clearance_m") if old else None
         place = old.get("place") if old else None
         self.gripper_open_fraction = old.get("gripper_open_fraction") if old else None
