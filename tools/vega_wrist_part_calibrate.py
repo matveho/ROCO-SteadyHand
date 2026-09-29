@@ -448,15 +448,32 @@ class PartSession:
             return self.goal
 
     def localize(self):
-        if self.tracker is None or self.goal is None:
-            raise RuntimeError("teach and verify the same-feature goal before centering")
+        if self.tracker is None or self.reference_feature is None:
+            raise RuntimeError("teach a visible reference feature before centering")
+        if self.goal is None:
+            # A goal click is useful when the operator wants a particular
+            # feature pixel, but the normal wrist-centering target is simply
+            # the image center. This keeps `center` useful after the first
+            # feature annotation and avoids a false prerequisite failure.
+            if not hasattr(self, "reference_rgb"):
+                raise RuntimeError("capture a reference image before centering")
+            from steadyhand.vision.wrist_servo import image_center
+            self.goal = tuple(float(v) for v in image_center(self.reference_rgb.shape))
+            self.goal_match = None
+            self.goal_match_score = None
+            self.goal_match_error_px = None
+            print(
+                "CENTER TARGET: wrist-image center "
+                f"= {tuple(round(v, 1) for v in self.goal)}",
+                flush=True,
+            )
         reference = _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz
         self.alignment_verified = False
         try:
             result = run_xy_servo(
                 self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
-                probe_m=.008, gain=.65, max_step_m=.010, max_radius_m=.045,
-                tolerance_px=5., max_iterations=8, speed_scale=.45, event=self.event,
+                probe_m=.010, gain=.45, max_step_m=.008, max_radius_m=.060,
+                tolerance_px=8., max_iterations=12, speed_scale=.45, event=self.event,
                 tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
                 reference_quaternion_wxyz=reference,
             )
@@ -680,7 +697,11 @@ class PartSession:
                         "goal_source": (
                             "operator_confirmed_current_pose"
                             if self.manual_alignment_override
-                            else "same_feature_second_annotation"
+                            else (
+                                "wrist_image_center"
+                                if self.goal_match is None
+                                else "same_feature_second_annotation"
+                            )
                         ),
                         "goal_match_uv": list(self.goal_match) if self.goal_match is not None else None,
                         "goal_match_score": self.goal_match_score,

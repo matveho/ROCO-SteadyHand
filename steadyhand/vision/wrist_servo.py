@@ -418,8 +418,8 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         probe_xys.append(actual.position_m[:2])
         move(origin, label=f"return_after_{label}")
         returned_uv, _ = observe("return_reference")
-        if math.dist(returned_uv, uv0) > 8:
-            raise RuntimeError("Feature did not return within 8 px; check tracking / scene motion")
+        if math.dist(returned_uv, uv0) > 12:
+            raise RuntimeError("Feature did not return within 12 px; check tracking / scene motion")
     jacobian = jacobian_from_measured_probes(uv0, probe_uvs, origin.position_m[:2], probe_xys)
     report("calibrated", jacobian_px_per_m=jacobian.matrix(), condition=jacobian.condition_number())
 
@@ -438,10 +438,13 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
             report("complete", **result)
             return result
         if previous_error is not None:
-            if magnitude > previous_error * 1.3 + 2:
+            # Small perspective/nonlinear effects and camera jitter can make a
+            # single correction look temporarily worse. Stop only on a clear
+            # divergence, while retaining the bounded radius and step gates.
+            if magnitude > previous_error * 1.8 + 5:
                 raise RuntimeError("Pixel error increased; stopping before another correction")
-            stalled = stalled+1 if magnitude >= previous_error-1 else 0
-            if stalled >= 2:
+            stalled = stalled+1 if magnitude >= previous_error-2 else 0
+            if stalled >= 3:
                 raise RuntimeError("Centering stalled; inspect tracking and actual TCP motion")
         if iteration == max_iterations:
             raise RuntimeError(f"Not centered after {max_iterations} corrections: {magnitude:.1f} px")

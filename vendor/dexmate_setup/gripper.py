@@ -98,8 +98,15 @@ class Motor:
         f = max(margin, min(1.0 - margin, fraction))
         return self.closed_deg + STROKE[self.id] * f
 
-    def _goto(self, target, speed, i_max, timeout, blind=1.0):
-        """absolute move, 0xA4. Returns (angle, peak_current, reason)."""
+    def _goto(self, target, speed, i_max, timeout, blind=1.0,
+              hold_on_contact=False):
+        """absolute move, 0xA4. Returns (angle, peak_current, reason).
+
+        A grip is different from a travel move: after contact, the motor must
+        remain in its position-control command so it continues applying jaw
+        pressure while the arm lifts. Callers that request ``hold_on_contact``
+        therefore do not issue the normal soft-stop on current/stall.
+        """
         self._send_goto(target, speed)
         t0, last, flat, peak = time.time(), None, 0, 0.0
         while time.time() - t0 < timeout:
@@ -110,11 +117,15 @@ class Motor:
             if time.time() - t0 > blind and c is not None:
                 peak = max(peak, abs(c))
                 if abs(c) > i_max:
-                    self.halt(); return a, peak, "current"
+                    if not hold_on_contact:
+                        self.halt()
+                    return a, peak, "current"
                 if last is not None and abs(a - last) < 0.3:
                     flat += 1
                     if flat >= 3:
-                        self.halt(); return a, peak, "stall"
+                        if not hold_on_contact:
+                            self.halt()
+                        return a, peak, "stall"
                 else:
                     flat = 0
             last = a
@@ -193,8 +204,15 @@ class Motor:
         self._require_cal()
         self.enable()
         target = self.closed_deg + STROKE[self.id] * 0.02
-        a, pk, why = self._goto(target, speed, current,
-                                timeout=abs(target - self.angle()) / speed * 3 + 8)
+        a, pk, why = self._goto(
+            target, speed, current,
+            timeout=abs(target - self.angle()) / speed * 3 + 8,
+            hold_on_contact=True,
+        )
+        if why == "reached":
+            # No object was encountered; do not continuously press the hard
+            # stop at the closed end.
+            self.halt()
         return {"angle": a, "peak_current": pk, "stopped_by": why,
                 "position": (a - self.closed_deg) / STROKE[self.id],
                 "gripped": why in ("current", "stall")}
