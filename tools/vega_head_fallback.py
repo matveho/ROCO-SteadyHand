@@ -14,6 +14,7 @@ import json
 import math
 from pathlib import Path
 import sys
+import subprocess
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -37,6 +38,8 @@ DEFAULT_PROFILES = ROOT / "calibration" / "head_fallback_profiles.json"
 HOVER_CLEARANCE_M = 0.100
 DETECTION_RADIUS_M = 0.100
 SPEED_SCALE = 0.42
+CAN_INTERFACE = "can1"
+CAN_BITRATE = "1000000"
 
 
 def _finite_pair(value, name):
@@ -46,6 +49,49 @@ def _finite_pair(value, name):
     if not all(math.isfinite(v) for v in result):
         raise ValueError(f"{name} must contain finite numbers")
     return result
+
+
+def _is_can_network_down(exc):
+    text = repr(exc).lower()
+    return (
+        "network is down" in text
+        or "error code 100" in text
+        or "errno 100" in text
+    )
+
+
+def _bring_up_can1():
+    """Best-effort recovery for a present but down SocketCAN interface.
+
+    The robot image normally configures can1 before the competition process,
+    but a reboot can leave it down.  Keep this local to the fallback so a
+    failed pickup can be retried without tearing down the arm session.
+    """
+    if not Path(f"/sys/class/net/{CAN_INTERFACE}").exists():
+        return "can1 is not present"
+    commands = (
+        ["ip", "link", "set", CAN_INTERFACE, "up"],
+        ["ip", "link", "set", CAN_INTERFACE, "type", "can", "bitrate", CAN_BITRATE],
+        ["ip", "link", "set", CAN_INTERFACE, "up"],
+    )
+    errors = []
+    for command in commands:
+        try:
+            result = subprocess.run(
+                command,
+                check=False,
+                text=True,
+                capture_output=True,
+                timeout=3.0,
+            )
+        except (FileNotFoundError, OSError, subprocess.TimeoutExpired) as exc:
+            errors.append(str(exc))
+            continue
+        if result.returncode == 0:
+            return None
+        detail = (result.stderr or result.stdout or "").strip()
+        errors.append(detail or f"exit {result.returncode}")
+    return "; ".join(errors)
 
 
 def load_profiles(path):
@@ -242,7 +288,15 @@ class HeadFallbackSession:
         xy = (self.observation["selected_xy_m"][0] + offset[0], self.observation["selected_xy_m"][1] + offset[1])
         self.hover_pose = self.make_hover(*xy, yaw)
         depth = self.profile.get("grasp_depth_mm")
-        self.grasp_clearance_m = None if depth is None else HOVER_CLEARANCE_M - float(depth) / 1000.0
+        if depth is None:
+            self.grasp_clearance_m = None
+        else:
+            depth = float(depth)
+            if not math.isfinite(depth) or not 0 <= depth <= 100:
+                raise ValueError("saved grasp depth must be 0..100.0 mm below hover")
+            self.grasp_clearance_m = HOVER_CLEARANCE_M - depth / 1000.0
+            if self.surface(*xy) + self.grasp_clearance_m < self.floor + 0.005:
+                raise ValueError("saved grasp depth would cross TCP floor")
         print(f"SELECTED {part}: {self.observation['selection']} target={tuple(round(v, 4) for v in self.hover_pose.position_m)}", flush=True)
         self.move(self.hover_pose)
 
@@ -270,13 +324,18 @@ class HeadFallbackSession:
 
     def set_depth(self, depth_mm):
         depth = float(depth_mm)
-        if not math.isfinite(depth) or not 0 <= depth < 100:
-            raise ValueError("depth must be 0..99.9 mm below hover")
+        if not math.isfinite(depth) or not 0 <= depth <= 100:
+            raise ValueError("depth must be 0..100.0 mm below hover")
         clearance = HOVER_CLEARANCE_M - depth / 1000.0
         if self.surface(*self.hover_pose.position_m[:2]) + clearance < self.floor + 0.005:
             raise ValueError("depth would cross TCP floor")
         self.grasp_clearance_m = clearance
-        print(f"GRASP CLEARANCE = {clearance*1000:.1f} mm above surface", flush=True)
+        grasp_z = self.surface(*self.hover_pose.position_m[:2]) + clearance
+        print(
+            f"DEPTH ACCEPTED = {depth:.1f} mm below hover; "
+            f"TCP is {clearance*1000:.1f} mm above surface at z={grasp_z:.4f} m",
+            flush=True,
+        )
 
     def save(self):
         if self.holding:
@@ -297,18 +356,62 @@ class HeadFallbackSession:
             raise RuntimeError("set depth N before grab")
         x, y = self.hover_pose.position_m[:2]
         grasp = Pose((x, y, self.surface(x, y) + self.grasp_clearance_m), self.hover_pose.quaternion_wxyz)
-        self.move(grasp, slow=True)
-        self.robot.connect_gripper()
-        self.robot.open_gripper(self.part)
-        self.robot.grip(self.part)
-        self.holding = True
-        result = self.robot._gripper.last_grip_result()
-        print(f"GRIP RESULT = {json.dumps(result, default=str)}", flush=True)
-        self.move(self.hover_pose, slow=True)
+        # Connect and open while still safely at hover.  A CAN failure must
+        # never leave the arm down at the part or abort the operator session.
+        try:
+            self._connect_gripper_with_recovery()
+            self.robot.open_gripper(self.part)
+        except Exception as exc:
+            print(f"GRIPPER NOT READY: {type(exc).__name__}: {exc}", flush=True)
+            if _is_can_network_down(exc):
+                print(
+                    "CAN recovery failed; run `ip link show can1` and bring can1 "
+                    "up before retrying grab",
+                    flush=True,
+                )
+            return
+
+        descent_attempted = False
+        self.holding = False
+        result = None
+        try:
+            descent_attempted = True
+            self.move(grasp, slow=True)
+            # From this point on a failed CAN reply may still leave the part
+            # between the jaws, so retain the holding state conservatively.
+            self.holding = True
+            result = self.robot.grip(self.part)
+            print(f"GRIP RESULT = {json.dumps(result, default=str)}", flush=True)
+        except Exception as exc:
+            print(f"GRIP COMMAND FAILED: {type(exc).__name__}: {exc}", flush=True)
+            result = None
+        finally:
+            if descent_attempted:
+                try:
+                    self.move(self.hover_pose, slow=True)
+                except Exception as exc:
+                    print(f"LIFT AFTER GRIP FAILED: {type(exc).__name__}: {exc}", flush=True)
         if not isinstance(result, dict) or result.get("gripped") is not True:
             print("GRIP NOT VERIFIED; holding state retained for inspection", flush=True)
         else:
             print("PICK VERIFIED; type return before another part", flush=True)
+
+    def _connect_gripper_with_recovery(self):
+        try:
+            self.robot.connect_gripper()
+            return
+        except Exception as first_error:
+            if not _is_can_network_down(first_error):
+                raise
+            print("CAN1 IS DOWN; attempting automatic can1 recovery", flush=True)
+            recovery_error = _bring_up_can1()
+            if recovery_error:
+                raise RuntimeError(
+                    f"can1 recovery failed: {recovery_error}; "
+                    "bring can1 up, then retry grab"
+                ) from first_error
+            print("CAN1 RECOVERED; retrying gripper initialization", flush=True)
+            self.robot.connect_gripper()
 
     def return_part(self):
         if not self.holding:
@@ -322,35 +425,38 @@ class HeadFallbackSession:
 
     def run_part(self, part):
         self.select_part(part)
-        print("Commands: forward/back/left/right N, yaw N, depth N, grab, return, save, retake, status, abort")
+        print("Commands: forward/back/left/right N, yaw N, depth 0..100, grab, return, save, retake, status, abort")
         while True:
             raw = input(f"head-fallback {part}> ").strip().lower().split()
             if not raw:
                 continue
             command = raw[0]
-            if command in ("abort", "exit", "q"):
-                return 3 if self.holding else 1
-            if command in ("forward", "back", "left", "right") and len(raw) == 2:
-                self.adjust(command, raw[1])
-            elif command == "yaw" and len(raw) == 2:
-                self.set_yaw(raw[1])
-            elif command == "depth" and len(raw) == 2:
-                self.set_depth(raw[1])
-            elif command == "grab":
-                self.grab()
-            elif command == "return":
-                self.return_part()
-            elif command == "save":
-                self.save()
-                return 0
-            elif command == "retake" and not self.holding:
-                self.refresh_board()
-                self.ready_pose = configured_right_preset(self.cfg, "right_ready")[1]
-                self.select_part(part)
-            elif command == "status":
-                print(json.dumps({"target": self.hover_pose.position_m, "holding": self.holding, "grasp_clearance_m": self.grasp_clearance_m}, default=str))
-            else:
-                print("Use forward/back/left/right N, yaw N, depth N, grab, return, save, retake, status, or abort")
+            try:
+                if command in ("abort", "exit", "q"):
+                    return 3 if self.holding else 1
+                if command in ("forward", "back", "left", "right") and len(raw) == 2:
+                    self.adjust(command, raw[1])
+                elif command == "yaw" and len(raw) == 2:
+                    self.set_yaw(raw[1])
+                elif command == "depth" and len(raw) == 2:
+                    self.set_depth(raw[1])
+                elif command == "grab":
+                    self.grab()
+                elif command == "return":
+                    self.return_part()
+                elif command == "save":
+                    self.save()
+                    return 0
+                elif command == "retake" and not self.holding:
+                    self.refresh_board()
+                    self.ready_pose = configured_right_preset(self.cfg, "right_ready")[1]
+                    self.select_part(part)
+                elif command == "status":
+                    print(json.dumps({"target": self.hover_pose.position_m, "holding": self.holding, "grasp_clearance_m": self.grasp_clearance_m}, default=str))
+                else:
+                    print("Use forward/back/left/right N, yaw N, depth N, grab, return, save, retake, status, or abort")
+            except Exception as exc:
+                print(f"COMMAND FAILED (session remains active): {type(exc).__name__}: {exc}", flush=True)
 
 
 def main(argv=None):

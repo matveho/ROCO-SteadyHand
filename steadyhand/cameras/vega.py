@@ -92,6 +92,10 @@ class VegaHeadCamera:
     def __init__(self) -> None:
         self._sensors = None
         self._head = None
+        # Keep the resolved name from connect().  On some onsite shells
+        # ROBOT_NAME is not exported, while dexcontrol still provides it in
+        # its loaded config.  Read recovery must use the same name.
+        self._robot_name = None
 
     def connect(self) -> None:
         if self._sensors is not None:
@@ -104,6 +108,7 @@ class VegaHeadCamera:
             raise RuntimeError("dexcontrol config has no head_camera")
         configs.sensors["head_camera"].enabled = True
         robot_name = os.environ.get("ROBOT_NAME") or getattr(configs, "robot_name", None)
+        self._robot_name = None if robot_name is None else str(robot_name)
         last_error = None
         for attempt in range(2):
             sensors = None
@@ -173,7 +178,7 @@ class VegaHeadCamera:
 
         deadline = time.monotonic() + timeout_s
         recovery_attempted = False
-        robot_name = os.environ.get("ROBOT_NAME")
+        robot_name = self._robot_name or os.environ.get("ROBOT_NAME")
         last_missing = list(keys)
         last_info_error = None
         while True:

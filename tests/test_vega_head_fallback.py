@@ -4,6 +4,8 @@ from pathlib import Path
 
 from steadyhand.models import Pose
 from tools.vega_head_fallback import (
+    HeadFallbackSession,
+    _is_can_network_down,
     load_profiles,
     match_expected_parts,
     save_profiles,
@@ -46,6 +48,50 @@ class HeadFallbackTests(unittest.TestCase):
             value = {"schema_version": 1, "camera": "head_camera", "parts": {"battery_size1": {"offset_base_xy_m": [0.001, -0.002]}}}
             save_profiles(path, value)
             self.assertEqual(load_profiles(path), value)
+
+    def test_depth_allows_exact_board_contact_boundary(self):
+        session = HeadFallbackSession.__new__(HeadFallbackSession)
+        session.floor = 0.456
+        session.hover_pose = Pose((0.5, 0.0, 0.6), (1.0, 0.0, 0.0, 0.0))
+        session.grasp_clearance_m = None
+        session.surface = lambda x, y: 0.5
+        session.set_depth(100)
+        self.assertEqual(session.grasp_clearance_m, 0.0)
+        with self.assertRaisesRegex(ValueError, "0..100.0"):
+            session.set_depth(100.1)
+
+    def test_can_network_down_detection_is_narrow(self):
+        self.assertTrue(_is_can_network_down(RuntimeError("Network is down [Error Code 100]")))
+        self.assertTrue(_is_can_network_down(OSError("errno 100")))
+        self.assertFalse(_is_can_network_down(RuntimeError("motor did not respond")))
+
+    def test_grab_opens_at_hover_and_lifts_after_grip_failure(self):
+        events = []
+
+        class FakeRobot:
+            def connect_gripper(self):
+                events.append("connect")
+
+            def open_gripper(self, part):
+                events.append(("open", part))
+
+            def grip(self, part):
+                events.append(("grip", part))
+                raise RuntimeError("CAN reply lost")
+
+        session = HeadFallbackSession.__new__(HeadFallbackSession)
+        session.robot = FakeRobot()
+        session.part = "battery_size1"
+        session.grasp_clearance_m = 0.0
+        session.hover_pose = Pose((0.5, 0.0, 0.6), (1.0, 0.0, 0.0, 0.0))
+        session.surface = lambda x, y: 0.5
+        session.holding = False
+        session.move = lambda target, slow=False: events.append(("move", target.position_m[2]))
+
+        session.grab()
+        self.assertEqual(events[0:3], ["connect", ("open", "battery_size1"), ("move", 0.5)])
+        self.assertEqual(events[-1], ("move", 0.6))
+        self.assertTrue(session.holding)
 
 
 if __name__ == "__main__":
