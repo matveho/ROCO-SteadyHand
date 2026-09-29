@@ -54,6 +54,38 @@ class WristPair:
     wrist_b: WristCameraFrame
 
 
+def _restart_head_camera_service(robot_name: str) -> None:
+    """Restart the Jetson head-camera publisher once after startup failure."""
+    subprocess.run(
+        ["pkill", "-f", "dexsensor.*head_camera"],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    log_path = Path(os.path.expanduser("~/head_camera.log"))
+    environment = os.environ.copy()
+    environment["ROBOT_NAME"] = robot_name
+    environment.pop("PYTHONPATH", None)
+    with log_path.open("ab") as log:
+        subprocess.Popen(
+            [
+                "dexsensor", "-v", "info", "launch",
+                "--config", "/etc/dexmate/dexsensor/default.toml",
+                "--robot", robot_name,
+                "--sensor", "head_camera",
+            ],
+            stdout=log,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            start_new_session=True,
+            env=environment,
+        )
+    wait_s = float(os.environ.get("VEGA_HEAD_CAMERA_RESTART_WAIT_S", "4.0"))
+    if not math.isfinite(wait_s) or wait_s <= 0:
+        wait_s = 4.0
+    time.sleep(wait_s)
+
+
 class VegaHeadCamera:
     """Sensor-only ZED subscriber. Does not construct dexcontrol Robot()."""
 
@@ -71,16 +103,37 @@ class VegaHeadCamera:
         if "head_camera" not in configs.sensors:
             raise RuntimeError("dexcontrol config has no head_camera")
         configs.sensors["head_camera"].enabled = True
-
-        sensors = Sensors({"head_camera": configs.sensors["head_camera"]})
-        try:
-            sensors.wait_for_all_active(timeout=10)
-        except Exception:
-            sensors.shutdown()
-            raise
-
-        self._sensors = sensors
-        self._head = sensors.head_camera
+        robot_name = os.environ.get("ROBOT_NAME") or getattr(configs, "robot_name", None)
+        last_error = None
+        for attempt in range(2):
+            sensors = None
+            try:
+                sensors = Sensors({"head_camera": configs.sensors["head_camera"]})
+                sensors.wait_for_all_active(timeout=10)
+            except Exception as exc:
+                last_error = exc
+                if sensors is not None:
+                    try:
+                        sensors.shutdown()
+                    except Exception:
+                        pass
+                if attempt == 0 and robot_name:
+                    print(
+                        "HEAD CAMERA START FAILED; restarting dexsensor and retrying once",
+                        flush=True,
+                    )
+                    try:
+                        _restart_head_camera_service(str(robot_name))
+                    except Exception as recovery_exc:
+                        raise RuntimeError(
+                            f"head camera recovery could not relaunch dexsensor: {recovery_exc}"
+                        ) from exc
+                    continue
+                raise
+            self._sensors = sensors
+            self._head = sensors.head_camera
+            return
+        raise RuntimeError("head camera failed to start after recovery retry") from last_error
 
     def close(self) -> None:
         if self._sensors is not None:
@@ -119,6 +172,8 @@ class VegaHeadCamera:
             keys.append("depth")
 
         deadline = time.monotonic() + timeout_s
+        recovery_attempted = False
+        robot_name = os.environ.get("ROBOT_NAME")
         last_missing = list(keys)
         last_info_error = None
         while True:
@@ -145,6 +200,28 @@ class VegaHeadCamera:
 
             remaining = deadline - time.monotonic()
             if remaining <= 0:
+                # ``Sensors.wait_for_all_active`` can report success while
+                # the publisher's camera-info service is still absent after
+                # reboot.  Restart the proven dexsensor publisher once and
+                # give the complete read window another bounded attempt.
+                if not recovery_attempted and robot_name:
+                    recovery_attempted = True
+                    print(
+                        "HEAD CAMERA READ FAILED; restarting dexsensor and retrying once",
+                        flush=True,
+                    )
+                    try:
+                        self.close()
+                        _restart_head_camera_service(str(robot_name))
+                        self.connect()
+                    except Exception as recovery_exc:
+                        raise RuntimeError(
+                            f"head camera recovery could not relaunch dexsensor: {recovery_exc}"
+                        ) from (last_info_error or RuntimeError("head camera read timed out"))
+                    deadline = time.monotonic() + timeout_s
+                    last_missing = list(keys)
+                    last_info_error = None
+                    continue
                 if last_info_error is not None and not last_missing:
                     raise RuntimeError(
                         "Vega head streams are ready but camera info is unavailable "
