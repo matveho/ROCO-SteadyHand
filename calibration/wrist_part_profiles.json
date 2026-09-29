@@ -1,0 +1,451 @@
+{
+  "schema_version": 1,
+  "profiles_kind": "vega_right_wrist_part_grasp_profiles",
+  "robot_name": "dm/vgfcb66075ea-1u",
+  "working_arm": "right",
+  "tcp_frame": "tip_r",
+  "wrist_camera": "wrist_a",
+  "generated_at_utc": "2026-09-12T15:40:26.902808+00:00",
+  "parts": {
+    "battery_size1": {
+      "part": "battery_size1",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.3558604585319267,
+        -0.1432632399164138
+      ],
+      "feature_uv": [
+        994.0,
+        705.0
+      ],
+      "goal_uv": [
+        938.0,
+        614.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        937.0,
+        615.0
+      ],
+      "goal_match_score": 0.9045602083206177,
+      "goal_click_match_error_px": 1.4142135623730951,
+      "reference_match_score": 1.0,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        945.0,
+        616.0
+      ],
+      "final_match_score": 0.888471245765686,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.008000000000000007,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.18999957274999468,
+      "place": {
+        "offset_board_xy_m": [
+          0.008127681247247281,
+          0.02045834014233108
+        ],
+        "clearance_m": 0.03536901817582638,
+        "yaw_deg": 0.0
+      },
+      "grasp_verified": true,
+      "place_verified": true,
+      "template": {
+        "path": "calibration/wrist_templates/battery_size1_1789223752966384320.png",
+        "sha256": "e076635b55ae1510895b415d795b8c7cf0d65be06f12797003430d3aa3d2ba30",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": -100.49,
+        "peak_current": 1.19,
+        "stopped_by": "current",
+        "position": 0.09578517869731472,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T14:35:52.967976+00:00",
+      "place_release_tcp_m": [
+        0.3566132499731293,
+        -0.07542323396135103,
+        0.5468595715497503
+      ],
+      "place_release_gripper": {
+        "from_fraction": 0.07947490974343638,
+        "to_fraction": 0.1294749097434364,
+        "delta_fraction": 0.05000000000000002,
+        "max_delta_fraction": 0.05
+      },
+      "place_release_photo": "runs/drop_release_positions/DROP_RELEASE_POSITION__battery_size1__1789227625585291751__WRIST_A.png",
+      "place_taught_at_utc": "2026-09-12T15:40:26.902193+00:00"
+    },
+    "gear_60teeth": {
+      "part": "gear_60teeth",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.6058892310134474,
+        -0.13746138587549897
+      ],
+      "feature_uv": [
+        970.0,
+        732.0
+      ],
+      "goal_uv": [
+        977.0,
+        661.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        970.0,
+        657.0
+      ],
+      "goal_match_score": 0.9830650687217712,
+      "goal_click_match_error_px": 8.06225774829855,
+      "reference_match_score": 1.0,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        956.0,
+        668.0
+      ],
+      "final_match_score": 0.9753686785697937,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.0050000000000000044,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.25,
+      "place": null,
+      "grasp_verified": true,
+      "place_verified": false,
+      "template": {
+        "path": "calibration/wrist_templates/gear_60teeth_1789223488014072835.png",
+        "sha256": "b8aa2fdb06c5bff3983191626b15d5309457a178a457b423003fd2bbd72ec630",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": 200.42,
+        "peak_current": 1.32,
+        "stopped_by": "current",
+        "position": 0.1646835145585439,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T14:31:28.015589+00:00"
+    },
+    "rod_16mm": {
+      "part": "rod_16mm",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.46358642693007335,
+        -0.10838957369751365
+      ],
+      "feature_uv": [
+        952.0,
+        762.0
+      ],
+      "goal_uv": [
+        922.0,
+        698.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        922.0,
+        698.0
+      ],
+      "goal_match_score": 0.9787575602531433,
+      "goal_click_match_error_px": 0.0,
+      "reference_match_score": 1.0,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        922.0,
+        701.0
+      ],
+      "final_match_score": 0.9738378524780273,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.03,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.12000427250005338,
+      "place": null,
+      "grasp_verified": true,
+      "place_verified": false,
+      "template": {
+        "path": "calibration/wrist_templates/rod_16mm_1789224345056526097.png",
+        "sha256": "bf5dd32f97f620c38e85717a2f6308757423891d1ab7402f8399afd3ccda236c",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": -323.5,
+        "peak_current": 1.17,
+        "stopped_by": "current",
+        "position": 0.0510691931383649,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T14:45:45.058134+00:00"
+    },
+    "bolt_8mm": {
+      "part": "bolt_8mm",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.525545865453352,
+        -0.15788828921382442
+      ],
+      "feature_uv": [
+        912.0,
+        797.0
+      ],
+      "goal_uv": [
+        916.0,
+        705.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        916.0,
+        705.0
+      ],
+      "goal_match_score": 0.9270638227462769,
+      "goal_click_match_error_px": 0.0,
+      "reference_match_score": 0.9999989867210388,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        901.0,
+        708.0
+      ],
+      "final_match_score": 0.9381656050682068,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.015,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.1,
+      "place": null,
+      "grasp_verified": true,
+      "place_verified": false,
+      "template": {
+        "path": "calibration/wrist_templates/bolt_8mm_1789224956927728477.png",
+        "sha256": "a7cf1ea5760ffe1d5f31b0f64505fd17be68041d06fd3b2d5c1b213508d65771",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": -364.41,
+        "peak_current": 1.09,
+        "stopped_by": "current",
+        "position": 0.03893742923671785,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T14:55:56.929416+00:00"
+    },
+    "pin": {
+      "part": "pin",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.5201663307109562,
+        0.001033131513138377
+      ],
+      "feature_uv": [
+        929.0,
+        775.0
+      ],
+      "goal_uv": [
+        910.0,
+        710.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        910.0,
+        710.0
+      ],
+      "goal_match_score": 0.9406431317329407,
+      "goal_click_match_error_px": 0.0,
+      "reference_match_score": 1.0,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        910.0,
+        714.0
+      ],
+      "final_match_score": 0.9255523085594177,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.0050000000000000044,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.1,
+      "place": null,
+      "grasp_verified": true,
+      "place_verified": false,
+      "template": {
+        "path": "calibration/wrist_templates/pin_1789225140236191009.png",
+        "sha256": "9da9d56d48eb3dda3d5d1bda0df727d1f76dc65ab0d006cc8affb3499455fbd2",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": -365.91,
+        "peak_current": 1.22,
+        "stopped_by": "current",
+        "position": 0.03923223174040288,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T14:59:00.237703+00:00"
+    },
+    "battery_size5": {
+      "part": "battery_size5",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.3751819717763232,
+        -0.15859424428040902
+      ],
+      "feature_uv": [
+        1002.0,
+        733.0
+      ],
+      "goal_uv": [
+        890.0,
+        641.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        890.0,
+        641.0
+      ],
+      "goal_match_score": 0.9446777105331421,
+      "goal_click_match_error_px": 0.0,
+      "reference_match_score": 1.0,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        898.0,
+        640.0
+      ],
+      "final_match_score": 0.946622908115387,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.0,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.1,
+      "place": null,
+      "grasp_verified": true,
+      "place_verified": false,
+      "template": {
+        "path": "calibration/wrist_templates/battery_size5_1789226172843202326.png",
+        "sha256": "14aee1de0360f74f7f7da6416f5852574e697acbf9b17e1b5ba895a2fa4193e2",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": -366.39,
+        "peak_current": 1.45,
+        "stopped_by": "current",
+        "position": 0.03965093674563671,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T15:16:12.844752+00:00"
+    },
+    "hdmi": {
+      "part": "hdmi",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.6134527764356458,
+        -0.20099317386873783
+      ],
+      "feature_uv": [
+        924.0,
+        812.0
+      ],
+      "goal_uv": [
+        924.0,
+        700.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        924.0,
+        700.0
+      ],
+      "goal_match_score": 0.9451494216918945,
+      "goal_click_match_error_px": 0.0,
+      "reference_match_score": 0.9999988675117493,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        916.0,
+        701.0
+      ],
+      "final_match_score": 0.8920079469680786,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.006000000000000005,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.1,
+      "place": null,
+      "grasp_verified": true,
+      "place_verified": false,
+      "template": {
+        "path": "calibration/wrist_templates/hdmi_1789226372861148022.png",
+        "sha256": "4e7cbecb4834a170006951d0ca05dcf571a6bc0d766e4fecd02b725462bc6ca1",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": -379.86,
+        "peak_current": 1.43,
+        "stopped_by": "current",
+        "position": 0.03563692294546152,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T15:19:32.862899+00:00"
+    }
+  }
+}

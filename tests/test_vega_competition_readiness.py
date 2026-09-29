@@ -10,7 +10,9 @@ class CompetitionReadinessTests(unittest.TestCase):
         self.assertTrue(report["checks"]["task_coordinates"]["passed"])
         self.assertTrue(report["checks"]["calibration"]["passed"])
         self.assertTrue(report["checks"]["protected_inputs_unchanged"]["passed"])
-        self.assertEqual(report["checks"]["competition_plan"]["eligible_actions_now"], [])
+        eligible = report["checks"]["competition_plan"]["eligible_actions_now"]
+        self.assertIn("battery_size1.pick_place", eligible)
+        self.assertTrue(report["competition_actions_eligible"])
 
 
 if __name__ == "__main__":
