@@ -5,7 +5,7 @@
   "working_arm": "right",
   "tcp_frame": "tip_r",
   "wrist_camera": "wrist_a",
-  "generated_at_utc": "2026-09-12T15:40:26.902808+00:00",
+  "generated_at_utc": "2026-09-12T16:57:19.557106+00:00",
   "parts": {
     "battery_size1": {
       "part": "battery_size1",
@@ -49,10 +49,10 @@
       "gripper_open_fraction": 0.18999957274999468,
       "place": {
         "offset_board_xy_m": [
-          0.008127681247247281,
-          0.02045834014233108
+          0.0054099742406993855,
+          -0.017669511637119627
         ],
-        "clearance_m": 0.03536901817582638,
+        "clearance_m": 0.039217411238700484,
         "yaw_deg": 0.0
       },
       "grasp_verified": true,
@@ -74,18 +74,18 @@
       },
       "created_at_utc": "2026-09-12T14:35:52.967976+00:00",
       "place_release_tcp_m": [
-        0.3566132499731293,
-        -0.07542323396135103,
-        0.5468595715497503
+        0.3498884191786047,
+        -0.06728936194324411,
+        0.5521897942474446
       ],
       "place_release_gripper": {
-        "from_fraction": 0.07947490974343638,
-        "to_fraction": 0.1294749097434364,
+        "from_fraction": 0.07960949349511867,
+        "to_fraction": 0.1296094934951187,
         "delta_fraction": 0.05000000000000002,
         "max_delta_fraction": 0.05
       },
-      "place_release_photo": "runs/drop_release_positions/DROP_RELEASE_POSITION__battery_size1__1789227625585291751__WRIST_A.png",
-      "place_taught_at_utc": "2026-09-12T15:40:26.902193+00:00"
+      "place_release_photo": "runs/drop_release_positions/DROP_RELEASE_POSITION__battery_size1__1789232073065163881__WRIST_A.png",
+      "place_taught_at_utc": "2026-09-12T16:54:34.379011+00:00"
     },
     "gear_60teeth": {
       "part": "gear_60teeth",
