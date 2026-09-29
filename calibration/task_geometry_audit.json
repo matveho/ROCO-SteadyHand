@@ -5,9 +5,10 @@
   "board_motion_model": "horizontal_translation_only_fixed_table_plane",
   "task_coordinate_rotation_deg": 180.0,
   "task_coordinate_mirror_x": false,
+  "task_coordinate_mirror_y": false,
   "clearance_m": 0.1,
   "hard_floor_m": 0.4560002716867571,
-  "calibration_path": "/home/dexmate/ROCO-SteadyHand-live/calibration/vega_board_manual.json",
+  "calibration_path": "/home/sharpa/Documents/ChatGPT/SteadyHand/repository-audit/calibration/vega_board_manual.json",
   "targets": [
     {
       "name": "gear_60teeth.pick",
@@ -23,14 +24,14 @@
         -0.14394480474253346
       ],
       "base_xy_m": [
-        0.5744037002173714,
-        -0.13683960213149624
+        0.5847007528628716,
+        -0.13758821004359337
       ],
-      "surface_z_m": 0.4561389732576671,
-      "hover_z_m": 0.5561389732576671,
+      "surface_z_m": 0.46172197829654094,
+      "hover_z_m": 0.5617219782965409,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.10013870157091004,
-      "surface_distance_from_floor_m": 0.0001387015709100048,
+      "hover_distance_above_floor_m": 0.1057217066097838,
+      "surface_distance_from_floor_m": 0.005721706609783828,
       "distance_from_board_center_m": 0.17627952008725484,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -50,14 +51,14 @@
         -0.1140682911916755
       ],
       "base_xy_m": [
-        0.5464997960585631,
-        0.01467318055366914
+        0.5531768877277154,
+        0.01321297400761556
       ],
-      "surface_z_m": 0.4653478183443856,
-      "hover_z_m": 0.5653478183443856,
+      "surface_z_m": 0.4693554131510961,
+      "hover_z_m": 0.5693554131510961,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.10934754665762852,
-      "surface_distance_from_floor_m": 0.009347546657628492,
+      "hover_distance_above_floor_m": 0.11335514146433895,
+      "surface_distance_from_floor_m": 0.013355141464338971,
       "distance_from_board_center_m": 0.1242977837181888,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -77,14 +78,14 @@
         -0.11030959336322166
       ],
       "base_xy_m": [
-        0.5415875984340422,
-        -0.0737868147217146
+        0.5503842661259496,
+        -0.07533928013767772
       ],
-      "surface_z_m": 0.4653446224429254,
-      "hover_z_m": 0.5653446224429254,
+      "surface_z_m": 0.46964304985559885,
+      "hover_z_m": 0.5696430498555989,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.10934435075616827,
-      "surface_distance_from_floor_m": 0.009344350756168296,
+      "hover_distance_above_floor_m": 0.11364277816884177,
+      "surface_distance_from_floor_m": 0.01364277816884174,
       "distance_from_board_center_m": 0.1170465250605842,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -104,17 +105,17 @@
         -0.15311743804842037
       ],
       "base_xy_m": [
-        0.5854018329105763,
-        0.0031339177018320685
+        0.5923440772963393,
+        0.0026085258987004045
       ],
-      "surface_z_m": 0.45596574889580904,
-      "hover_z_m": 0.5559657488958091,
+      "surface_z_m": 0.46073806055229954,
+      "hover_z_m": 0.5607380605522996,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.09996547720905197,
-      "surface_distance_from_floor_m": -3.4522790948066095e-05,
+      "hover_distance_above_floor_m": 0.10473778886554247,
+      "surface_distance_from_floor_m": 0.004737788865542436,
       "distance_from_board_center_m": 0.15784665052899144,
       "inside_calibrated_board_extent": true,
-      "surface_below_hard_floor": true,
+      "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
     },
     {
@@ -131,14 +132,14 @@
         0.0018571688136023359
       ],
       "base_xy_m": [
-        0.42901423752264956,
-        -0.10424575401184401
+        0.4385725192235489,
+        -0.1084850464465133
       ],
-      "surface_z_m": 0.491573879406786,
-      "hover_z_m": 0.591573879406786,
+      "surface_z_m": 0.4939905169257083,
+      "hover_z_m": 0.5939905169257083,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.13557360772002885,
-      "surface_distance_from_floor_m": 0.03557360772002888,
+      "hover_distance_above_floor_m": 0.13799024523895115,
+      "surface_distance_from_floor_m": 0.03799024523895117,
       "distance_from_board_center_m": 0.07108473517116781,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -158,14 +159,14 @@
         0.11312674506574917
       ],
       "base_xy_m": [
-        0.3198353241345037,
-        0.056853366606968346
+        0.32556740398454465,
+        0.04995360326557644
       ],
-      "surface_z_m": 0.517386423122681,
-      "hover_z_m": 0.617386423122681,
+      "surface_z_m": 0.518647388823772,
+      "hover_z_m": 0.618647388823772,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.16138615143592389,
-      "surface_distance_from_floor_m": 0.06138615143592391,
+      "hover_distance_above_floor_m": 0.1626471171370149,
+      "surface_distance_from_floor_m": 0.06264711713701493,
       "distance_from_board_center_m": 0.14369391358571498,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -185,14 +186,14 @@
         -0.05963451718822323
       ],
       "base_xy_m": [
-        0.4898344935507684,
-        -0.15615166178199433
+        0.5006182196820974,
+        -0.15891973549460164
       ],
-      "surface_z_m": 0.47612164872973833,
-      "hover_z_m": 0.5761216487297384,
+      "surface_z_m": 0.48011527100592855,
+      "hover_z_m": 0.5801152710059285,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.12012137704298126,
-      "surface_distance_from_floor_m": 0.020121377042981226,
+      "hover_distance_above_floor_m": 0.12411499931917142,
+      "surface_distance_from_floor_m": 0.024114999319171437,
       "distance_from_board_center_m": 0.13594698324146604,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -212,14 +213,14 @@
         0.07762752065052654
       ],
       "base_xy_m": [
-        0.3549028182035228,
-        0.023504132441647826
+        0.3614233882520284,
+        0.017453619390133773
       ],
-      "surface_z_m": 0.5096662763902913,
-      "hover_z_m": 0.6096662763902913,
+      "surface_z_m": 0.5109891707580667,
+      "hover_z_m": 0.6109891707580667,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.15366600470353414,
-      "surface_distance_from_floor_m": 0.053666004703534165,
+      "hover_distance_above_floor_m": 0.15498889907130958,
+      "surface_distance_from_floor_m": 0.054988899071309605,
       "distance_from_board_center_m": 0.09555059507190994,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -230,24 +231,24 @@
       "part": "usb_a",
       "action": "pick",
       "source_xyz_m": [
-        0.33081738848866044,
-        0.27089626421511276,
+        0.328632,
+        0.259,
         0.0
       ],
       "board_relative_xy_m": [
-        -0.13781738848866043,
-        -0.07789626421511274
+        -0.13563199999999997,
+        -0.06599999999999999
       ],
       "base_xy_m": [
-        0.5114836327322303,
-        0.10357476711028998
+        0.5041703127800572,
+        0.09893554628844745
       ],
-      "surface_z_m": 0.4741614413591768,
-      "hover_z_m": 0.5741614413591768,
+      "surface_z_m": 0.4801858855104727,
+      "hover_z_m": 0.5801858855104727,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.11816116967241969,
-      "surface_distance_from_floor_m": 0.018161169672419708,
-      "distance_from_board_center_m": 0.15830811902269892,
+      "hover_distance_above_floor_m": 0.12418561382371557,
+      "surface_distance_from_floor_m": 0.02418561382371559,
+      "distance_from_board_center_m": 0.150837791763205,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
@@ -266,14 +267,14 @@
         -0.004661726766767918
       ],
       "base_xy_m": [
-        0.43797450830079004,
-        0.08298864188078588
+        0.44304690809804054,
+        0.07891021844002401
       ],
-      "surface_z_m": 0.49106333755012255,
-      "hover_z_m": 0.5910633375501225,
+      "surface_z_m": 0.4934329116799094,
+      "hover_z_m": 0.5934329116799094,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.13506306586336542,
-      "surface_distance_from_floor_m": 0.03506306586336544,
+      "hover_distance_above_floor_m": 0.1374326399931523,
+      "surface_distance_from_floor_m": 0.03743263999315227,
       "distance_from_board_center_m": 0.11636822768206169,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -293,14 +294,14 @@
         -0.13509342968797824
       ],
       "base_xy_m": [
-        0.5647114521579315,
-        -0.20128493203351194
+        0.5765544221017592,
+        -0.20224714224755042
       ],
-      "surface_z_m": 0.4573622052677272,
-      "hover_z_m": 0.5573622052677272,
+      "surface_z_m": 0.46320829858232987,
+      "hover_z_m": 0.5632082985823299,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.10136193358097007,
-      "surface_distance_from_floor_m": 0.0013619335809700872,
+      "hover_distance_above_floor_m": 0.1072080268955728,
+      "surface_distance_from_floor_m": 0.007208026895572761,
       "distance_from_board_center_m": 0.21427420697369015,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -320,14 +321,14 @@
         -0.003112959213537066
       ],
       "base_xy_m": [
-        0.43594319638367957,
-        0.04598295725932873
+        0.4419022767930269,
+        0.04186650451197775
       ],
-      "surface_z_m": 0.4915028603394755,
-      "hover_z_m": 0.5915028603394755,
+      "surface_z_m": 0.4936835747527999,
+      "hover_z_m": 0.5936835747527999,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.13550258865271841,
-      "surface_distance_from_floor_m": 0.03550258865271838,
+      "hover_distance_above_floor_m": 0.13768330306604276,
+      "surface_distance_from_floor_m": 0.037683303066042784,
       "distance_from_board_center_m": 0.07930691515063942,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -347,14 +348,14 @@
         -0.05474481685554793
       ],
       "base_xy_m": [
-        0.4869938409748844,
-        0.0010618169671239848
+        0.4940139172596286,
+        -0.0018193523092989734
       ],
-      "surface_z_m": 0.47941461465901414,
-      "hover_z_m": 0.5794146146590141,
+      "surface_z_m": 0.4822980926334926,
+      "hover_z_m": 0.5822980926334926,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.12341434297225701,
-      "surface_distance_from_floor_m": 0.02341434297225703,
+      "hover_distance_above_floor_m": 0.12629782094673553,
+      "surface_distance_from_floor_m": 0.026297820946735495,
       "distance_from_board_center_m": 0.06497360637257732,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -374,14 +375,14 @@
         -0.049775251417439006
       ],
       "base_xy_m": [
-        0.4827634227653707,
-        0.057793886819378894
+        0.48842626707087966,
+        0.0547951542532128
       ],
-      "surface_z_m": 0.48066740085801724,
-      "hover_z_m": 0.5806674008580173,
+      "surface_z_m": 0.4835763377943599,
+      "hover_z_m": 0.5835763377943599,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.12466712917126016,
-      "surface_distance_from_floor_m": 0.024667129171260127,
+      "hover_distance_above_floor_m": 0.1275760661076028,
+      "surface_distance_from_floor_m": 0.02757606610760277,
       "distance_from_board_center_m": 0.10430837115616043,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -401,14 +402,14 @@
         0.10772610684413395
       ],
       "base_xy_m": [
-        0.32270632431153307,
-        -0.13722932516799766
+        0.33308487569817746,
+        -0.14400469510721214
       ],
-      "surface_z_m": 0.5149223774254909,
-      "hover_z_m": 0.6149223774254908,
+      "surface_z_m": 0.5165279691685872,
+      "hover_z_m": 0.6165279691685872,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.15892210573873372,
-      "surface_distance_from_floor_m": 0.05892210573873374,
+      "hover_distance_above_floor_m": 0.1605276974818301,
+      "surface_distance_from_floor_m": 0.06052769748183012,
       "distance_from_board_center_m": 0.15073075431980762,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -428,14 +429,14 @@
         0.1009506443437032
       ],
       "base_xy_m": [
-        0.3304589382804709,
-        -0.06231660009933213
+        0.33904148755228547,
+        -0.06892781334069006
       ],
-      "surface_z_m": 0.5143712784434586,
-      "hover_z_m": 0.6143712784434586,
+      "surface_z_m": 0.5155873375188748,
+      "hover_z_m": 0.6155873375188747,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.15837100675670152,
-      "surface_distance_from_floor_m": 0.05837100675670154,
+      "hover_distance_above_floor_m": 0.15958706583211762,
+      "surface_distance_from_floor_m": 0.05958706583211765,
       "distance_from_board_center_m": 0.10543425389595891,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -455,14 +456,14 @@
         0.10242549543824134
       ],
       "base_xy_m": [
-        0.3277383608124162,
-        -0.15786614379188035
+        0.33860961640047116,
+        -0.16451510501129918
       ],
-      "surface_z_m": 0.5134655707398119,
-      "hover_z_m": 0.6134655707398119,
+      "surface_z_m": 0.515247000325094,
+      "hover_z_m": 0.6152470003250939,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.15746529905305479,
-      "surface_distance_from_floor_m": 0.05746529905305481,
+      "hover_distance_above_floor_m": 0.15924672863833683,
+      "surface_distance_from_floor_m": 0.059246728638336854,
       "distance_from_board_center_m": 0.16237637093930912,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -482,14 +483,14 @@
         0.10535523230716479
       ],
       "base_xy_m": [
-        0.3255040841301609,
-        -0.10449858413503853
+        0.33509809833449333,
+        -0.11121634651833097
       ],
-      "surface_z_m": 0.51483336454944,
-      "hover_z_m": 0.6148333645494399,
+      "surface_z_m": 0.5162492227249661,
+      "hover_z_m": 0.6162492227249661,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.15883309286268282,
-      "surface_distance_from_floor_m": 0.058833092862682845,
+      "hover_distance_above_floor_m": 0.16024895103820896,
+      "surface_distance_from_floor_m": 0.06024895103820899,
       "distance_from_board_center_m": 0.12798269392051856,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -500,247 +501,6 @@
     "target_count": 18,
     "outside_board_count": 0,
     "hover_below_floor_count": 0,
-    "surface_below_floor_count": 1
-  },
-  "ik_audit": {
-    "status": "available",
-    "targets": [
-      {
-        "name": "gear_60teeth.pick",
-        "status": "success",
-        "joint_solution_rad": [
-          0.24340585022284356,
-          -0.2899404836696737,
-          -2.1162324684469613,
-          -1.1848497423509243,
-          1.0208472543044171,
-          -0.9955428655515738,
-          0.8458544760285683
-        ],
-        "max_seed_delta_rad": 0.843315022000558
-      },
-      {
-        "name": "gear_60teeth.place",
-        "status": "success",
-        "joint_solution_rad": [
-          0.1813992242665311,
-          0.12992870290855432,
-          -2.059819086505365,
-          -0.8633642285584295,
-          1.1413045026841722,
-          -1.138306601261885,
-          0.827364896007179
-        ],
-        "max_seed_delta_rad": 0.8248254419791686
-      },
-      {
-        "name": "gear_20teeth.pick",
-        "status": "success",
-        "joint_solution_rad": [
-          0.236629431125262,
-          -0.2137143598847856,
-          -2.026587445817963,
-          -1.2555061270298074,
-          1.170950997757863,
-          -1.1432048987251295,
-          0.6738993570231754
-        ],
-        "max_seed_delta_rad": 0.671359902995165
-      },
-      {
-        "name": "gear_20teeth.place",
-        "status": "failed",
-        "reason": "IK did not converge after 500 iterations (position_error=0.00613 m, orientation_error=0.01149 rad)"
-      },
-      {
-        "name": "rod_16mm.pick",
-        "status": "success",
-        "joint_solution_rad": [
-          0.20447166190910965,
-          -0.5572955728694414,
-          -1.8363624148600326,
-          -1.8129407578694554,
-          1.6884967668060384,
-          -1.3586032797793401,
-          -0.029444933340002512
-        ],
-        "max_seed_delta_rad": 0.16611615955707748
-      },
-      {
-        "name": "rod_16mm.place",
-        "status": "success",
-        "joint_solution_rad": [
-          0.3244066376931075,
-          -0.08738103111985615,
-          -1.955675691412075,
-          -1.7476239577579253,
-          2.5385525101636137,
-          -1.0554586150318819,
-          -0.6734242849568625
-        ],
-        "max_seed_delta_rad": 0.8273252123807158
-      },
-      {
-        "name": "bolt_8mm.pick",
-        "status": "success",
-        "joint_solution_rad": [
-          0.28854834877120933,
-          -0.5783730506892097,
-          -2.0086025035015767,
-          -1.6973450523632219,
-          1.2353622127672779,
-          -1.2014590861586354,
-          0.4779088304520886
-        ],
-        "max_seed_delta_rad": 0.4758650850156201
-      },
-      {
-        "name": "bolt_8mm.place",
-        "status": "success",
-        "joint_solution_rad": [
-          0.29147161414608785,
-          -0.193745893784535,
-          -1.935300891120247,
-          -1.7276577226660668,
-          2.3798271791588737,
-          -1.1556122367902273,
-          -0.5695973889087128
-        ],
-        "max_seed_delta_rad": 0.6685998813759757
-      },
-      {
-        "name": "usb_a.pick",
-        "status": "failed",
-        "reason": "IK did not converge after 500 iterations (position_error=0.03311 m, orientation_error=0.05244 rad)"
-      },
-      {
-        "name": "usb_a.place",
-        "status": "success",
-        "joint_solution_rad": [
-          0.1545728251911123,
-          0.09735765504650257,
-          -1.79909776483612,
-          -1.1553681409044319,
-          1.7724280672160144,
-          -1.3930936274292787,
-          -0.005323094546265868
-        ],
-        "max_seed_delta_rad": 0.4914564574079461
-      },
-      {
-        "name": "hdmi.pick",
-        "status": "success",
-        "joint_solution_rad": [
-          0.28767498935455305,
-          -0.4800163152882861,
-          -2.1555495651381458,
-          -1.346878339824646,
-          0.9716188305613438,
-          -0.9495127861088519,
-          0.8364434900011785
-        ],
-        "max_seed_delta_rad": 0.8339040359731681
-      },
-      {
-        "name": "hdmi.place",
-        "status": "success",
-        "joint_solution_rad": [
-          0.16403407116586413,
-          -0.0520994865097969,
-          -1.7993311809341836,
-          -1.3250897475871253,
-          1.8530545861116736,
-          -1.3796627482418842,
-          -0.11086242132106397
-        ],
-        "max_seed_delta_rad": 0.3414617873034508
-      },
-      {
-        "name": "pin.pick",
-        "status": "success",
-        "joint_solution_rad": [
-          0.19128795824792605,
-          -0.11737725975467819,
-          -1.8711004683335366,
-          -1.3051214548226673,
-          1.451279504744451,
-          -1.3209671244692534,
-          0.32736371816809595
-        ],
-        "max_seed_delta_rad": 0.34170314348971065
-      },
-      {
-        "name": "pin.place",
-        "status": "success",
-        "joint_solution_rad": [
-          0.17937153995665808,
-          0.09534740048964838,
-          -1.884889451232895,
-          -1.0827543332266734,
-          1.4398183492839816,
-          -1.3254412616784057,
-          0.39512176148370554
-        ],
-        "max_seed_delta_rad": 0.5640702650857046
-      },
-      {
-        "name": "battery_size1.pick",
-        "status": "success",
-        "joint_solution_rad": [
-          0.3133425924998407,
-          -0.7772608502437075,
-          -1.977971202753508,
-          -2.2279586066573756,
-          2.1720650061674105,
-          -1.2258798207214814,
-          -0.5556581288718203
-        ],
-        "max_seed_delta_rad": 0.5811340083449976
-      },
-      {
-        "name": "battery_size1.place",
-        "status": "success",
-        "joint_solution_rad": [
-          0.3223998772856401,
-          -0.49767674148543006,
-          -1.9771637750335536,
-          -2.0521971584315826,
-          2.33383854355953,
-          -1.1316857493710613,
-          -0.6201899989076162
-        ],
-        "max_seed_delta_rad": 0.6227294529356265
-      },
-      {
-        "name": "battery_size5.pick",
-        "status": "success",
-        "joint_solution_rad": [
-          0.2949268396436609,
-          -0.8529509633323348,
-          -1.9538285326720084,
-          -2.2460531226327554,
-          2.0790858618310875,
-          -1.2791828082334253,
-          -0.48461841158012997
-        ],
-        "max_seed_delta_rad": 0.5992285243203774
-      },
-      {
-        "name": "battery_size5.place",
-        "status": "success",
-        "joint_solution_rad": [
-          0.3212303984824769,
-          -0.6520511436985595,
-          -1.9835952067725768,
-          -2.1584904818801793,
-          2.2554300360923443,
-          -1.1740178729565653,
-          -0.5970567760814698
-        ],
-        "max_seed_delta_rad": 0.5995962301094802
-      }
-    ],
-    "success_count": 16,
-    "failure_count": 2
+    "surface_below_floor_count": 0
   }
 }
