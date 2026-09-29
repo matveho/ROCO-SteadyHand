@@ -74,11 +74,11 @@ separate paths:
   gripper.py/SocketCAN -> third-party parallel grippers
 ~~~
 
-Start with docs/VEGA_LIVE.md. The single-part runner is
-tools/vega_run_part.py; tools/vega_run_sequence.py is for later multi-part use.
+Start with [docs/FOR_LLMS.txt](docs/FOR_LLMS.txt), which is the compact current
+Vega handoff and runbook. The single-part runner is `tools/vega_run_part.py`;
+`tools/vega_run_sequence.py` is a later multi-part scaffold.
 
-The Vega lower stack is physically proven through a real battery pick/place.
-Current development is the perception/control layer: coarse head-camera board
-registration plus fine right-wrist XY visual servo with a low, vertical claw.
-See docs/VEGA_WRIST_SERVO.md for the current next-step workflow. Manual
-runtime_targets.json remains a fallback, not the preferred competition path.
+The active physical path is the calibrated right-arm competition pipeline:
+head-camera board registration, flat 100 mm TCP hover, and the `wrist_a`
+right-wrist precision stage. Battery grasp/place remains gated on physical
+teaching and validation; no unverified pick/place result is implied.

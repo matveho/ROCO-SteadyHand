@@ -8,7 +8,6 @@ file before any arm motion is planned.
 from collections import OrderedDict
 import argparse
 import json
-import math
 from pathlib import Path
 import sys
 import time
@@ -26,7 +25,6 @@ from steadyhand.vega_camera_clear import move_camera_clear_for_image
 from steadyhand.vision.scene import detect_head_task_scene
 from tools.vega_board_five_point_calibrate import main as run_five_point_calibration
 from tools.vega_task_coordinate_reachability import (
-    DEFAULT_POINTS,
     _finite_vector,
     calibrated_surface_z,
     _live_pose,
@@ -40,7 +38,6 @@ FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
 TASK_COORDINATES = ROOT / "configs" / "task_coordinates.json"
 DEFAULT_TASK_CLEARANCE_MM = 100.0
 DEFAULT_PIPELINE_SPEED_SCALE = 0.38
-POSITION_RETAKE_IMAGE_REQUESTED = 3
 
 
 COMPETITION_TASKS = OrderedDict([
@@ -67,23 +64,19 @@ def _load_runtime():
     return bundle, task_data, (center, ux, uy, plane), ready_pose
 
 
-def _surface_z(x, y, plane):
-    return calibrated_surface_z(x, y, plane)
-
-
 def _board_targets(runtime, clearance_m):
     _, _, (center, _, _, plane), ready_pose = runtime
     dynamic_corners = plane.get("board_corners_xy") if isinstance(plane, dict) else None
     if dynamic_corners:
         targets = OrderedDict()
         targets["board.center"] = Pose(
-            (center[0], center[1], _surface_z(center[0], center[1], plane) + clearance_m),
+            (center[0], center[1], calibrated_surface_z(center[0], center[1], plane) + clearance_m),
             ready_pose.quaternion_wxyz,
         )
         for label in ("TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT"):
             x, y = dynamic_corners[label]
             targets[f"board.{label.lower()}"] = Pose(
-                (x, y, _surface_z(x, y, plane) + clearance_m),
+                (x, y, calibrated_surface_z(x, y, plane) + clearance_m),
                 ready_pose.quaternion_wxyz,
             )
         return targets
@@ -97,7 +90,7 @@ def _board_targets(runtime, clearance_m):
             raise ValueError(f"calibration is missing corrected {label}")
         xyz = _finite_vector(pose.get("position_m"), 3, f"{label}.position_m")
         targets[f"board.{label.lower()}"] = Pose(
-            (xyz[0], xyz[1], _surface_z(xyz[0], xyz[1], runtime[2][3]) + clearance_m),
+            (xyz[0], xyz[1], calibrated_surface_z(xyz[0], xyz[1], runtime[2][3]) + clearance_m),
             ready_pose.quaternion_wxyz,
         )
     return targets
@@ -298,7 +291,6 @@ def _run_motion_targets(
         return 0
     if available_targets is None:
         available_targets = targets
-    available_names = list(available_targets)
     cfg = bundle["robot"]
     cfg["allow_robot_init_head_motion"] = bool(confirm_physical)
     cfg["auto_clear_software_estop_on_connect"] = True
@@ -322,7 +314,7 @@ def _run_motion_targets(
                         return
                     runtime = _runtime_from_board_scene(runtime, scene)
                     available_targets = _make_test_targets(
-                        available_names, runtime, task_data, clearance_m
+                        list(available_targets), runtime, task_data, clearance_m
                     )
                     selected_names = list(targets)
                     targets = OrderedDict(
