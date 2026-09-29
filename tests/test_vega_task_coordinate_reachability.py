@@ -6,6 +6,7 @@ from steadyhand.models import Pose
 from steadyhand.board_geometry import (
     BOARD_SIZE_M,
     configured_board_plane_z,
+    validate_task_coordinate_extent,
     validate_task_board_geometry,
 )
 from tools.vega_task_coordinate_reachability import calibrated_surface_z, _live_pose, _resolve_point
@@ -53,6 +54,10 @@ class TaskCoordinateReachabilityTests(unittest.TestCase):
         validate_task_board_geometry(self.data)
         with self.assertRaises(ValueError):
             validate_task_board_geometry({"board_width_m": 0.4, "board_height_m": 0.386})
+
+    def test_declared_physical_layout_matches_robot_perspective(self):
+        validate_task_board_geometry(self.data)
+        validate_task_coordinate_extent(self.data, names=("battery_size1.pick", "rod_16mm.pick"))
 
     def test_secondary_connect_and_grade_points_are_preserved(self):
         for name in ("rod_16mm.connect", "gear_20teeth.grade"):

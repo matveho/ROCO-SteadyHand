@@ -84,10 +84,14 @@ separate paths:
 ~~~
 
 Start with [docs/FOR_LLMS.txt](docs/FOR_LLMS.txt), which is the compact current
-Vega handoff and runbook. The single-part runner is `tools/vega_run_part.py`;
-`tools/vega_run_sequence.py` is a later multi-part scaffold.
+Vega handoff and runbook. The single operator entry point is
+`tools/vega_competition_pipeline.py`; its menu covers calibration, location
+tests, wrist teaching, gated task tests, and the verified priority competition
+run. The older `tools/vega_run_part.py` and `tools/vega_run_sequence.py`
+remain diagnostic/compatibility tools.
 
 The active physical path is the calibrated right-arm competition pipeline:
 head-camera board registration, flat 100 mm TCP hover, and the `wrist_a`
-right-wrist precision stage. Battery grasp/place remains gated on physical
-teaching and validation; no unverified pick/place result is implied.
+right-wrist precision stage. Pick/place actions remain gated on physical
+teaching, verified grasp/lift, and verified release; the priority plan skips
+unverified parts rather than guessing.

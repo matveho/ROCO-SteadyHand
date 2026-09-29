@@ -1,26 +1,247 @@
 {
   "schema_version": 1,
-  "source_pose_frame": "roco_organizer_sim_stage",
+  "source_pose_frame": "board_local_annotation",
   "position_units": "m",
   "quaternion_order": "wxyz",
   "board_width_m": 0.386,
   "board_height_m": 0.386,
   "board_motion_model": "horizontal_translation_only_fixed_table_plane",
-  "board_plane_z_m": 0.4560002716867571,
-  "task_coordinate_rotation_deg": 90,
-  "task_coordinate_rotation_convention": "CCW in source board XY about the declared source board center before live board-axis mapping",
-  "source_board_center_xy_m": [0.193, 0.037],
-  "registration_notes": "Source XY is registered to the calibrated physical board by subtracting source_board_center_xy_m and applying the live board X/Y axes. Edit the source center only if the organizer board registration changes. Source Z is never sent to the robot.",
-  "official_order": ["gear_60teeth", "gear_20teeth", "rod_16mm", "bolt_8mm", "usb_a", "hdmi", "pin", "battery_size1", "battery_size5"],
+  "source_board_center_xy_m": [
+    0.193,
+    0.193
+  ],
+  "task_coordinate_rotation_deg": 180,
+  "task_coordinate_mirror_x": false,
+  "board_coordinate_convention": {
+    "origin": "rectified image top-left",
+    "x_positive": "image right",
+    "y_positive": "image down",
+    "runtime_x_positive": "robot-view board right",
+    "runtime_y_positive": "robot-view board near edge"
+  },
+  "registration_notes": "Per-image rectified pixel fractions normalized to 386 mm. Rotate 180 degrees about board center to place batteries near robot, slim battery on right and rod destination near-left. Annotation Z is ignored; accepted board calibration owns Z.",
+  "official_order": [
+    "gear_60teeth",
+    "gear_20teeth",
+    "rod_16mm",
+    "bolt_8mm",
+    "usb_a",
+    "hdmi",
+    "pin",
+    "battery_size1",
+    "battery_size5"
+  ],
   "parts": {
-    "gear_60teeth": {"pick": [0.1228066612, -0.0878892550, 1.03788], "place": [0.208220, -0.056290, 1.05293], "grade": [0.2085374709, -0.0561461276, 1.0315798359]},
-    "gear_20teeth": {"pick": [0.143660, -0.043000, 1.04000], "place": [0.1972314985, -0.0959888238, 1.05798], "grade": [0.1972314985, -0.0959888238, 1.0337703224]},
-    "rod_16mm": {"pick": [0.0886327389, 0.0581531809, 1.04000], "place": [0.246810, 0.169820, 1.05700], "connect": [0.246810, 0.169820, 1.04500]},
-    "bolt_8mm": {"pick": [0.044150, 0.000930, 1.03900], "place": [0.215310, 0.131350, 1.06000], "connect": [0.215310, 0.131350, 1.04000]},
-    "usb_a": {"pick": [0.025060, -0.070270, 1.04000], "place": [0.237680, 0.051430, 1.05000], "connect": [0.237680, 0.051430, 1.04000]},
-    "hdmi": {"pick": [0.272850, -0.019490, 1.03854], "place": [0.274690, 0.049000, 1.05500], "connect": [0.274690, 0.049000, 1.03900]},
-    "pin": {"pick": [0.186000, -0.014760, 1.04437], "place": [0.249450, 0.006160, 1.06500], "connect": [0.2494453615, 0.0061634262, 1.0567751180]},
-    "battery_size1": {"pick": [0.033620, 0.155540, 1.04700], "place": [0.135000, 0.156390, 1.06423], "grade": [0.129140, 0.156150, 1.046010]},
-    "battery_size5": {"pick": [-0.010710, 0.164900, 1.04000], "place": [0.090290, 0.168000, 1.06000], "grade": [0.087010, 0.167420, 1.035780]}
-  }
+    "gear_60teeth": {
+      "pick": [
+        0.09124361253549337,
+        0.33694480474253347,
+        0.0
+      ],
+      "place": [
+        0.24237979325457698,
+        0.3070682911916755,
+        0.0
+      ]
+    },
+    "gear_20teeth": {
+      "pick": [
+        0.15386328270282942,
+        0.30330959336322166,
+        0.0
+      ],
+      "place": [
+        0.23134860165259877,
+        0.3461174380484204,
+        0.0
+      ]
+    },
+    "rod_16mm": {
+      "pick": [
+        0.12193952928418751,
+        0.19114283118639766,
+        0.0
+      ],
+      "place": [
+        0.2816018078393885,
+        0.07987325493425085,
+        0.0
+      ]
+    },
+    "bolt_8mm": {
+      "pick": [
+        0.07083082789761176,
+        0.2526345171882232,
+        0.0
+      ],
+      "place": [
+        0.24871251435941638,
+        0.11537247934947346,
+        0.0
+      ]
+    },
+    "usb_a": {
+      "pick": [
+        0.33081738848866044,
+        0.27089626421511276,
+        0.0
+      ],
+      "place": [
+        0.3092748154907852,
+        0.19766172676676794,
+        0.0
+      ]
+    },
+    "hdmi": {
+      "pick": [
+        0.026677418762986096,
+        0.3280934296879782,
+        0.0
+      ],
+      "place": [
+        0.2722457965802955,
+        0.19611295921353708,
+        0.0
+      ]
+    },
+    "pin": {
+      "pick": [
+        0.22799392165092583,
+        0.24774481685554794,
+        0.0
+      ],
+      "place": [
+        0.2846660277288269,
+        0.24277525141743903,
+        0.0
+      ]
+    },
+    "battery_size1": {
+      "pick": [
+        0.08757302905790931,
+        0.08527389315586605,
+        0.0
+      ],
+      "place": [
+        0.16258044541436098,
+        0.09204935565629681,
+        0.0
+      ]
+    },
+    "battery_size5": {
+      "pick": [
+        0.06700355670237783,
+        0.09057450456175865,
+        0.0
+      ],
+      "place": [
+        0.12033745828381394,
+        0.0876447676928352,
+        0.0
+      ]
+    }
+  },
+  "legacy_secondary_points": {
+    "gear_60teeth": {
+      "grade": [
+        0.2085374709,
+        -0.0561461276,
+        1.0315798359
+      ]
+    },
+    "gear_20teeth": {
+      "grade": [
+        0.1972314985,
+        -0.0959888238,
+        1.0337703224
+      ]
+    },
+    "rod_16mm": {
+      "connect": [
+        0.24681,
+        0.16982,
+        1.045
+      ]
+    },
+    "bolt_8mm": {
+      "connect": [
+        0.21531,
+        0.13135,
+        1.04
+      ]
+    },
+    "usb_a": {
+      "connect": [
+        0.23768,
+        0.05143,
+        1.04
+      ]
+    },
+    "hdmi": {
+      "connect": [
+        0.27469,
+        0.049,
+        1.039
+      ]
+    },
+    "pin": {
+      "connect": [
+        0.2494453615,
+        0.0061634262,
+        1.056775118
+      ]
+    },
+    "battery_size1": {
+      "grade": [
+        0.12914,
+        0.15615,
+        1.04601
+      ]
+    },
+    "battery_size5": {
+      "grade": [
+        0.08701,
+        0.16742,
+        1.03578
+      ]
+    }
+  },
+  "physical_layout_expectations": {
+    "small_battery": "battery_size5.pick",
+    "large_battery": "battery_size1.pick",
+    "rod": "rod_16mm.place",
+    "near_robot": [
+      "battery_size5.pick",
+      "battery_size1.pick"
+    ]
+  },
+  "annotation_provenance": {
+    "initial": {
+      "rectified_size_px": [
+        1062,
+        1100
+      ],
+      "original_effective_dimensions_m": [
+        0.36445339189238474,
+        0.3775063880204815
+      ],
+      "image_sha256": "d7b9348cb2613436895b0486a3a63e7e4c17c3023cf37c6cbca81041e3caefac"
+    },
+    "final": {
+      "rectified_size_px": [
+        1062,
+        1100
+      ],
+      "original_effective_dimensions_m": [
+        0.3683409931648242,
+        0.3815332247767595
+      ],
+      "image_sha256": "097d6542b11535aa6ee6b24f475ea972089e49813e7e214fe9a4b74988271caa"
+    },
+    "project": {
+      "path": "tools/initial.json",
+      "sha256": "06248533a0e216911dcc6c3f80b06f0c11d62fa0c5a4a4cb9027211e4d474b19"
+    }
+  },
+  "excluded_legacy_points": "Organizer connect/grade points are retained only in task_coordinates.organizer_reference.json; they are not validated physical insertion targets."
 }

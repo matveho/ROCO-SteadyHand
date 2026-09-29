@@ -1,6 +1,6 @@
 STEADYHAND / ROCO IROS 2026 — CURRENT AGENT HANDOFF
 ====================================================
-Last consolidated: 2026-09-28 (end of onsite work).
+Last consolidated: 2026-09-29 (offline competition preparation).
 
 READ THIS FILE FIRST. It is the compact source of truth for the next agent.
 The repository is the active competition integration for the DexMate Vega 1U.
@@ -101,10 +101,18 @@ and source localization. The board is assumed to translate only in X/Y on the
 flat table, at the configured fixed table-plane height; its height/orientation
 must not be re-estimated from each photo.
 
-Task coordinates (`configs/task_coordinates.json`) are rotated CCW 90 degrees
-around the declared source board center before live board-axis mapping. Source
-Z is never sent directly to the robot; the calibrated surface and requested
-clearance determine TCP Z.
+Task coordinates (`configs/task_coordinates.json`) now come from the reviewed
+initial/final annotation project in `tools/initial.json`. The importer
+(`tools/vega_import_task_annotations.py`) normalizes each rectified image to
+the hardcoded 386 mm board and applies a 180-degree board-local rotation. This
+was reviewed against the physical view: both batteries are on the near side,
+the slim `battery_size5` is to robot-right of `battery_size1`, and the rod
+destination is to their robot-left. `source_pose_frame` is
+`board_local_annotation`, `task_coordinate_mirror_x` is false, and annotation Z
+is ignored. The older organizer values, including connect/grade points, remain
+in `configs/task_coordinates.organizer_reference.json` and in the active file's
+`legacy_secondary_points` only for offline compatibility; live motion iterates
+the reviewed pick/place `parts` entries and never commands those legacy points.
 
 4. DEPLOYMENT AND BASIC COMMANDS
 --------------------------------
@@ -147,10 +155,50 @@ Direct actions:
     --competition-task battery_size1_pick_v0 \
     --confirm-head-motion --confirm-physical-motion
 
+  # Run all currently verified pick/place profiles, easiest-first, with one
+  # operator-confirmed retry per failed part
+  python3 tools/vega_competition_pipeline.py \
+    --competition-plan priority_pick_place \
+    --confirm-head-motion --confirm-physical-motion
+
+  # List eligible verified actions without connecting to the robot
+  python3 tools/vega_competition_pipeline.py \
+    --check-only --competition-plan priority_pick_place
+
 The position-test menu captures a fresh downward head image first, automatically
 moves to RIGHT_READY, then prompts for a destination. At a reached location it
 offers every available target, `r` (fresh image/re-register/RIGHT_READY), and
 `e` (exit). It does not rerun the five-point calibration on `r`.
+
+First onsite sequence:
+  1. Deploy, run `vega_preflight.py`, and enter the main menu.
+  2. Run menu 1 only when a new full board calibration is required. Otherwise
+     run menu 2 and visit the center, four corners, and one or two task points;
+     use `r` after physically moving the board.
+  3. Run menu 3 for one easy part first (normally `battery_size1`), select a
+     visible feature in the wrist image, use `center`, tune `yaw N`/`depth N`,
+     and save. Keep the printed run folder and handoff JSON.
+  4. Run menu 4 for `part.pick`, then `part.pick_place` only after the pick
+     lift is verified. Mark placement verified when prompted.
+  5. Use menu 5's priority pick/place run after at least one individual
+     pick/place is verified. It orders eligible parts from
+     `configs/competition_plan.json`, asks before a bounded retry, and offers
+     skip or stop after inspection. Use the custom numbered sequence when you
+     want exact control. A possible held-part result always stops the run.
+
+Quick tuning belongs in the saved wrist-profile workflow: `forward/back/left/
+right N` (local XY millimetres), `yaw N` (degrees), `depth N` (millimetres
+below the 100 mm hover), and `place-config X Y DEPTH YAW` (board-relative
+release correction). Do not edit calibration JSON to tune a part. Send the
+entire `runs/wrist_parts_*`, `runs/wrist_*`, or `runs/competition_actions/*`
+folder, including `events.jsonl`,
+raw wrist frames, overlays, `run_summary.json`, any `handoff.json`, and the
+printed error, when a run misses or stops. `run_summary.json` is the first
+place to check `status`, `holding_may_be_true`, and the active part/action.
+The master operator file `configs/competition_plan.json` also controls the
+pipeline speed, default 100 mm clearance, easiest-first part order, and
+maximum retry count. Menu option 7 reloads and validates it without restarting
+the menu; command-line values override the file for one invocation.
 
 5. CALIBRATION PROCEDURE
 ------------------------
@@ -176,11 +224,12 @@ never loops silently.
 
 6. COMPETITION PIPELINE AND AVAILABLE TASKS
 -------------------------------------------
-`tools/vega_competition_pipeline.py` currently enables only the safe approach
-version:
+`tools/vega_competition_pipeline.py` preserves the older named task versions,
+but its active staged path is now the wrist-profile workflow described above.
+The preserved legacy approach entry is:
   `battery_size1_pick_v0` — calibrated battery hover/approach, no gripper.
 
-The menu intentionally keeps these named scaffolds visible for tomorrow:
+The menu also keeps these named scaffolds visible for tomorrow:
   battery_size1_pick_v1
   battery_size1_pick_place_v1
   gear_60teeth_pick_place_v1
@@ -191,13 +240,15 @@ The menu intentionally keeps these named scaffolds visible for tomorrow:
   hdmi_pick_place_v1
   pin_pick_place_v1
   battery_size5_pick_place_v1
-They do not command motion until their calibration, grasp, placement, and
-verification gates are implemented.
+They do not command motion through the legacy task-version picker. The new
+per-part task-test and competition-sequence paths command motion only after
+their wrist profile, grasp result, placement settings, and verification gates
+are satisfied.
 
 The active path is:
   head RGB -> board corners/scene -> live board frame -> coarse TCP target
   -> right-arm flat hover at calibrated surface + clearance
-  -> wrist camera fine XY centering -> taught grasp/pick/place (future)
+  -> wrist camera fine XY centering -> taught grasp/pick/place
 
 `tools/vega_scene_perception.py` is the reusable live head scene tool.
 `tools/identify_board_snapshot.py` replays saved images offline. The board CV
@@ -256,10 +307,12 @@ Wrist part teaching and final pipeline menu:
 
 The main pipeline menu is now:
   1 recalibrate board; 2 fresh-image location tests; 3 wrist-camera teaching;
-  4 individual pick/pick-place task tests; 5 selected competition sequence;
-  6 preserved legacy task versions; 0 exit. Direct forms are
+  4 individual pick/pick-place task tests; 5 priority or custom competition sequence;
+  6 preserved legacy task versions; 7 reload operator settings/readiness;
+  0 exit. Direct forms are
   `--wrist-calibrate PART`, `--task-test PART.pick|PART.pick_place`, and
-  `--competition-sequence 1-5,8,9`. Competition sequence entries require a
+  `--competition-sequence 1-5,8,9` or `--competition-plan priority_pick_place`.
+  Competition sequence entries require a
   profile with verified grasp (and verified place for pick-place); teaching and
   individual tests stay separate so a failed trial cannot silently become a
   competition action. A test/sequence always re-captures the board and then
@@ -315,7 +368,10 @@ Calibration/operation tools:
 
 Configuration/evidence:
   `configs/robots/vega.json` — active right-arm, camera, plane, preset config.
-  `configs/task_coordinates.json` — rotated organizer task coordinates.
+  `configs/task_coordinates.json` — reviewed annotation-derived 386 mm task coordinates.
+  `configs/task_coordinates.organizer_reference.json` — preserved old organizer values.
+  `configs/competition_plan.json` — easiest-first scoring order and retry budget.
+  `tools/vega_import_task_annotations.py` — deterministic annotation-to-task importer.
   `calibration/vega_board_manual_fallback.json` — permanent final board record.
   `calibration/battery_size1_grasp.template.json` — intentionally incomplete.
   `docs/COMPETITION_QUESTIONS.md` — unresolved competition questions; this file

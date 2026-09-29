@@ -20,6 +20,7 @@ from steadyhand.config import load_bundle
 from steadyhand.board_geometry import (
     configured_board_plane_z,
     validate_task_board_geometry,
+    validate_task_coordinate_extent,
 )
 from steadyhand.board_calibration import (
     board_geometry_signature,
@@ -32,7 +33,7 @@ from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
 from steadyhand.vega_camera_clear import move_camera_clear_for_image
 from steadyhand.vision.scene import detect_head_task_scene
-from steadyhand.wrist_part_profiles import PART_NAMES
+from steadyhand.wrist_part_profiles import PART_NAMES, load_profiles
 from tools.vega_board_five_point_calibrate import main as run_five_point_calibration
 from tools.vega_wrist_part_calibrate import main as run_wrist_part_calibration
 from tools.vega_task_coordinate_reachability import (
@@ -49,6 +50,7 @@ FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
 TASK_COORDINATES = ROOT / "configs" / "task_coordinates.json"
 DEFAULT_TASK_CLEARANCE_MM = 100.0
 DEFAULT_PIPELINE_SPEED_SCALE = 0.38
+COMPETITION_PLAN = ROOT / "configs" / "competition_plan.json"
 
 
 COMPETITION_TASKS = OrderedDict([
@@ -62,8 +64,17 @@ COMPETITION_TASKS = OrderedDict([
     ("usb_a_pick_place_v1", "USB pick/snap place; scaffold"),
     ("hdmi_pick_place_v1", "HDMI pick/snap place; scaffold"),
     ("pin_pick_place_v1", "pin pick/snap place; scaffold"),
-    ("battery_size5_pick_place_v1", "large battery pick/place; scaffold"),
+    ("battery_size5_pick_place_v1", "slim battery pick/place; scaffold"),
 ])
+
+
+# Default scoring order is deliberately conservative: the large battery and
+# larger, textured/circular parts are easiest to acquire first.  The JSON plan
+# is the operator-editable source of truth for tomorrow's hardware evidence.
+DEFAULT_PICK_PRIORITY = (
+    "battery_size1", "gear_20teeth", "gear_60teeth", "pin", "bolt_8mm",
+    "battery_size5", "rod_16mm", "usb_a", "hdmi",
+)
 
 
 TASK_ACTIONS = OrderedDict(
@@ -76,8 +87,84 @@ TASK_ACTIONS = OrderedDict(
 
 COMPETITION_SEQUENCE_ACTIONS = OrderedDict(
     (str(index), f"{part}.pick_place")
-    for index, part in enumerate(PART_NAMES, 1)
+    for index, part in enumerate(DEFAULT_PICK_PRIORITY, 1)
 )
+
+
+def _load_competition_plan():
+    """Load small operator-tuning values without importing robot state."""
+    defaults = {
+        "pick_priority": list(DEFAULT_PICK_PRIORITY),
+        "max_retries_per_part": 1,
+        "default_action": "pick_place",
+        "pipeline_speed_scale": DEFAULT_PIPELINE_SPEED_SCALE,
+        "task_clearance_mm": DEFAULT_TASK_CLEARANCE_MM,
+    }
+    if not COMPETITION_PLAN.is_file():
+        return defaults
+    value = json.loads(COMPETITION_PLAN.read_text(encoding="utf-8"))
+    if not isinstance(value, dict):
+        raise ValueError("competition plan must be a JSON object")
+    if value.get("schema_version", 1) != 1:
+        raise ValueError("unsupported competition plan schema_version")
+    priority = value.get("pick_priority", defaults["pick_priority"])
+    if not isinstance(priority, list) or len(priority) != len(PART_NAMES) or set(priority) != set(PART_NAMES):
+        raise ValueError("competition plan pick_priority must list every known part exactly once")
+    retries_raw = value.get("max_retries_per_part", defaults["max_retries_per_part"])
+    try:
+        retries_float = float(retries_raw)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("competition plan max_retries_per_part must be an integer 0..2") from exc
+    if not retries_float.is_integer():
+        raise ValueError("competition plan max_retries_per_part must be an integer 0..2")
+    retries = int(retries_float)
+    if not 0 <= retries <= 2:
+        raise ValueError("competition plan max_retries_per_part must be 0..2")
+    action = value.get("default_action", defaults["default_action"])
+    if action not in ("pick", "pick_place"):
+        raise ValueError("competition plan default_action must be pick or pick_place")
+    speed = float(value.get("pipeline_speed_scale", defaults["pipeline_speed_scale"]))
+    clearance = float(value.get("task_clearance_mm", defaults["task_clearance_mm"]))
+    if not 0.25 <= speed <= 0.70:
+        raise ValueError("competition plan pipeline_speed_scale must be 0.25..0.70")
+    if not 20.0 <= clearance <= 100.0:
+        raise ValueError("competition plan task_clearance_mm must be 20..100")
+    return {
+        "pick_priority": priority,
+        "max_retries_per_part": retries,
+        "default_action": action,
+        "pipeline_speed_scale": speed,
+        "task_clearance_mm": clearance,
+    }
+
+
+def _reload_operator_settings(args):
+    """Validate and display editable settings; apply them to the live menu."""
+    plan = _load_competition_plan()
+    task_data = json.loads(TASK_COORDINATES.read_text(encoding="utf-8"))
+    validate_task_board_geometry(task_data)
+    cfg = load_bundle("vega")["robot"]
+    profiles = load_profiles(ROOT / "calibration" / "wrist_part_profiles.json", cfg)
+    if not getattr(args, "speed_scale_cli", False):
+        args.speed_scale = plan["pipeline_speed_scale"]
+    if not getattr(args, "clearance_mm_cli", False):
+        args.clearance_mm = plan["task_clearance_mm"]
+        args.clearance_m = args.clearance_mm / 1000.0
+    print("OPERATOR SETTINGS RELOADED", flush=True)
+    print(f"  speed_scale={args.speed_scale:.3f} clearance_mm={args.clearance_mm:.1f}", flush=True)
+    print(f"  retries_per_part={plan['max_retries_per_part']}", flush=True)
+    print("  priority=" + ", ".join(plan["pick_priority"]), flush=True)
+    print(f"  wrist_profiles={len(profiles.get('parts') or {})}/{len(PART_NAMES)}", flush=True)
+    print("  task_coordinates=valid reviewed 386 mm annotation map", flush=True)
+    return 0
+
+
+def _competition_sequence_actions():
+    plan = _load_competition_plan()
+    return OrderedDict(
+        (str(index), f"{part}.pick_place")
+        for index, part in enumerate(plan["pick_priority"], 1)
+    )
 
 
 def _load_runtime():
@@ -126,6 +213,7 @@ def _task_targets(runtime, task_data, clearance_m):
     bundle, _, (center, ux, uy, plane), ready_pose = runtime
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
+    mirror_x = bool(task_data.get("task_coordinate_mirror_x", False))
     targets = OrderedDict()
     for part in task_data["official_order"]:
         for kind in task_data["parts"][part]:
@@ -138,6 +226,7 @@ def _task_targets(runtime, task_data, clearance_m):
                 live_center=center, ux=ux, uy=uy,
                 surface_plane=plane, clearance_m=clearance_m,
                 quat=ready_pose.quaternion_wxyz, rotation_deg=rotation_deg,
+                mirror_x=mirror_x,
             )
     return targets
 
@@ -173,6 +262,10 @@ def _choose(items, title, *, allow_all=False):
 
 
 def _make_test_targets(selected, runtime, task_data, clearance_m):
+    validate_task_coordinate_extent(
+        task_data,
+        names=[name.removeprefix("task.") for name in selected if name.startswith("task.")],
+    )
     targets = OrderedDict()
     board = _board_targets(runtime, clearance_m)
     task = _task_targets(runtime, task_data, clearance_m)
@@ -507,7 +600,8 @@ def _run_task_tests_menu(args):
     return 0
 
 
-def _sequence_indices(raw):
+def _sequence_indices(raw, available=None):
+    available = available or COMPETITION_SEQUENCE_ACTIONS
     selected = []
     for value in raw.replace(" ", "").split(","):
         if not value:
@@ -517,9 +611,147 @@ def _sequence_indices(raw):
             selected.extend(range(start, end + (1 if end >= start else -1), 1 if end >= start else -1))
         else:
             selected.append(int(value))
-    if not selected or any(str(index) not in COMPETITION_SEQUENCE_ACTIONS for index in selected):
+    if not selected or any(str(index) not in available for index in selected):
         raise ValueError("sequence choices must be numbered 1..9; ranges such as 1-5,8,9 are accepted")
     return list(dict.fromkeys(selected))
+
+
+def _run_competition_action(args, part, action, *, retries=0):
+    """Run one gated action with bounded, operator-confirmed recovery.
+
+    A nonzero result is never retried automatically.  The operator must
+    inspect the robot and explicitly choose one retry; a result of 3 is
+    treated as a possible held-part state and therefore cannot be retried by
+    this helper.
+    """
+    command = [
+        "--part", part, "--mode", "test", "--action", action,
+        "--competition", "--confirm-head-motion", "--confirm-physical-motion",
+        "--speed-scale", str(args.speed_scale),
+    ]
+    attempt = 0
+    while True:
+        attempt += 1
+        output = ROOT / "runs" / "competition_actions" / (
+            f"{time.time_ns()}_{part}_{action}_attempt{attempt}"
+        )
+        print(f"\nCOMPETITION ACTION {part}.{action} (attempt {attempt})", flush=True)
+        try:
+            result = run_wrist_part_calibration(command + ["--output", str(output)])
+        except Exception as exc:
+            result = 2
+            print(
+                f"Wrist action raised {type(exc).__name__}: {exc}; inspect before retrying.",
+                file=sys.stderr, flush=True,
+            )
+        summary_path = output / "run_summary.json"
+        summary = {}
+        if summary_path.is_file():
+            try:
+                summary = json.loads(summary_path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                summary = {"status": "malformed"}
+        print(f"COMPETITION RUN ARTIFACT = {output}", flush=True)
+        if summary.get("holding_may_be_true"):
+            print(
+                "RUN SUMMARY SAYS A PART MAY BE HELD; refusing all automatic retries.",
+                file=sys.stderr, flush=True,
+            )
+            return 3
+        if result == 0:
+            if summary and summary.get("status") not in ("completed",):
+                print(
+                    f"Action returned success but run summary is {summary.get('status')!r}; stopping for inspection.",
+                    file=sys.stderr, flush=True,
+                )
+                return 2
+            print(f"COMPLETE {part}.{action}", flush=True)
+            return 0
+        if result == 3:
+            print(
+                "ACTION LEFT A POSSIBLY HELD PART; retry is blocked. Inspect and recover manually through the gated tool.",
+                file=sys.stderr, flush=True,
+            )
+            return result
+        if attempt > retries:
+            print(f"FAILED {part}.{action}; retry budget exhausted.", file=sys.stderr, flush=True)
+            return result
+        answer = input(
+            f"{part}.{action} failed. Inspect that the gripper is empty and the board is stable; "
+            "[r]etry once / [s]kip part / [e]nd run: "
+        ).strip().lower()
+        if answer in ("r", "retry", "yes", "y"):
+            continue
+        if answer in ("s", "skip"):
+            print(f"SKIPPED {part}.{action} after operator inspection.", flush=True)
+            return -1
+        print("Competition run stopped by operator.", flush=True)
+        return result
+
+
+def _profile_ready_for_action(profiles, part, action):
+    profile = (profiles.get("parts") or {}).get(part)
+    if not isinstance(profile, dict):
+        return False, "no saved wrist profile"
+    if not profile.get("grasp_verified"):
+        return False, "grasp not verified"
+    if action == "pick_place":
+        if not profile.get("place"):
+            return False, "place settings missing"
+        if not profile.get("place_verified"):
+            return False, "place not verified"
+    return True, "ready"
+
+
+def _priority_competition_actions(args, *, action=None):
+    """Build and run the score-first plan from only verified profiles."""
+    plan = _load_competition_plan()
+    cfg = load_bundle("vega")["robot"]
+    profiles = load_profiles(ROOT / "calibration" / "wrist_part_profiles.json", cfg)
+    chosen_action = action or plan["default_action"]
+    actions = []
+    skipped = []
+    for part in plan["pick_priority"]:
+        ready, reason = _profile_ready_for_action(profiles, part, chosen_action)
+        if ready:
+            actions.append((part, chosen_action))
+        else:
+            skipped.append((part, reason))
+    print("\nPRIORITY COMPETITION PLAN", flush=True)
+    print(f"Action: {chosen_action}; bounded retries per part: {plan['max_retries_per_part']}", flush=True)
+    print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a in actions) or "none"), flush=True)
+    if skipped:
+        print("Not yet eligible:", flush=True)
+        for part, reason in skipped:
+            print(f"  {part}: {reason}", flush=True)
+    if not actions:
+        print("No verified actions are ready; teach and individually validate a part first.", file=sys.stderr)
+        return 2
+    if args.check_only:
+        print("CHECK-ONLY: no robot, camera, or gripper motion will be commanded.", flush=True)
+        return 0
+    completed = 0
+    skipped_run = 0
+    for part, current_action in actions:
+        result = _run_competition_action(
+            args, part, current_action, retries=plan["max_retries_per_part"],
+        )
+        if result == 0:
+            completed += 1
+            continue
+        if result == -1:
+            skipped_run += 1
+            continue
+        print(
+            f"PLAN STOPPED after {completed} completed actions and {skipped_run} skipped actions.",
+            file=sys.stderr, flush=True,
+        )
+        return result
+    print(
+        f"PLAN FINISHED: {completed} completed, {skipped_run} skipped; "
+        f"{len(skipped)} parts were not eligible before motion.", flush=True,
+    )
+    return 0
 
 
 def _run_competition_sequence(args, raw=None):
@@ -527,29 +759,37 @@ def _run_competition_sequence(args, raw=None):
         print("Competition runs require physical motion; remove --check-only.")
         return 2
     if raw is None:
+        print("\nCOMPETITION RUN MODES")
+        print("  p. priority pick/place run (verified parts, easiest-first, bounded retry)")
+        print("  c. custom proven sequence (choose numbered pick/place actions)")
+        mode = input("Choose p or c (0 to cancel): ").strip().lower()
+        if mode in ("0", "q", "quit", "exit", ""):
+            return 0
+        if mode in ("p", "priority", "pick", "pick_place"):
+            return _priority_competition_actions(args, action="pick_place")
+        if mode not in ("c", "custom"):
+            print("Choose p for the priority run or c for a custom sequence.", file=sys.stderr)
+            return 2
         print("\nCOMPETITION SEQUENCE ACTIONS")
-        for index, action in COMPETITION_SEQUENCE_ACTIONS.items():
+        available_actions = _competition_sequence_actions()
+        for index, action in available_actions.items():
             print(f"  {index}. {action}")
         raw = input("Choose actions (for example 1-5,8,9), or 0 to cancel: ").strip()
     if raw in ("0", "", "q", "quit", "exit"):
         return 0
+    available_actions = _competition_sequence_actions()
     try:
-        indices = _sequence_indices(raw)
+        indices = _sequence_indices(raw, available_actions)
     except ValueError as exc:
         print(exc, file=sys.stderr)
         return 2
+    plan = _load_competition_plan()
     for index in indices:
-        part, action = COMPETITION_SEQUENCE_ACTIONS[str(index)].split(".", 1)
-        result = run_wrist_part_calibration([
-            "--part", part,
-            "--mode", "test",
-            "--action", action,
-            "--competition",
-            "--confirm-head-motion",
-            "--confirm-physical-motion",
-            "--speed-scale", str(args.speed_scale),
-        ])
-        if result:
+        part, action = available_actions[str(index)].split(".", 1)
+        result = _run_competition_action(
+            args, part, action, retries=plan["max_retries_per_part"],
+        )
+        if result not in (0, -1):
             return result
     return 0
 
@@ -559,10 +799,10 @@ def main(argv=None):
     p.add_argument("--confirm-head-motion", action="store_true")
     p.add_argument("--confirm-physical-motion", action="store_true")
     p.add_argument("--check-only", action="store_true", help="preflight menu selections without moving")
-    p.add_argument("--speed-scale", type=float, default=DEFAULT_PIPELINE_SPEED_SCALE)
+    p.add_argument("--speed-scale", type=float, default=None)
     p.add_argument(
-        "--clearance-mm", type=float, default=DEFAULT_TASK_CLEARANCE_MM,
-        help="TCP clearance above the calibrated board surface (default: 100 mm)",
+        "--clearance-mm", type=float, default=None,
+        help="TCP clearance above the calibrated board surface (default: configs/competition_plan.json)",
     )
     actions = p.add_mutually_exclusive_group()
     actions.add_argument("--recalibrate", action="store_true",
@@ -579,7 +819,18 @@ def main(argv=None):
                          help="run one wrist-backed pick or pick-place test directly")
     actions.add_argument("--competition-sequence", metavar="SEQUENCE",
                          help="run numbered sequence choices such as 1-5,8,9 directly")
+    actions.add_argument(
+        "--competition-plan", choices=("priority_pick_place",),
+        help="run verified pick/place profiles in the operator-configured easiest-first order",
+    )
     args = p.parse_args(argv)
+    args.speed_scale_cli = args.speed_scale is not None
+    args.clearance_mm_cli = args.clearance_mm is not None
+    operator_plan = _load_competition_plan()
+    if args.speed_scale is None:
+        args.speed_scale = operator_plan["pipeline_speed_scale"]
+    if args.clearance_mm is None:
+        args.clearance_mm = operator_plan["task_clearance_mm"]
     if not args.check_only and (not args.confirm_head_motion or not args.confirm_physical_motion):
         p.error("physical pipeline requires --confirm-head-motion and --confirm-physical-motion")
     if not 20.0 <= args.clearance_mm <= 100.0:
@@ -615,6 +866,9 @@ def main(argv=None):
 
     if args.competition_sequence is not None:
         return _run_competition_sequence(args, args.competition_sequence)
+
+    if args.competition_plan is not None:
+        return _priority_competition_actions(args, action="pick_place")
 
     if args.test_positions is not None or args.competition_task is not None:
         try:
@@ -656,6 +910,7 @@ def main(argv=None):
         print("  4. Task tests (all part pick and pick-place actions)")
         print("  5. Competition run sequence (choose numbered actions/ranges)")
         print("  6. Run preserved competition task version")
+        print("  7. Reload operator settings / show readiness")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
         if choice in ("0", "q", "quit", "exit"):
@@ -670,6 +925,12 @@ def main(argv=None):
                 print("Calibration cancelled.")
             except Exception as exc:
                 print(f"Calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "7":
+            try:
+                _reload_operator_settings(args)
+            except Exception as exc:
+                print(f"Operator settings rejected: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         try:
             runtime = _load_runtime()

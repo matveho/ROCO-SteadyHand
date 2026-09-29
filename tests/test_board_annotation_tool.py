@@ -85,6 +85,7 @@ class BoardAnnotationGeometryTests(unittest.TestCase):
             annotation = saved["states"]["initial"]["annotations"][0]
             self.assertAlmostEqual(annotation["center_board_m"][0], 0.386 * 25 / 99 - 0.386 / 2)
             self.assertEqual(saved["task_coordinates"]["source_pose_frame"], "board_local_annotation")
+            self.assertEqual(saved["task_coordinates"]["board_motion_model"], "horizontal_translation_only_fixed_table_plane")
 
 
 if __name__ == "__main__":

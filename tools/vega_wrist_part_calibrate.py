@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.board_calibration import load_board_calibration
+from steadyhand.board_geometry import validate_task_coordinate_extent
 from steadyhand.cameras.vega import VegaWristCameras
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
@@ -100,17 +101,46 @@ class PartSession:
         self.goal = None
         self.yaw = 0.
         self.history = []
+        self.status = "created"
+        self.last_error = None
+        self.part = None
+        self.action = None
+        self.board_scene_paths = []
 
     def start(self):
+        self.status = "starting"
         self.robot.connect()
         self.retake()
         self.cameras.connect()
+        self.status = "ready"
 
     def close(self):
         try:
-            self.cameras.close()
+            try:
+                self.cameras.close()
+            finally:
+                self.robot.close()
         finally:
-            self.robot.close()
+            summary = {
+                "schema_version": 1,
+                "status": self.status,
+                "part": self.part,
+                "action": self.action,
+                "holding_may_be_true": bool(self.holding),
+                "last_error": self.last_error,
+                "coarse_xy_m": list(self.coarse.position_m[:2]) if hasattr(self, "coarse") else None,
+                "yaw_deg": self.yaw,
+                "grasp_clearance_m": getattr(self, "last_grasp_clearance", None),
+                "board_scene_paths": list(self.board_scene_paths),
+                "events_path": "events.jsonl",
+                "calibration_path": "calibration/vega_board_manual.json",
+                "profiles_path": str(self.args.profiles),
+                "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            }
+            (self.output / "run_summary.json").write_text(
+                json.dumps(summary, indent=2, default=str) + "\n",
+                encoding="utf-8",
+            )
 
     def retake(self):
         if self.holding:
@@ -122,7 +152,9 @@ class PartSession:
         ready_q, _ = configured_right_preset(self.cfg, "right_ready")
         self.robot.move_joints(ready_q, speed_scale=self.args.speed_scale)
         self.targets = _task_targets(self.runtime, self.runtime[1], .100)
-        (self.output / f"board_{time.time_ns()}.json").write_text(json.dumps(scene, indent=2, default=str) + "\n")
+        scene_path = self.output / f"board_{time.time_ns()}.json"
+        scene_path.write_text(json.dumps(scene, indent=2, default=str) + "\n")
+        self.board_scene_paths.append(scene_path.name)
         print("FRESH BOARD REGISTERED; RIGHT_READY reached.", flush=True)
 
     def surface(self, x, y):
@@ -194,6 +226,7 @@ class PartSession:
 
     def begin_part(self, part, profile=None, *, initial_yaw=None):
         self.part, self.history = part, []
+        validate_task_coordinate_extent(self.runtime[1], names=[f"{part}.pick"])
         self.yaw = float(profile["yaw_deg"]) if profile else float(initial_yaw or 0.0)
         coarse = self.targets[f"task.{part}.pick"]
         self.move(coarse)
@@ -217,6 +250,7 @@ class PartSession:
         if self.holding:
             raise ValueError("A part may already be held; inspect it before another grab")
         hover = self.robot.get_tcp_pose()
+        self.last_grasp_clearance = clearance
         x, y, _ = hover.position_m
         grasp = Pose((x, y, self.surface(x, y) + clearance), hover.quaternion_wxyz)
         # Validate both descent and return before opening/closing.
@@ -232,6 +266,11 @@ class PartSession:
         self.holding = True  # Remains true on uncertain grip/error; no blind recovery.
         self.robot.grip(self.part)
         result = self.robot._gripper.last_grip_result()
+        self.event("grip_result", {
+            "requested_grasp_tcp": list(grasp.position_m),
+            "measured_grasp_tcp": list(self.robot.get_tcp_pose().position_m),
+            "result": result,
+        })
         print("GRIP RESULT", json.dumps(result, default=str), flush=True)
         if not isinstance(result, dict) or result.get("gripped") is not True:
             raise RuntimeError("Grip was not verified; stopped at grasp height for inspection")
@@ -245,6 +284,10 @@ class PartSession:
         x, y, _ = hover.position_m
         self.move(Pose((x, y, self.surface(x, y)+clearance), hover.quaternion_wxyz), slow=True)
         self.robot.open_gripper(self.part)
+        self.event("place_release", {
+            "requested_release_tcp": list(release.position_m),
+            "settings": settings,
+        })
         self.holding = False
         self.move(hover, slow=True)
 
@@ -315,6 +358,7 @@ class PartSession:
                 self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
                 handoff = self.output / f"{part}_handoff.json"
                 handoff.write_text(json.dumps(profile, indent=2, default=str)+"\n")
+                self.status = "profile_saved"
                 print("PROFILE SAVED; reused automatically:", handoff, flush=True)
                 print(json.dumps(profile, indent=2, default=str), flush=True)
                 return 0
@@ -393,29 +437,38 @@ class PartSession:
                 self.frame("adjusted pose")
 
     def test(self, part, action, *, competition=False):
+        self.part, self.action = part, action
+        self.status = f"running:{part}.{action}"
         profile = self.profiles.get("parts", {}).get(part)
         _check_ready(profile, self.cfg, action, competition=competition)
         self.begin_part(part, profile)
         if action == "localize":
             return 0
         if not competition and input("Type grab to test the taught descent/grip/lift; anything else cancels: ").strip() != "grab":
+            self.status = "cancelled_before_grip"
             return 1
         self.grab(profile["grasp_clearance_m"])
         profile = dict(profile, grasp_verified=True)
         self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
         if action == "pick":
+            self.status = "pick_complete_holding"
             print("Pick complete. Part is held; next actions are blocked until it is returned.")
             if input("Type return to put it back at source, or exit to stop holding: ").strip() == "return":
                 self.return_part(profile["grasp_clearance_m"])
+                self.status = "pick_complete_returned"
                 return 0
             return 3
         if not competition and input("Type place to test the taught transfer/descent/release: ").strip() != "place":
             return 3
         self.place(profile["place"])
+        self.status = "completed"
         if not competition:
             if input("Was placement correct? Type yes to enable it for competition: ").strip().lower() == "yes":
                 profile["place_verified"] = True
                 self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
+                self.status = "completed_place_verified"
+            else:
+                self.status = "completed_place_unverified"
         return 0
 
 
@@ -521,9 +574,13 @@ def main(argv=None):
             except ValueError as exc:
                 print(f"BLOCKED: {exc}", flush=True)
     except (KeyboardInterrupt, EOFError, InterruptedError):
+        session.status = "cancelled"
+        session.last_error = "operator cancelled session"
         print("Session cancelled; no automatic recovery motion.", flush=True)
         return 1
     except Exception as exc:
+        session.status = "failed"
+        session.last_error = f"{type(exc).__name__}: {exc}"
         print(f"Session stopped: {type(exc).__name__}: {exc}. Inspect before retrying.", flush=True)
         return 2
     finally:

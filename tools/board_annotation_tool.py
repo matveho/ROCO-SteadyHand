@@ -46,7 +46,7 @@ from typing import Any, Iterable, Mapping, Sequence
 
 TOOL_VERSION = "1.0"
 DEFAULT_BOARD_WIDTH_M = 0.386
-DEFAULT_BOARD_HEIGHT_M = 0.400
+DEFAULT_BOARD_HEIGHT_M = 0.386
 DEFAULT_RECTIFIED_LONG_EDGE_PX = 1100
 DEFAULT_PART_NAMES = (
     "gear_60teeth",
@@ -326,9 +326,15 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _effective_dimensions(state: Mapping[str, Any], target_size: Sequence[int]) -> tuple[float, float]:
-    width = _finite_number(state.get("board_width_m", DEFAULT_BOARD_WIDTH_M), "board_width_m")
-    height = _finite_number(state.get("board_height_m", DEFAULT_BOARD_HEIGHT_M), "board_height_m")
+def _effective_dimensions(
+    state: Mapping[str, Any],
+    target_size: Sequence[int],
+    *,
+    fallback_width_m: float = DEFAULT_BOARD_WIDTH_M,
+    fallback_height_m: float = DEFAULT_BOARD_HEIGHT_M,
+) -> tuple[float, float]:
+    width = _finite_number(state.get("board_width_m", fallback_width_m), "board_width_m")
+    height = _finite_number(state.get("board_height_m", fallback_height_m), "board_height_m")
     reference = state.get("reference_rectangle")
     if isinstance(reference, Mapping):
         scale_x = reference.get("scale_x_m_per_px")
@@ -424,6 +430,7 @@ def build_task_coordinates(project: Mapping[str, Any]) -> dict[str, Any]:
         "quaternion_order": "wxyz",
         "board_width_m": width_m,
         "board_height_m": height_m,
+        "board_motion_model": "horizontal_translation_only_fixed_table_plane",
         "board_coordinate_convention": {
             "origin": "board center",
             "x_positive": "rectified image right",
@@ -450,7 +457,16 @@ def _serialize_project_states(
         raw = dict(states.get(state_name) or {})
         annotations = []
         target_size = raw.get("rectified_size_px") or [0, 0]
-        dimensions = _effective_dimensions(raw, target_size) if target_size[0] and target_size[1] else (board_width_m, board_height_m)
+        dimensions = (
+            _effective_dimensions(
+                raw,
+                target_size,
+                fallback_width_m=board_width_m,
+                fallback_height_m=board_height_m,
+            )
+            if target_size[0] and target_size[1]
+            else (board_width_m, board_height_m)
+        )
         for annotation in raw.get("annotations") or []:
             item = dict(annotation)
             item["state"] = state_name

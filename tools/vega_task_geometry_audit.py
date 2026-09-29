@@ -1,4 +1,4 @@
-"""Generate a hardware-free audit of every organizer task target.
+"""Generate a hardware-free audit of every reviewed task target.
 
 The report applies the same board rotation, normalized calibrated axes and
 surface model used by the live pipeline.  It is intentionally read-only: it
@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.config import load_bundle
 from steadyhand.board_geometry import BOARD_SIZE_M, validate_task_board_geometry
+from steadyhand.board_geometry import board_relative_task_xy
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.models import Pose
 from steadyhand.vega_presets import configured_right_preset
@@ -40,6 +41,7 @@ def build_report(task_data, calibration, *, clearance_m=0.100, floor_m=0.456, ca
     floor = float(floor_m)
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
+    mirror_x = bool(task_data.get("task_coordinate_mirror_x", False))
     live_center, ux, uy, plane = calibration
     rows = []
     for part in task_data["official_order"]:
@@ -48,16 +50,16 @@ def build_report(task_data, calibration, *, clearance_m=0.100, floor_m=0.456, ca
                 continue
             name = f"{part}.{kind}"
             source_xyz = _resolve_point(name, task_data)[2]
-            dx = float(source_xyz[0]) - source_center[0]
-            dy = float(source_xyz[1]) - source_center[1]
-            angle = math.radians(rotation_deg)
-            board_x = dx * math.cos(angle) - dy * math.sin(angle)
-            board_y = dx * math.sin(angle) + dy * math.cos(angle)
+            board_x, board_y = board_relative_task_xy(
+                source_xyz[:2], source_center,
+                rotation_deg=rotation_deg, mirror_x=mirror_x,
+            )
             pose = _live_pose(
                 source_xyz, source_center=source_center,
                 live_center=live_center, ux=ux, uy=uy,
                 surface_plane=plane, clearance_m=clearance_m,
                 quat=(1.0, 0.0, 0.0, 0.0), rotation_deg=rotation_deg,
+                mirror_x=mirror_x,
             )
             surface_z = calibrated_surface_z(pose.position_m[0], pose.position_m[1], plane)
             rows.append({
@@ -86,6 +88,7 @@ def build_report(task_data, calibration, *, clearance_m=0.100, floor_m=0.456, ca
         "board_size_m": BOARD_SIZE_M,
         "board_motion_model": task_data.get("board_motion_model"),
         "task_coordinate_rotation_deg": rotation_deg,
+        "task_coordinate_mirror_x": mirror_x,
         "clearance_m": float(clearance_m),
         "hard_floor_m": floor,
         "calibration_path": calibration_path,

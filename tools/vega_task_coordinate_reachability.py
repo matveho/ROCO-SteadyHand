@@ -15,7 +15,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.board_calibration import load_board_calibration
-from steadyhand.board_geometry import validate_task_board_geometry
+from steadyhand.board_geometry import (
+    validate_task_board_geometry,
+    validate_task_coordinate_extent,
+    board_relative_task_xy,
+)
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
@@ -88,18 +92,22 @@ def _resolve_point(name, task_data):
     if "." not in name:
         raise ValueError(f"point {name!r} must be part.pick or part.place")
     part, kind = name.rsplit(".", 1)
-    if part not in task_data["parts"] or kind not in task_data["parts"][part]:
+    points = task_data.get("parts") or {}
+    value = (points.get(part) or {}).get(kind)
+    if value is None:
+        # Kept solely for compatibility with offline organizer audits.  The
+        # live pipeline iterates ``parts`` and therefore cannot command these
+        # unvalidated legacy insertion/grade points accidentally.
+        value = (task_data.get("legacy_secondary_points") or {}).get(part, {}).get(kind)
+    if value is None:
         raise ValueError(f"unknown task point {name!r}")
-    return part, kind, _finite_vector(task_data["parts"][part][kind], 3, name)
+    return part, kind, _finite_vector(value, 3, name)
 
 
-def _live_pose(source_xyz, *, source_center, live_center, ux, uy, surface_plane, clearance_m, quat, rotation_deg=0.0):
-    dx = float(source_xyz[0]) - float(source_center[0])
-    dy = float(source_xyz[1]) - float(source_center[1])
-    angle = math.radians(float(rotation_deg))
-    dx, dy = (
-        dx * math.cos(angle) - dy * math.sin(angle),
-        dx * math.sin(angle) + dy * math.cos(angle),
+def _live_pose(source_xyz, *, source_center, live_center, ux, uy, surface_plane, clearance_m, quat, rotation_deg=0.0, mirror_x=False):
+    dx, dy = board_relative_task_xy(
+        source_xyz[:2], source_center,
+        rotation_deg=rotation_deg, mirror_x=mirror_x,
     )
     live_x = live_center[0] + ux[0] * dx + uy[0] * dy
     live_y = live_center[1] + ux[1] * dx + uy[1] * dy
@@ -136,10 +144,14 @@ def main(argv=None):
     task_path = Path(args.coordinates)
     if not task_path.is_absolute(): task_path = ROOT / task_path
     task_data = json.loads(task_path.read_text(encoding="utf-8"))
-    if task_data.get("source_pose_frame") != "roco_organizer_sim_stage":
-        raise ValueError("task coordinates must retain the organizer source frame")
+    if task_data.get("source_pose_frame") not in (
+        "roco_organizer_sim_stage", "board_local_annotation",
+    ):
+        raise ValueError("task coordinates must be organizer or annotation board-local data")
     validate_task_board_geometry(task_data)
+    validate_task_coordinate_extent(task_data, names=args.points)
     rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
+    mirror_x = bool(task_data.get("task_coordinate_mirror_x", False))
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     live_center, ux, uy, surface_plane = _load_manual(args.calibration, cfg)
     _, ready_pose = configured_right_preset(cfg, "right_ready")
@@ -152,7 +164,8 @@ def main(argv=None):
                                   surface_plane=surface_plane,
                                   clearance_m=float(args.hover_clearance_mm) / 1000.0,
                                   quat=ready_pose.quaternion_wxyz,
-                                  rotation_deg=rotation_deg)))
+                                  rotation_deg=rotation_deg,
+                                  mirror_x=mirror_x)))
 
     safety = load_vega_skills()["safety"]
     floor = float(safety["min_tcp_z_m"])
