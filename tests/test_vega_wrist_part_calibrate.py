@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest import mock
 
 from steadyhand.models import Pose
-from tools.vega_wrist_part_calibrate import PartSession
+from tools.vega_wrist_part_calibrate import PartSession, _check_ready
 
 
 class _FakeKinematics:
@@ -34,6 +34,23 @@ class _FakeRobot:
 
 
 class WristPartReturnTests(unittest.TestCase):
+    def test_field_recalibration_does_not_invalidate_saved_profile(self):
+        profile = {
+            "part": "battery_size1",
+            "calibration_sha256": "a" * 64,
+            "grasp_clearance_m": 0.008,
+            "grasp_verified": True,
+        }
+        cfg = {"robot_name": "test"}
+        with mock.patch(
+            "tools.vega_wrist_part_calibrate.load_board_calibration",
+            return_value={"sha256": "b" * 64},
+        ), mock.patch("builtins.print") as output:
+            _check_ready(profile, cfg, "pick", no_cv=True)
+        self.assertTrue(
+            any("board calibration changed" in str(call).lower() for call in output.call_args_list)
+        )
+
     def test_return_part_releases_and_clears_holding_state(self):
         session = PartSession.__new__(PartSession)
         session.holding = True

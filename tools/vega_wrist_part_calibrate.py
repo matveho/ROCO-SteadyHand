@@ -563,10 +563,32 @@ class PartSession:
         self.no_cv_mode = bool(no_cv)
         self.no_cv_used_recorded = False
         self.alignment_fallback_used = False
+        self.calibration_hash_mismatch = False
         validate_task_coordinate_extent(self.runtime[1], names=[f"{part}.pick"])
         self.yaw = float(profile["yaw_deg"]) if profile else float(initial_yaw or 0.0)
         coarse = self.targets[f"task.{part}.pick"]
         self.coarse = coarse
+        if profile:
+            # A field recalibration changes the board surface/registration hash.
+            # It must not invalidate a previously verified grasp profile: the
+            # current board image and task transform are the best available
+            # position, while the saved profile remains the grasp/wrist record.
+            active_path = ROOT / "calibration" / "vega_board_manual.json"
+            if not active_path.is_file():
+                active_path = ROOT / "calibration" / "vega_board_manual_fallback.json"
+            active_calibration = load_board_calibration(active_path, self.cfg)
+            self.calibration_hash_mismatch = (
+                active_calibration["sha256"] != profile.get("calibration_sha256")
+            )
+            if self.calibration_hash_mismatch:
+                self.event(
+                    "board_calibration_mismatch_continue",
+                    {
+                        "saved_calibration_sha256": profile.get("calibration_sha256"),
+                        "active_calibration_sha256": active_calibration["sha256"],
+                        "policy": "continue_using_current_board_target_and_saved_grasp_profile",
+                    },
+                )
         if profile and profile.get("gripper_open_fraction") is not None:
             opening = float(profile["gripper_open_fraction"])
             if competition:
@@ -599,7 +621,16 @@ class PartSession:
                 )
                 if self.yaw:
                     recorded = _yaw_pose(recorded, self.yaw)
-            candidates = (("recorded arm hover", recorded), ("live task target", coarse))
+            # A changed board calibration means the board may have moved.  In
+            # that case, prefer the freshly registered task target; the saved
+            # teaching hover remains a bounded fallback if the live target is
+            # unreachable.  With an unchanged calibration preserve the proven
+            # saved-hover-first behavior.
+            if self.calibration_hash_mismatch:
+                candidates = (("live task target after field recalibration", coarse),
+                              ("recorded arm hover fallback", recorded))
+            else:
+                candidates = (("recorded arm hover", recorded), ("live task target", coarse))
             last_error = None
             for label, target in candidates:
                 if target is None:
@@ -1542,9 +1573,22 @@ def _load_template(profile):
 def _check_ready(profile, cfg, action, *, competition=False, no_cv=False):
     if profile is None:
         raise ValueError("No taught wrist profile. Use menu 3 first.")
-    current = load_board_calibration(ROOT / "calibration/vega_board_manual.json", cfg)
+    calibration_path = ROOT / "calibration/vega_board_manual.json"
+    if not calibration_path.is_file():
+        calibration_path = ROOT / "calibration/vega_board_manual_fallback.json"
+    current = load_board_calibration(calibration_path, cfg)
     if current["sha256"] != profile["calibration_sha256"]:
-        raise ValueError("Board calibration changed since wrist teaching; re-teach this profile")
+        # A field recalibration is expected during onsite setup.  It changes
+        # board registration and surface height, but it does not erase a
+        # verified part's wrist feature, grasp depth, or gripper settings.
+        # PartSession.begin_part() uses the fresh task target first (and the
+        # saved hover as a bounded fallback) when this mismatch is present.
+        print(
+            "WARNING: board calibration changed since wrist teaching; "
+            "continuing with the saved wrist/grasp profile and current field "
+            "registration.",
+            flush=True,
+        )
     if not no_cv:
         _load_template(profile)
     if action != "localize" and profile.get("grasp_clearance_m") is None:
