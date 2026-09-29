@@ -224,6 +224,15 @@ never loops silently.
 
 6. COMPETITION PIPELINE AND AVAILABLE TASKS
 -------------------------------------------
+Before onsite motion, run the hardware-free final audit:
+  `python3 tools/vega_competition_readiness.py`
+It writes `runs/onsite_readiness_report.json`, validates the protected
+calibration/task inputs, checks current wrist-profile eligibility, and runs the
+offline regression suite. `ready_for_onsite_validation` means the software
+contracts passed; `competition_run_ready` remains false until at least one
+part has a physically verified wrist profile and, for pick/place, a verified
+release profile.
+
 `tools/vega_competition_pipeline.py` preserves the older named task versions,
 but its active staged path is now the wrist-profile workflow described above.
 The preserved legacy approach entry is:

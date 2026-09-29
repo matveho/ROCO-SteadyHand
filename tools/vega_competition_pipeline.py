@@ -659,7 +659,13 @@ def _run_competition_action(args, part, action, *, retries=0):
             )
             return 3
         if result == 0:
-            if summary and summary.get("status") not in ("completed",):
+            if not summary_path.is_file():
+                print(
+                    "Action returned success without run_summary.json; stopping for inspection.",
+                    file=sys.stderr, flush=True,
+                )
+                return 2
+            if summary.get("status") not in ("completed",):
                 print(
                     f"Action returned success but run summary is {summary.get('status')!r}; stopping for inspection.",
                     file=sys.stderr, flush=True,

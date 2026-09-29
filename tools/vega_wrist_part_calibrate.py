@@ -286,6 +286,12 @@ class PartSession:
             (x, y, self.surface(x, y) + clearance),
             hover.quaternion_wxyz,
         )
+        if release.position_m[2] < self.floor + .005:
+            raise ValueError("Return intersects TCP floor + 5 mm; retaining part")
+        seed = self.robot._read_joint_positions()
+        for i in range(1, 11):
+            seed = self.robot._kinematics.solve(interpolate_pose(hover, release, i / 10), seed)
+        self.robot._kinematics.solve(hover, seed)
         self.move(release, slow=True)
         self.robot.open_gripper(self.part)
         self.event("place_release", {
