@@ -262,8 +262,8 @@ Configuration/evidence:
   `configs/task_coordinates.json` — rotated organizer task coordinates.
   `calibration/vega_board_manual_fallback.json` — permanent final board record.
   `calibration/battery_size1_grasp.template.json` — intentionally incomplete.
-  `docs/DAY2_EXECUTION_PLAN.md` and `docs/COMPETITION_QUESTIONS.md` — broader
-  competition context/questions; this file is the active agent handoff.
+  `docs/COMPETITION_QUESTIONS.md` — unresolved competition questions; this file
+  is the active agent handoff.
 
 9. SAFETY AND UNRESOLVED LIMITS
 -------------------------------

@@ -45,7 +45,7 @@ The hardware adapters are intentionally disabled until each competition robot's
 installed control path and stop behavior have been verified. A dry run never
 contacts hardware and never claims physical success.
 
-See docs/ONSITE.md and docs/ARRIVAL.md.
+See docs/ONSITE.md for the remaining repository-wide workflow notes.
 
 
 ## Vega live stack
