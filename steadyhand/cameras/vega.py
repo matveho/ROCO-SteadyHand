@@ -65,6 +65,7 @@ def _restart_head_camera_service(robot_name: str) -> None:
     log_path = Path(os.path.expanduser("~/head_camera.log"))
     environment = os.environ.copy()
     environment["ROBOT_NAME"] = robot_name
+    environment.pop("PYTHONPATH", None)
     with log_path.open("ab") as log:
         subprocess.Popen(
             [
@@ -171,6 +172,8 @@ class VegaHeadCamera:
             keys.append("depth")
 
         deadline = time.monotonic() + timeout_s
+        recovery_attempted = False
+        robot_name = os.environ.get("ROBOT_NAME")
         last_missing = list(keys)
         last_info_error = None
         while True:
@@ -197,6 +200,28 @@ class VegaHeadCamera:
 
             remaining = deadline - time.monotonic()
             if remaining <= 0:
+                # ``Sensors.wait_for_all_active`` can report success while
+                # the publisher's camera-info service is still absent after
+                # reboot.  Restart the proven dexsensor publisher once and
+                # give the complete read window another bounded attempt.
+                if not recovery_attempted and robot_name:
+                    recovery_attempted = True
+                    print(
+                        "HEAD CAMERA READ FAILED; restarting dexsensor and retrying once",
+                        flush=True,
+                    )
+                    try:
+                        self.close()
+                        _restart_head_camera_service(str(robot_name))
+                        self.connect()
+                    except Exception as recovery_exc:
+                        raise RuntimeError(
+                            f"head camera recovery could not relaunch dexsensor: {recovery_exc}"
+                        ) from (last_info_error or RuntimeError("head camera read timed out"))
+                    deadline = time.monotonic() + timeout_s
+                    last_missing = list(keys)
+                    last_info_error = None
+                    continue
                 if last_info_error is not None and not last_missing:
                     raise RuntimeError(
                         "Vega head streams are ready but camera info is unavailable "
