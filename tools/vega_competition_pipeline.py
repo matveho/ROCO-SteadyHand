@@ -279,9 +279,13 @@ def _make_test_targets(selected, runtime, task_data, clearance_m):
 def _capture_downward_head_frame(robot, *, floor_m, bundle):
     """Move the arm/head clear, capture one downward board frame, then return."""
     move_camera_clear_for_image(robot, floor_m=floor_m, speed_scale=0.90)
-    head_q = list(robot._robot.head.get_joint_pos())
-    print("HEAD BEFORE =", head_q, flush=True)
-    head_q[0] = 0.55
+    head_before = list(robot._robot.head.get_joint_pos())
+    print("HEAD BEFORE =", head_before, flush=True)
+    # Do not preserve a stale pitch/yaw from a previous operation.  The board
+    # detector is calibrated for this complete downward pose; changing only
+    # head_j1 can leave the camera looking sideways while the log appears to
+    # show a successful head move.
+    head_q = [0.55, 0.0, 0.0]
     move_head = getattr(robot._robot.head, "move_to_joint_pos", None)
     moved_head = False
     if callable(move_head):
@@ -305,10 +309,12 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle):
         )
     measured_head_q = list(robot._robot.head.get_joint_pos())
     print("HEAD AFTER  =", measured_head_q, flush=True)
-    if abs(float(measured_head_q[0]) - 0.55) > 0.03:
+    if len(measured_head_q) < len(head_q) or max(
+        abs(float(measured_head_q[i]) - head_q[i]) for i in range(len(head_q))
+    ) > 0.03:
         raise RuntimeError(
-            f"downward head view was not reached: target=0.55 "
-            f"measured={measured_head_q[0]}"
+            f"downward head view was not reached: target={head_q} "
+            f"measured={measured_head_q}"
         )
     time.sleep(0.5)
     camera = VegaHeadCamera()
