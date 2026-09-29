@@ -14,6 +14,7 @@ from datetime import datetime, timezone
 import json
 import math
 from pathlib import Path
+import shutil
 import sys
 import time
 
@@ -193,7 +194,40 @@ class PartSession:
         rgb = self.capture()
         raw = self.output / f"{self.capture.index-1:03d}_wrist_a.png"
         print(f"{label.upper()} IMAGE: {raw}", flush=True)
+        self._publish_live_image(rgb, raw, label)
         return rgb, raw
+
+    def _publish_live_image(self, rgb, raw, label):
+        """Publish a stable, optional laptop-pull path without affecting control."""
+        live = ROOT / "runs" / "wrist_live"
+        try:
+            live.mkdir(parents=True, exist_ok=True)
+            image_tmp = live / ".latest_wrist_a.png.tmp"
+            manifest_tmp = live / ".latest_wrist_a.json.tmp"
+            shutil.copyfile(raw, image_tmp)
+            image_tmp.replace(live / "latest_wrist_a.png")
+            source = str(raw.relative_to(ROOT)).replace("\\", "/")
+            manifest = {
+                "schema_version": 1,
+                "part": self.part,
+                "stage": str(label),
+                "capture_index": int(self.capture.index - 1),
+                "source_run": source,
+                "image": "runs/wrist_live/latest_wrist_a.png",
+                "image_shape": [int(value) for value in rgb.shape],
+                "created_at_utc": datetime.now(timezone.utc).isoformat(),
+            }
+            manifest_tmp.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+            manifest_tmp.replace(live / "latest_wrist_a.json")
+            print(
+                "LIVE IMAGE (fixed laptop path): "
+                "/home/dexmate/ROCO-SteadyHand-live/runs/wrist_live/latest_wrist_a.png",
+                flush=True,
+            )
+        except (OSError, ValueError) as exc:
+            # This is only an inspection convenience. A failed copy must never
+            # turn a valid camera frame into a robot-control failure.
+            print(f"LIVE IMAGE PUBLISH WARNING: {exc}", flush=True)
 
     def _invalidate_alignment(self, reason):
         if self.goal is not None:
@@ -253,6 +287,11 @@ class PartSession:
         print(kind.upper(), json.dumps(fields, default=str), flush=True)
 
     def select(self, rgb, path, title):
+        print(
+            f"PART={self.part} | run the laptop helper "
+            "`python tools/transfer_image.py --watch --open` to view new images",
+            flush=True,
+        )
         return select_pixel(rgb, path, title, use_viewer=not self.args.no_viewer)
 
     def teach_feature(self, *, choose_goal=True):
@@ -263,8 +302,14 @@ class PartSession:
         to the session safety handler.
         """
         while True:
-            rgb, path = self.frame("select a visible part feature, not the gripper")
-            feature = self.select(rgb, path, "Select a distinctive textured feature ON the selected part")
+            rgb, path = self.frame(
+                f"{self.part}: select a visible part feature, not the gripper"
+            )
+            feature = self.select(
+                rgb,
+                path,
+                f"{self.part}: select a distinctive textured feature ON the selected part",
+            )
             self.feature_tracking_mode = "strict"
             try:
                 tracker = TemplateTracker(rgb, feature)
@@ -345,12 +390,12 @@ class PartSession:
             raise RuntimeError("teach the first feature before selecting the goal")
         while True:
             rgb, path = self.frame(
-                "aligned grasp pose; select the SAME distinctive feature"
+                f"{self.part}: aligned grasp pose; select the SAME distinctive feature"
             )
             selected = self.select(
                 rgb,
                 path,
-                "Select the SAME feature again at the desired grasp alignment",
+                f"{self.part}: select the SAME feature again at the desired grasp alignment",
             )
             try:
                 located, score, error = self.tracker.verify_selected(
