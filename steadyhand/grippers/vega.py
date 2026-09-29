@@ -20,9 +20,11 @@ destroys that reference, whereas halt() stops motion while preserving it.
 """
 
 import importlib.util
+import json
 import math
 from pathlib import Path
 import sys
+import time
 
 
 class VegaCanGripper:
@@ -70,10 +72,14 @@ class VegaCanGripper:
                         f"Onsite right gripper does not implement {name}()"
                     )
             if self.config.get("home_on_connect", True):
-                if self.scope == "both":
-                    self._driver.home(require_all=True)
+                if not self._restore_cached_calibration():
+                    if self.scope == "both":
+                        self._driver.home(require_all=True)
+                    else:
+                        self._motor().home()
+                    self._persist_cached_calibration()
                 else:
-                    self._motor().home()
+                    print("GRIPPER CALIBRATION CACHE: skipping slow homing", flush=True)
         except BaseException:
             try:
                 self.close()
@@ -163,12 +169,79 @@ class VegaCanGripper:
         if self._driver is None:
             return
         try:
+            self._persist_cached_calibration()
             self.halt()
         finally:
             try:
                 self._driver.close_bus()
             finally:
                 self._driver = None
+
+    def _cache_path(self):
+        value = self.config.get("calibration_cache_path")
+        return Path(value).expanduser() if value else None
+
+    def _restore_cached_calibration(self):
+        """Reuse a still-enabled motor's last home without opening/homing it.
+
+        The vendor driver loses its multi-turn reference only on motor release.
+        We store the last closed angle and last observed angle, then require the
+        live angle to remain close before trusting the cache. A reboot/power
+        cycle or unexpected movement therefore falls back to a fresh home.
+        """
+        if self.scope != "right":
+            return False
+        path = self._cache_path()
+        if path is None or not path.is_file():
+            return False
+        try:
+            value = json.loads(path.read_text(encoding="utf-8"))
+            motor = self._motor()
+            if int(value.get("motor_id")) != int(getattr(motor, "id")):
+                return False
+            closed = float(value["closed_deg"])
+            last_angle = float(value["last_angle_deg"])
+            if not all(math.isfinite(v) for v in (closed, last_angle)):
+                return False
+            motor.calibrate_from(closed)
+            current = motor.angle()
+            if current is None or not math.isfinite(float(current)):
+                return False
+            if abs(float(current) - last_angle) > 120.0:
+                return False
+            return True
+        except (OSError, KeyError, TypeError, ValueError, AttributeError):
+            return False
+
+    def _persist_cached_calibration(self):
+        if self.scope != "right" or self._driver is None:
+            return
+        path = self._cache_path()
+        if path is None:
+            return
+        try:
+            motor = self._motor()
+            closed = getattr(motor, "closed_deg", None)
+            angle = motor.angle()
+            if closed is None or angle is None:
+                return
+            closed, angle = float(closed), float(angle)
+            if not all(math.isfinite(v) for v in (closed, angle)):
+                return
+            path.parent.mkdir(parents=True, exist_ok=True)
+            pending = path.with_suffix(path.suffix + ".tmp")
+            pending.write_text(json.dumps({
+                "schema_version": 1,
+                "motor_id": int(getattr(motor, "id")),
+                "closed_deg": closed,
+                "last_angle_deg": angle,
+                "updated_unix": time.time(),
+            }) + "\n", encoding="utf-8")
+            pending.replace(path)
+        except (OSError, TypeError, ValueError, AttributeError):
+            # Cache acceleration must never turn a valid gripper shutdown into
+            # a control failure; the next connect will simply home.
+            return
 
     def release_motors(self):
         """De-energize selected jaw(s); this destroys their calibration reference."""

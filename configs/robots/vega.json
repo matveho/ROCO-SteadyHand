@@ -209,6 +209,7 @@
   "gripper": {
     "driver_path": "vendor/dexmate_setup/gripper.py",
     "scope": "right",
+    "calibration_cache_path": "/home/dexmate/.cache/roco_vega_right_gripper.json",
     "home_on_connect": true,
     "skip_home_verified": false,
     "grip_current_a": 1,

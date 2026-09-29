@@ -49,6 +49,10 @@ CALIBRATION = ROOT / "calibration" / "vega_board_manual.json"
 FALLBACK_CALIBRATION = ROOT / "calibration" / "vega_board_manual_fallback.json"
 TASK_COORDINATES = ROOT / "configs" / "task_coordinates.json"
 DEFAULT_TASK_CLEARANCE_MM = 100.0
+# The onsite operator measured a consistent 12 mm forward bias in the task
+# annotations.  Keep the source JSON immutable and apply this runtime correction
+# to every task point (pick/place/connect/grade) after board registration.
+TASK_FORWARD_OFFSET_M = 0.012
 DEFAULT_PIPELINE_SPEED_SCALE = 0.38
 COMPETITION_PLAN = ROOT / "configs" / "competition_plan.json"
 
@@ -222,12 +226,24 @@ def _task_targets(runtime, task_data, clearance_m):
                 continue
             name = f"{part}.{kind}"
             source_xyz = _resolve_point(name, task_data)[2]
-            targets[f"task.{name}"] = _live_pose(
+            pose = _live_pose(
                 source_xyz, source_center=source_center,
                 live_center=center, ux=ux, uy=uy,
                 surface_plane=plane, clearance_m=clearance_m,
                 quat=ready_pose.quaternion_wxyz, rotation_deg=rotation_deg,
                 mirror_x=mirror_x, mirror_y=mirror_y,
+            )
+            # Forward is +base-X on this robot. Recompute Z on the calibrated
+            # plane after shifting so the hover remains parallel to the board.
+            shifted_x = pose.position_m[0] + TASK_FORWARD_OFFSET_M
+            shifted_y = pose.position_m[1]
+            targets[f"task.{name}"] = Pose(
+                (
+                    shifted_x,
+                    shifted_y,
+                    calibrated_surface_z(shifted_x, shifted_y, plane) + clearance_m,
+                ),
+                pose.quaternion_wxyz,
             )
     return targets
 
@@ -636,7 +652,7 @@ def _sequence_indices(raw, available=None):
     return list(dict.fromkeys(selected))
 
 
-def _run_competition_action(args, part, action, *, retries=0):
+def _run_competition_action(args, part, action, *, retries=0, no_cv=False):
     """Run one gated action with automatic, bounded recovery.
 
     Competition execution is deliberately non-interactive after launch: a
@@ -650,6 +666,8 @@ def _run_competition_action(args, part, action, *, retries=0):
         "--competition", "--confirm-head-motion", "--confirm-physical-motion",
         "--speed-scale", str(args.speed_scale),
     ]
+    if no_cv:
+        command.append("--no-cv")
     attempt = 0
     while True:
         attempt += 1
@@ -730,7 +748,7 @@ def _profile_ready_for_action(profiles, part, action):
     return True, "ready"
 
 
-def _priority_competition_actions(args, *, action=None):
+def _priority_competition_actions(args, *, action=None, no_cv=False):
     """Build and run the score-first plan from only verified profiles."""
     plan = _load_competition_plan()
     cfg = load_bundle("vega")["robot"]
@@ -759,21 +777,43 @@ def _priority_competition_actions(args, *, action=None):
         return 0
     completed = 0
     skipped_run = 0
+    failed_parts = []
     for part, current_action in actions:
-        result = _run_competition_action(
-            args, part, current_action, retries=plan["max_retries_per_part"],
-        )
+        action_kwargs = {"retries": plan["max_retries_per_part"]}
+        if no_cv:
+            action_kwargs["no_cv"] = True
+        result = _run_competition_action(args, part, current_action, **action_kwargs)
         if result == 0:
             completed += 1
             continue
         if result == -1:
             skipped_run += 1
+            failed_parts.append((part, current_action))
             continue
         print(
             f"PLAN STOPPED after {completed} completed actions and {skipped_run} skipped actions.",
             file=sys.stderr, flush=True,
         )
         return result
+    # Revisit cleanly skipped pickup parts after every other part has had a
+    # chance.  The deterministic fallback tries the saved arm hover first and
+    # then the live (12 mm forward-shifted) task target, without wrist CV.
+    if action == "pick" and not no_cv and failed_parts:
+        print("\nNO-CV BRUTE-FORCE RETRIES FOR SKIPPED PICKUPS", flush=True)
+        for part, current_action in failed_parts:
+            result = _run_competition_action(
+                args, part, current_action,
+                retries=plan["max_retries_per_part"], no_cv=True,
+            )
+            if result == 0:
+                completed += 1
+                skipped_run -= 1
+            elif result == 3:
+                print(
+                    f"PLAN STOPPED: {part} may be held after the no-CV attempt.",
+                    file=sys.stderr, flush=True,
+                )
+                return result
     print(
         f"PLAN FINISHED: {completed} completed, {skipped_run} skipped; "
         f"{len(skipped)} parts were not eligible before motion.", flush=True,
@@ -850,7 +890,8 @@ def main(argv=None):
     actions.add_argument("--competition-sequence", metavar="SEQUENCE",
                          help="run numbered sequence choices such as 1-5,8,9 directly")
     actions.add_argument(
-        "--competition-plan", choices=("priority_pick_place", "priority_pick"),
+        "--competition-plan",
+        choices=("priority_pick_place", "priority_pick", "priority_pick_no_cv"),
         help="run verified profiles in the operator-configured easiest-first order",
     )
     args = p.parse_args(argv)
@@ -898,8 +939,10 @@ def main(argv=None):
         return _run_competition_sequence(args, args.competition_sequence)
 
     if args.competition_plan is not None:
-        action = "pick" if args.competition_plan == "priority_pick" else "pick_place"
-        return _priority_competition_actions(args, action=action)
+        action = "pick" if args.competition_plan != "priority_pick_place" else "pick_place"
+        return _priority_competition_actions(
+            args, action=action, no_cv=args.competition_plan == "priority_pick_no_cv"
+        )
 
     if args.test_positions is not None or args.competition_task is not None:
         try:
@@ -940,9 +983,10 @@ def main(argv=None):
         print("  3. Wrist camera calibration (per-part feature / yaw / grasp depth)")
         print("  4. Task tests (all part pick and pick-place actions)")
         print("  5. Competition run sequence (choose numbered actions/ranges)")
-        print("  6. Attempt pickup of all calibrated objects (score-first)")
+        print("  6. Attempt pickup of all calibrated objects (score-first + no-CV retry)")
         print("  7. Run preserved competition task version")
         print("  8. Reload operator settings / show readiness")
+        print("  9. Attempt pickup of all calibrated objects (NO CV only)")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
         if choice in ("0", "q", "quit", "exit"):
@@ -1030,6 +1074,14 @@ def main(argv=None):
                 print("Pickup run cancelled.")
             except Exception as exc:
                 print(f"Pickup run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "9":
+            try:
+                _priority_competition_actions(args, action="pick", no_cv=True)
+            except (KeyboardInterrupt, EOFError):
+                print("No-CV pickup run cancelled.")
+            except Exception as exc:
+                print(f"No-CV pickup run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         if choice == "7":
             selected = _choose(COMPETITION_TASKS, "COMPETITION TASK VERSIONS")

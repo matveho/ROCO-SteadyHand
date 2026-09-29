@@ -137,6 +137,8 @@ class PartSession:
         self.manual_alignment_override = False
         self.alignment_fallback_used = False
         self.alignment_verified = False
+        self.no_cv_mode = False
+        self.no_cv_used_recorded = False
         self.grasp_verified = False
         self.gripper_open_fraction = None
         self.step_mm = 5.0
@@ -550,8 +552,11 @@ class PartSession:
         self.tracker.locate(rgb)
         return self.tracker
 
-    def begin_part(self, part, profile=None, *, initial_yaw=None, competition=False):
+    def begin_part(self, part, profile=None, *, initial_yaw=None, competition=False,
+                   no_cv=False):
         self.part, self.history = part, []
+        self.no_cv_mode = bool(no_cv)
+        self.no_cv_used_recorded = False
         self.alignment_fallback_used = False
         validate_task_coordinate_extent(self.runtime[1], names=[f"{part}.pick"])
         self.yaw = float(profile["yaw_deg"]) if profile else float(initial_yaw or 0.0)
@@ -559,19 +564,51 @@ class PartSession:
         self.coarse = coarse
         if profile and profile.get("gripper_open_fraction") is not None:
             opening = float(profile["gripper_open_fraction"])
-            if competition and opening < 0.20:
-                # A zero-opening saved profile can put closed jaws over the
-                # object before descent.  Preserve the saved calibration, but
-                # use the known successful 20% pre-grasp opening for the live
-                # competition attempt.
-                opening = 0.20
-                print(
-                    "COMPETITION GRIPPER OPENING OVERRIDE: using 20% "
-                    "pre-grasp opening",
-                    flush=True,
-                )
+            if competition:
+                # Keep competition jaws away from both hard stops.  A zero
+                # opening is too tight before descent, while a saved 100%
+                # opening wastes time on a long travel.  The profile itself is
+                # left unchanged; this is only a live competition clamp.
+                clamped = min(.60, max(.20, opening))
+                if clamped != opening:
+                    print(
+                        "COMPETITION GRIPPER OPENING OVERRIDE: "
+                        f"using {clamped * 100:.0f}% pre-grasp opening",
+                        flush=True,
+                    )
+                opening = clamped
             self.gripper_open_fraction = opening
             self._set_gripper_fraction(opening)
+        self.coarse = coarse
+        if no_cv:
+            # First try the exact saved arm hover from teaching.  This is the
+            # fastest no-camera path and remains useful when board vision or
+            # the wrist stream is unavailable.  If the board moved enough for
+            # that pose to be unreachable, fall back to the live task target.
+            recorded = None
+            if profile and profile.get("coarse_xy_m"):
+                rx, ry = (float(v) for v in profile["coarse_xy_m"])
+                recorded = Pose(
+                    (rx, ry, self.surface(rx, ry) + float(profile.get("hover_clearance_m", .100))),
+                    self.runtime[3].quaternion_wxyz,
+                )
+                if self.yaw:
+                    recorded = _yaw_pose(recorded, self.yaw)
+            candidates = (("recorded arm hover", recorded), ("live task target", coarse))
+            last_error = None
+            for label, target in candidates:
+                if target is None:
+                    continue
+                try:
+                    self.move(target)
+                    self.coarse = target
+                    self.no_cv_used_recorded = label == "recorded arm hover"
+                    print(f"NO-CV COARSE HOVER: {label}", flush=True)
+                    return None
+                except (RuntimeError, ValueError) as exc:
+                    last_error = exc
+                    print(f"NO-CV COARSE HOVER FAILED ({label}): {exc}", flush=True)
+            raise last_error or RuntimeError("no reachable no-CV coarse hover")
         self.move(coarse)
         if self.yaw:
             self.move(_yaw_pose(coarse, self.yaw), slow=True)
@@ -651,14 +688,14 @@ class PartSession:
         if (self.goal is None or not self.alignment_verified) and not allow_unverified:
             raise RuntimeError("Verify same-feature alignment with 'center' before grab")
         if allow_unverified and (self.goal is None or not self.alignment_verified):
-            if self.reference_feature is None:
+            if self.reference_feature is None and not self.no_cv_mode:
                 raise RuntimeError("teach a visible reference feature before grab manual")
             # The operator has deliberately positioned the gripper at the
             # desired grasp pose. Capture the feature at this exact current
             # pose so a later competition run does not reuse an older goal
             # pixel and servo the arm away from the manual adjustment.
             captured_current_goal = False
-            if self.tracker is not None:
+            if self.tracker is not None and self.reference_feature is not None:
                 try:
                     rgb, path = self.frame("manual alignment snapshot")
                     feature, score = self.tracker.locate(rgb)
@@ -696,7 +733,7 @@ class PartSession:
                         f"supervised TCP pose ({exc})",
                         flush=True,
                     )
-            if not captured_current_goal and self.goal is None:
+            if not captured_current_goal and self.goal is None and self.reference_feature is not None:
                 # If no fresh match was available, preserve the original
                 # supervised reference as the last-resort goal.
                 self.goal = tuple(self.reference_feature)
@@ -737,8 +774,11 @@ class PartSession:
         self.robot._kinematics.solve(hover, seed)
         self.robot.connect_gripper()
         if self.gripper_open_fraction is None:
-            self.robot.open_gripper(self.part)
-            self.gripper_open_fraction = 1.0
+            # Never travel to the hard-open stop during a competition grasp;
+            # it forces a slow homing/opening cycle and is unnecessary for a
+            # taught object.  Twenty percent is the validated safe fallback.
+            self.gripper_open_fraction = .20
+            self._set_gripper_fraction(self.gripper_open_fraction)
         else:
             self._set_gripper_fraction(self.gripper_open_fraction)
         self.move(grasp, slow=True)
@@ -807,7 +847,7 @@ class PartSession:
         self.move(hover, slow=True)
         return result
 
-    def return_part(self, clearance):
+    def return_part(self, clearance, *, partial_release=False):
         if not self.holding:
             raise ValueError("No part is held")
         hover = self.robot.get_tcp_pose()
@@ -823,7 +863,12 @@ class PartSession:
             seed = self.robot._kinematics.solve(interpolate_pose(hover, release, i / 10), seed)
         self.robot._kinematics.solve(hover, seed)
         self.move(release, slow=True)
-        self.robot.open_gripper(self.part)
+        if partial_release:
+            # A partial release clears the object while avoiding the slow
+            # full-open travel at every competition attempt.
+            self._set_gripper_fraction(max(.35, float(self.gripper_open_fraction or 0.0)))
+        else:
+            self.robot.open_gripper(self.part)
         self.event("place_release", {
             "requested_release_tcp": list(release.position_m),
             "settings": {
@@ -834,7 +879,7 @@ class PartSession:
         self.holding = False
         self.move(hover, slow=True)
 
-    def place(self, settings):
+    def place(self, settings, *, partial_release=False):
         if not self.holding or settings is None:
             raise ValueError("Place needs a verified held part and taught place settings")
         target = self.targets[f"task.{self.part}.place"]
@@ -853,7 +898,10 @@ class PartSession:
         self.robot._kinematics.solve(release, seed)
         self.move(hover)
         self.move(release, slow=True)
-        self.robot.open_gripper(self.part)
+        if partial_release:
+            self._set_gripper_fraction(max(.35, float(self.gripper_open_fraction or 0.0)))
+        else:
+            self.robot.open_gripper(self.part)
         self.holding = False
         self.move(hover, slow=True)
         print("Placement release completed; insertion/assembly is not inferred.")
@@ -1135,12 +1183,12 @@ class PartSession:
                     print("Calibration remains active; type help for the next valid step.", flush=True)
                 continue
 
-    def test(self, part, action, *, competition=False):
+    def test(self, part, action, *, competition=False, no_cv=False):
         self.part, self.action = part, action
         self.status = f"running:{part}.{action}"
         profile = self.profiles.get("parts", {}).get(part)
-        _check_ready(profile, self.cfg, action, competition=competition)
-        self.begin_part(part, profile, competition=competition)
+        _check_ready(profile, self.cfg, action, competition=competition, no_cv=no_cv)
+        self.begin_part(part, profile, competition=competition, no_cv=no_cv)
         if action == "localize":
             return 0
         if not competition and input("Type grab to test the taught descent/grip/lift; anything else cancels: ").strip() != "grab":
@@ -1149,7 +1197,9 @@ class PartSession:
         try:
             self.grab(
                 profile["grasp_clearance_m"],
-                allow_unverified=bool(competition and self.alignment_fallback_used),
+                allow_unverified=bool(
+                    no_cv or (competition and self.alignment_fallback_used)
+                ),
             )
         except (RuntimeError, ValueError) as exc:
             if competition and self.holding:
@@ -1164,7 +1214,9 @@ class PartSession:
                     flush=True,
                 )
                 try:
-                    self.return_part(profile["grasp_clearance_m"])
+                    self.return_part(
+                        profile["grasp_clearance_m"], partial_release=competition
+                    )
                 except Exception as return_exc:
                     self.last_error = f"{type(return_exc).__name__}: {return_exc}"
                     print(
@@ -1183,7 +1235,9 @@ class PartSession:
             if not confirmed:
                 print("Pick not confirmed; type return to release it for inspection.", flush=True)
                 if input("return / exit: ").strip().lower() == "return":
-                    self.return_part(profile["grasp_clearance_m"])
+                    self.return_part(
+                        profile["grasp_clearance_m"], partial_release=competition
+                    )
                 self.status = "pick_not_confirmed"
                 return 2
         profile = dict(profile, grasp_verified=True)
@@ -1197,7 +1251,9 @@ class PartSession:
                     flush=True,
                 )
                 try:
-                    self.return_part(profile["grasp_clearance_m"])
+                    self.return_part(
+                        profile["grasp_clearance_m"], partial_release=competition
+                    )
                 except Exception as exc:
                     self.last_error = f"{type(exc).__name__}: {exc}"
                     print(
@@ -1216,7 +1272,7 @@ class PartSession:
             return 3
         if not competition and input("Type place to test the taught transfer/descent/release: ").strip() != "place":
             return 3
-        self.place(profile["place"])
+        self.place(profile["place"], partial_release=competition)
         self.status = "completed"
         if not competition:
             if input("Was placement correct? Type yes to enable it for competition: ").strip().lower() == "yes":
@@ -1246,13 +1302,14 @@ def _load_template(profile):
     return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
 
-def _check_ready(profile, cfg, action, *, competition=False):
+def _check_ready(profile, cfg, action, *, competition=False, no_cv=False):
     if profile is None:
         raise ValueError("No taught wrist profile. Use menu 3 first.")
     current = load_board_calibration(ROOT / "calibration/vega_board_manual.json", cfg)
     if current["sha256"] != profile["calibration_sha256"]:
         raise ValueError("Board calibration changed since wrist teaching; re-teach this profile")
-    _load_template(profile)
+    if not no_cv:
+        _load_template(profile)
     if action != "localize" and profile.get("grasp_clearance_m") is None:
         raise ValueError("Grasp depth has not been taught")
     if action == "pick_place" and profile.get("place") is None:
@@ -1268,6 +1325,10 @@ def main(argv=None):
     parser.add_argument("--action", choices=("localize", "pick", "pick_place"), default="localize")
     parser.add_argument("--sequence", nargs="+", help="Explicit part.action sequence")
     parser.add_argument("--competition", action="store_true")
+    parser.add_argument(
+        "--no-cv", action="store_true",
+        help="competition pickup from saved arm/task coordinates without wrist images",
+    )
     parser.add_argument("--profiles", default="calibration/wrist_part_profiles.json")
     parser.add_argument("--output")
     parser.add_argument("--no-viewer", action="store_true", help="Enter image pixels in terminal instead of Tk viewer")
@@ -1298,7 +1359,10 @@ def main(argv=None):
             part, action = value.split(".")
             if part not in PART_NAMES or action not in ("localize", "pick", "pick_place"):
                 parser.error(f"Unknown action {value}")
-            _check_ready(profiles["parts"].get(part), cfg, action, competition=args.competition)
+            _check_ready(
+                profiles["parts"].get(part), cfg, action,
+                competition=args.competition, no_cv=args.no_cv,
+            )
     if args.competition and not actions:
         parser.error("--competition requires explicit --sequence")
     output = _resolve(args.output) if args.output else ROOT / "runs" / datetime.now(timezone.utc).strftime("wrist_parts_%Y%m%dT%H%M%S_%fZ")
@@ -1309,7 +1373,13 @@ def main(argv=None):
         if actions:
             for value in actions:
                 part, action = value.split(".")
-                result = session.teach(part, profiles["parts"].get(part)) if args.mode == "calibrate" else session.test(part, action, competition=args.competition)
+                result = (
+                    session.teach(part, profiles["parts"].get(part))
+                    if args.mode == "calibrate"
+                    else session.test(
+                        part, action, competition=args.competition, no_cv=args.no_cv
+                    )
+                )
                 if result:
                     return result
             return 0
