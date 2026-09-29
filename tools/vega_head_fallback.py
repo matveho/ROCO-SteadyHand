@@ -254,7 +254,10 @@ class HeadFallbackSession:
         x, y = self.hover_pose.position_m[:2]
         self.hover_pose = self.make_hover(x + dx, y + dy, float(self.profile.get("yaw_deg", 0)))
         self.move(self.hover_pose, slow=True)
-        print(f"ADJUSTED {direction} {amount_mm:g} mm -> {self.hover_pose.position_m}", flush=True)
+        # ``amount_mm`` arrives from the command parser as text.  Format the
+        # validated numeric value so an otherwise successful jog cannot abort
+        # with ``Unknown format code 'g'``.
+        print(f"ADJUSTED {direction} {float(amount_mm):g} mm -> {self.hover_pose.position_m}", flush=True)
 
     def set_yaw(self, degrees):
         yaw = float(degrees)
