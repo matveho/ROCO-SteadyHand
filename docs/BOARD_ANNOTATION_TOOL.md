@@ -65,6 +65,12 @@ next to the audit JSON. Their paths and hashes are recorded in the project so
 the click coordinates can be reviewed without relying on a mutable camera
 source file.
 
+If the save dialog is unavailable, use **Copy data for chat** in the top
+toolbar. It puts the complete structured handoff, including both homographies,
+annotations, centers, warnings, and generated task coordinates, on the system
+clipboard. Paste that text into the engineering chat and attach the two source
+images separately.
+
 The task file declares `source_pose_frame` as `board_local_annotation`, so it
 must be reviewed by the robot-code owner before replacing any existing
 organizer or runtime target file. Missing or duplicate part annotations are

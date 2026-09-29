@@ -440,17 +440,11 @@ def build_task_coordinates(project: Mapping[str, Any]) -> dict[str, Any]:
     return task
 
 
-def export_project(
-    path: str | os.PathLike[str],
-    *,
+def _serialize_project_states(
     states: Mapping[str, Mapping[str, Any]],
-    part_order: Sequence[str],
     board_width_m: float,
     board_height_m: float,
-    source_root: str | os.PathLike[str] | None = None,
-) -> tuple[Path, Path, dict[str, Any]]:
-    """Write the full audit project and compatible board-local task file."""
-    project_path = Path(path).expanduser().resolve()
+) -> dict[str, dict[str, Any]]:
     serialized_states: dict[str, dict[str, Any]] = {}
     for state_name in ("initial", "final"):
         raw = dict(states.get(state_name) or {})
@@ -474,7 +468,20 @@ def export_project(
         raw["effective_dimensions_m"] = list(dimensions)
         raw["annotations"] = annotations
         serialized_states[state_name] = raw
+    return serialized_states
 
+
+def build_project_payload(
+    *,
+    states: Mapping[str, Mapping[str, Any]],
+    part_order: Sequence[str],
+    board_width_m: float,
+    board_height_m: float,
+    source_root: str | os.PathLike[str] | None = None,
+    exported_at_utc: str | None = None,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Build the complete copy/paste/export payload without writing files."""
+    serialized_states = _serialize_project_states(states, board_width_m, board_height_m)
     board = {
         "width_m": float(board_width_m),
         "height_m": float(board_height_m),
@@ -495,7 +502,7 @@ def export_project(
     project = {
         "schema_version": 1,
         "tool": {"name": "steadyhand-board-annotation", "version": TOOL_VERSION},
-        "exported_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "exported_at_utc": exported_at_utc or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "part_order": list(part_order),
         "board": board,
         "states": serialized_states,
@@ -510,6 +517,24 @@ def export_project(
             "initial/final effective board scales differ; verify the two photographs use the same physical calibration"
         )
     project["task_coordinates"] = task
+    return project, task
+
+
+def export_project(
+    path: str | os.PathLike[str],
+    *,
+    states: Mapping[str, Mapping[str, Any]],
+    part_order: Sequence[str],
+    board_width_m: float,
+    board_height_m: float,
+    source_root: str | os.PathLike[str] | None = None,
+) -> tuple[Path, Path, dict[str, Any]]:
+    """Write the full audit project and compatible board-local task file."""
+    project_path = Path(path).expanduser().resolve()
+    project, task = build_project_payload(
+        states=states, part_order=part_order, board_width_m=board_width_m,
+        board_height_m=board_height_m, source_root=source_root,
+    )
     _atomic_write_json(project_path, project)
     task_path = project_path.with_name(project_path.stem + ".task_coordinates.json")
     _atomic_write_json(task_path, task)
@@ -620,6 +645,7 @@ class AnnotationApp:
             ttk.Radiobutton(toolbar, text=label, variable=self.state_var, value=value,
                             command=self._change_state).pack(side="left")
         self._button(toolbar, "Save/export", self._export_dialog)
+        self._button(toolbar, "Copy data for chat", self._copy_chat_data)
 
         body = ttk.PanedWindow(self.root, orient="horizontal")
         body.pack(fill="both", expand=True, padx=8, pady=(0, 8))
@@ -1378,6 +1404,68 @@ class AnnotationApp:
         self._push_undo()
         self.state["annotations"].pop(index)
         self._refresh()
+
+    def _copy_chat_data(self) -> None:
+        """Copy a self-contained text handoff when filesystem export is inconvenient."""
+        try:
+            states = {}
+            image_paths = []
+            for name, raw in self.states.items():
+                serial = {
+                    key: value for key, value in raw.items()
+                    if key not in ("image", "rectified")
+                }
+                image_path = raw.get("image_path")
+                if image_path:
+                    image_paths.append(image_path)
+                    serial["image_sha256"] = (
+                        _sha256(Path(image_path))
+                        if Path(image_path).is_file() else None
+                    )
+                if raw.get("image") is not None:
+                    processed = raw["image"].convert("RGB")
+                    serial["processed_image_size_px"] = list(processed.size)
+                    serial["processed_image_sha256"] = hashlib.sha256(
+                        processed.tobytes()
+                    ).hexdigest()
+                states[name] = serial
+
+            initial_raw = states["initial"]
+            initial_target = initial_raw.get("rectified_size_px") or [0, 0]
+            board_width_m, board_height_m = (
+                _effective_dimensions(initial_raw, initial_target)
+                if initial_target[0] and initial_target[1]
+                else (float(self.width_var.get()), float(self.height_var.get()))
+            )
+            project, _task = build_project_payload(
+                states=states,
+                part_order=self.part_order,
+                board_width_m=board_width_m,
+                board_height_m=board_height_m,
+                source_root=Path.cwd(),
+            )
+            project["chat_handoff"] = {
+                "purpose": "Offline board annotation handoff for robot-code integration",
+                "instructions": (
+                    "Use the task_coordinates object for board-local XY. "
+                    "Review source_pose_frame and map it through the live board "
+                    "calibration before robot motion. Attach the source images separately."
+                ),
+                "source_images_to_attach": image_paths,
+            }
+            text = (
+                "STEADYHAND BOARD ANNOTATION HANDOFF\n"
+                "Paste this entire block into the engineering chat.\n\n"
+                + json.dumps(_jsonable(project), indent=2)
+            )
+            self.root.clipboard_clear()
+            self.root.clipboard_append(text)
+            self.root.update()
+            self.status_var.set(
+                f"Copied {len(text):,} characters of annotation data to the clipboard."
+            )
+        except Exception as exc:
+            self.messagebox.showerror("Copy data for chat", str(exc))
 
     def _export_dialog(self) -> None:
         for name, state in self.states.items():
