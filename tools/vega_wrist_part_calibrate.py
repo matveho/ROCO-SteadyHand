@@ -282,11 +282,18 @@ class PartSession:
             raise ValueError("No part is held")
         hover = self.robot.get_tcp_pose()
         x, y, _ = hover.position_m
-        self.move(Pose((x, y, self.surface(x, y)+clearance), hover.quaternion_wxyz), slow=True)
+        release = Pose(
+            (x, y, self.surface(x, y) + clearance),
+            hover.quaternion_wxyz,
+        )
+        self.move(release, slow=True)
         self.robot.open_gripper(self.part)
         self.event("place_release", {
             "requested_release_tcp": list(release.position_m),
-            "settings": settings,
+            "settings": {
+                "return_to_source": True,
+                "clearance_m": float(clearance),
+            },
         })
         self.holding = False
         self.move(hover, slow=True)
