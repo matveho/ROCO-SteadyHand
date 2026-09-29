@@ -614,7 +614,13 @@ class PartSession:
                 # the operator can use the already-supervised pose with
                 # ``grab manual``.  In particular, do not issue a blind
                 # return/retry after a missed physical waypoint.
-                if "tcp missed servo waypoint" in str(exc).lower():
+                failure_text = str(exc).lower()
+                if (
+                    "tcp missed servo waypoint" in failure_text
+                    or "centering stalled" in failure_text
+                    or "pixel error increased" in failure_text
+                    or "feature did not return" in failure_text
+                ):
                     self.alignment_fallback_used = True
                     self.event(
                         "alignment_fallback",
@@ -624,8 +630,8 @@ class PartSession:
                         },
                     )
                     print(
-                        "VISUAL CENTERING UNAVAILABLE: the arm did not reach "
-                        "a local probe, so no Jacobian was accepted. No further "
+                        "VISUAL CENTERING STOPPED: the bounded visual servo "
+                        "did not verify a final pixel alignment. No further "
                         "motion was issued; if the gripper is already over the "
                         "part, use 'grab manual' to continue teaching.",
                         flush=True,
@@ -1454,7 +1460,12 @@ class PartSession:
                         result = self.localize()
                     except RuntimeError as exc:
                         message = str(exc).lower()
-                        if any(word in message for word in ("feature", "lost", "ambiguous", "tracking", "centering stalled")):
+                        if any(word in message for word in (
+                            "feature", "lost", "ambiguous", "tracking",
+                            "centering stalled", "pixel error increased",
+                            "tcp missed servo waypoint", "feature did not return",
+                        )):
+                            self.alignment_fallback_used = True
                             print(
                                 "VISUAL ALIGNMENT STOPPED: no further motion was issued; "
                                 "capture another image or teach a different feature. "
