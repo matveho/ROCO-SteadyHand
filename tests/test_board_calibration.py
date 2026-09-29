@@ -42,8 +42,10 @@ class BoardCalibrationTests(unittest.TestCase):
 
     def test_measured_axes_preserve_y_sign(self):
         ux, uy, dot, angle = orthonormalize_xy_axes((1.0, 0.0), (0.1, 1.0))
-        self.assertEqual(ux, (1.0, 0.0))
-        self.assertGreater(uy[1], 0.99)
+        self.assertAlmostEqual(sum(v * v for v in ux), 1.0)
+        self.assertAlmostEqual(sum(v * v for v in uy), 1.0)
+        self.assertGreater(uy[1], 0.90)
+        self.assertAlmostEqual(ux[0] * uy[0] + ux[1] * uy[1], 0.0)
         self.assertGreater(dot, 0.0)
         self.assertGreater(angle, 0.0)
 

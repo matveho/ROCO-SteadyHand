@@ -26,11 +26,11 @@ def file_sha256(path) -> str:
 
 
 def orthonormalize_xy_axes(raw_x, raw_y):
-    """Return a rigid +X/+Y frame and the measured non-orthogonality.
+    """Return the nearest rigid +X/+Y frame and measured non-orthogonality.
 
-    Gram-Schmidt is the 2-D nearest-frame construction for the measured +X
-    direction.  The +Y sign is retained from the operator measurement, so a
-    reflected board frame can never be silently introduced.
+    The two measured unit vectors are fitted symmetrically to a 2-D rotation
+    (or reflection, preserving their measured handedness), rather than making
+    one operator direction exact and moving the other by the whole residual.
     """
     x = _vector(raw_x, 2, "raw board X vector")
     y = _vector(raw_y, 2, "raw board Y vector")
@@ -41,16 +41,19 @@ def orthonormalize_xy_axes(raw_x, raw_y):
     ux = (x[0] / nx, x[1] / nx)
     raw_uy = (y[0] / ny, y[1] / ny)
     measured_dot = ux[0] * raw_uy[0] + ux[1] * raw_uy[1]
-    projected = (
-        raw_uy[0] - measured_dot * ux[0],
-        raw_uy[1] - measured_dot * ux[1],
-    )
-    projected_norm = math.hypot(*projected)
-    if projected_norm < 1e-9:
+    handedness = 1.0 if ux[0] * raw_uy[1] - ux[1] * raw_uy[0] >= 0 else -1.0
+    if abs(ux[0] * raw_uy[1] - ux[1] * raw_uy[0]) < 1e-9:
         raise ValueError("board axes are collinear")
-    uy = (projected[0] / projected_norm, projected[1] / projected_norm)
-    if uy[0] * raw_uy[0] + uy[1] * raw_uy[1] < 0:
-        uy = (-uy[0], -uy[1])
+    # For r_y = handedness * perp(r_x), maximize r_x·x + r_y·y.
+    a = ux[0] + handedness * raw_uy[1]
+    b = ux[1] - handedness * raw_uy[0]
+    theta = math.atan2(b, a)
+    rx = (math.cos(theta), math.sin(theta))
+    uy = (
+        handedness * -math.sin(theta),
+        handedness * math.cos(theta),
+    )
+    ux = rx
     angle_error_deg = math.degrees(math.asin(max(-1.0, min(1.0, measured_dot))))
     return ux, uy, measured_dot, angle_error_deg
 
