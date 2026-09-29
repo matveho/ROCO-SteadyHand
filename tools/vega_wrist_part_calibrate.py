@@ -56,6 +56,11 @@ def _is_visual_alignment_failure(exc):
     as a bad feature.
     """
     message = str(exc).lower()
+    # A bounded local-servo arrival residual is recoverable: the controller
+    # records the measured TCP pose and can either retry or use the coarse
+    # grasp fallback.  This is distinct from a general TCP/IK failure.
+    if "tcp missed servo waypoint by" in message:
+        return True
     hardware_markers = (
         "ik ", "inverse kinematics", "joint", "tcp ", "floor", "camera",
         "estop", "timeout", "waypoint", "robot", "gripper", "motor",
@@ -553,7 +558,20 @@ class PartSession:
         coarse = self.targets[f"task.{part}.pick"]
         self.coarse = coarse
         if profile and profile.get("gripper_open_fraction") is not None:
-            self._set_gripper_fraction(profile["gripper_open_fraction"])
+            opening = float(profile["gripper_open_fraction"])
+            if competition and opening < 0.20:
+                # A zero-opening saved profile can put closed jaws over the
+                # object before descent.  Preserve the saved calibration, but
+                # use the known successful 20% pre-grasp opening for the live
+                # competition attempt.
+                opening = 0.20
+                print(
+                    "COMPETITION GRIPPER OPENING OVERRIDE: using 20% "
+                    "pre-grasp opening",
+                    flush=True,
+                )
+            self.gripper_open_fraction = opening
+            self._set_gripper_fraction(opening)
         self.move(coarse)
         if self.yaw:
             self.move(_yaw_pose(coarse, self.yaw), slow=True)

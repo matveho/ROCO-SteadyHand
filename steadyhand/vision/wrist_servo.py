@@ -490,8 +490,12 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
             position_error_m=position_error,
             orientation_error_rad=orientation_error,
         )
-        if position_error > 0.003:
-            raise RuntimeError("TCP missed servo waypoint by >3 mm")
+        # The Vega state stream can settle a few millimetres away from an
+        # individual 8–10 mm probe while remaining stationary and usable for
+        # the measured Jacobian.  The actual pose is used below, so reject
+        # only a materially missed local waypoint.
+        if position_error > 0.008:
+            raise RuntimeError("TCP missed servo waypoint by >8 mm")
         return actual
 
     rgb = capture_rgb()
