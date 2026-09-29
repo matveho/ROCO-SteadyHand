@@ -33,6 +33,7 @@ geometry and JSON exporter do not require either dependency.
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -551,6 +552,8 @@ class AnnotationApp:
         self.zoom_factor = 1.0
         self.pan_offset = (0.0, 0.0)
         self.pan_anchor = None
+        self.undo_stack: list[dict[str, Any]] = []
+        self.undo_limit = 100
         self.display_offset = (0.0, 0.0)
         self.display_image_size = (1, 1)
         self.tk_image = None
@@ -601,6 +604,10 @@ class AnnotationApp:
         self._button(toolbar, "Open final", lambda: self._choose_image("final"))
         self._button(toolbar, "Crop", lambda: self._set_mode("crop"))
         self._button(toolbar, "Rotate 90°", self._rotate_current)
+        self._button(toolbar, "Move image", lambda: self._set_mode("move"))
+        self._button(toolbar, "Zoom +", lambda: self._zoom(1.25))
+        self._button(toolbar, "Zoom −", lambda: self._zoom(1 / 1.25))
+        self._button(toolbar, "Fit view", self._fit_view)
         ttk.Separator(toolbar, orient="vertical").pack(side="left", fill="y", padx=7)
         ttk.Label(toolbar, text="View:").pack(side="left")
         self.view_var = tk.StringVar(value="source")
@@ -625,15 +632,20 @@ class AnnotationApp:
                                 cursor="crosshair")
         self.canvas.pack(fill="both", expand=True)
         self.canvas.bind("<Configure>", lambda _event: self._refresh())
-        self.canvas.bind("<Button-1>", self._canvas_click)
+        self.canvas.bind("<ButtonPress-1>", self._canvas_press)
+        self.canvas.bind("<B1-Motion>", self._canvas_drag)
+        self.canvas.bind("<ButtonRelease-1>", self._canvas_release)
         self.canvas.bind("<Motion>", self._canvas_motion)
         self.canvas.bind("<ButtonPress-2>", self._pan_start)
         self.canvas.bind("<B2-Motion>", self._pan_move)
+        self.canvas.bind("<ButtonRelease-2>", self._pan_release)
         self.canvas.bind("<MouseWheel>", self._mouse_wheel)
         self.canvas.bind("<Button-4>", lambda _event: self._zoom(1.1))
         self.canvas.bind("<Button-5>", lambda _event: self._zoom(1 / 1.1))
         self.canvas.bind("<Return>", lambda _event: self._close_polygon())
         self.canvas.bind("<Escape>", lambda _event: self._set_mode("idle"))
+        self.root.bind_all("<Control-z>", self._undo_key)
+        self.root.bind_all("<Control-Z>", self._undo_key)
 
         title = ttk.Label(side, text="Calibration and annotation", font=("TkDefaultFont", 12, "bold"))
         title.pack(anchor="w", pady=(0, 8))
@@ -697,6 +709,69 @@ class AnnotationApp:
         self.ttk.Label(parent, text=label).grid(row=row, column=0, sticky="w", padx=4, pady=3)
         self.ttk.Entry(parent, textvariable=variable, width=12).grid(row=row, column=1, sticky="ew", padx=4, pady=3)
         parent.columnconfigure(1, weight=1)
+
+    def _make_undo_snapshot(self) -> dict[str, Any]:
+        """Capture editable geometry and viewport state, never display pixels."""
+        state = self.state
+        keys = (
+            "image", "image_path", "board_width_m", "board_height_m",
+            "board_points_source_px", "homography_image_to_board",
+            "homography_board_to_image", "rectified", "rectified_size_px",
+            "ruler", "reference_rectangle", "annotations", "pixel_operations",
+        )
+        state_copy = {}
+        for key in keys:
+            value = state.get(key)
+            # Pillow images are replaced, rather than edited in place, by the
+            # crop/rotate/rectify operations. Keeping the immutable object
+            # reference makes undo restore those views without re-encoding.
+            state_copy[key] = value if key in ("image", "rectified") else copy.deepcopy(value)
+        return {
+            "state_name": self.current_state_name,
+            "state": state_copy,
+            "view": self.view,
+            "mode": self.mode,
+            "pending_points": copy.deepcopy(self.pending_points),
+            "pending_polygon": copy.deepcopy(self.pending_polygon),
+            "zoom_factor": self.zoom_factor,
+            "pan_offset": self.pan_offset,
+            "next_id": self.next_id,
+        }
+
+    def _push_undo(self) -> None:
+        snapshot = self._make_undo_snapshot()
+        self.undo_stack.append(snapshot)
+        if len(self.undo_stack) > self.undo_limit:
+            del self.undo_stack[:-self.undo_limit]
+
+    def _restore_undo_snapshot(self, snapshot: Mapping[str, Any]) -> None:
+        state_name = str(snapshot["state_name"])
+        self.current_state_name = state_name
+        self.state_var.set(state_name)
+        self.states[state_name] = dict(snapshot["state"])
+        self.view = str(snapshot["view"])
+        self.view_var.set(self.view)
+        self.mode = str(snapshot["mode"])
+        self.pending_points = copy.deepcopy(snapshot["pending_points"])
+        self.pending_polygon = copy.deepcopy(snapshot["pending_polygon"])
+        self.zoom_factor = float(snapshot["zoom_factor"])
+        self.pan_offset = tuple(snapshot["pan_offset"])
+        self.next_id = int(snapshot["next_id"])
+        self.width_var.set(f"{self.state.get('board_width_m', DEFAULT_BOARD_WIDTH_M):.4f}")
+        self.height_var.set(f"{self.state.get('board_height_m', DEFAULT_BOARD_HEIGHT_M):.4f}")
+        self._set_canvas_cursor()
+        self._refresh()
+
+    def _undo_last(self) -> None:
+        if not self.undo_stack:
+            self.status_var.set("Nothing to undo.")
+            return
+        self._restore_undo_snapshot(self.undo_stack.pop())
+        self.status_var.set("Undid the last point, annotation, zoom, or image movement.")
+
+    def _undo_key(self, _event: Any = None) -> str:
+        self._undo_last()
+        return "break"
 
     @property
     def state(self) -> dict[str, Any]:
@@ -770,6 +845,7 @@ class AnnotationApp:
         self.mode = mode
         self.pending_points.clear()
         self.pending_polygon.clear()
+        self._set_canvas_cursor()
         messages = {
             "board": "Click board corners in this order: top-left, top-right, bottom-right, bottom-left.",
             "crop": "Click two opposite crop corners.",
@@ -777,10 +853,15 @@ class AnnotationApp:
             "reference_rectangle": "Click measured rectangle corners in TL, TR, BR, BL order.",
             "circle": "Click circle center, then one point on its edge.",
             "pen": "Click polygon vertices. Use Close polygon or click the first vertex.",
+            "move": "Drag the image with the left mouse button. Existing points stay fixed to the image.",
             "idle": "Choose a calibration or annotation action.",
         }
         self.status_var.set(messages.get(mode, mode))
         self._refresh()
+
+    def _set_canvas_cursor(self) -> None:
+        if hasattr(self, "canvas"):
+            self.canvas.configure(cursor="fleur" if self.mode == "move" else "crosshair")
 
     def _display_source_or_board(self) -> Any:
         return self.state.get("rectified") if self.view == "board" else self.state.get("image")
@@ -911,11 +992,26 @@ class AnnotationApp:
         else:
             self.help_var.set("Source view: select four board corners, then rectify. Crop/rotate reset that image calibration.")
 
+    def _canvas_press(self, event: Any) -> None:
+        if self.mode == "move":
+            self._pan_start(event)
+            return
+        self._canvas_click(event)
+
+    def _canvas_drag(self, event: Any) -> None:
+        if self.mode == "move":
+            self._pan_move(event)
+
+    def _canvas_release(self, event: Any) -> None:
+        if self.mode == "move":
+            self._pan_release(event)
+
     def _canvas_click(self, event: Any) -> None:
         point = self._canvas_to_image(event)
         if point is None:
             return
         if self.mode == "board":
+            self._push_undo()
             self.pending_points.append(point)
             if len(self.pending_points) == 4:
                 if not _quad_is_valid(self.pending_points):
@@ -924,36 +1020,41 @@ class AnnotationApp:
                     return
                 self.state["board_points_source_px"] = list(self.pending_points)
                 self.pending_points.clear()
-                self._rectify_current()
+                self._rectify_current(record_undo=False)
             self._refresh()
             return
         if self.mode == "crop":
+            self._push_undo()
             self.pending_points.append(point)
             if len(self.pending_points) == 2:
                 self._apply_crop()
             self._refresh()
             return
         if self.mode == "ruler":
+            self._push_undo()
             self.pending_points.append(point)
             if len(self.pending_points) == 2:
                 self._set_ruler_from_points()
             self._refresh()
             return
         if self.mode == "reference_rectangle":
+            self._push_undo()
             self.pending_points.append(point)
             if len(self.pending_points) == 4:
                 self._set_reference_rectangle()
             self._refresh()
             return
         if self.mode == "circle":
+            self._push_undo()
             self.pending_points.append(point)
             if len(self.pending_points) == 2:
                 self._create_circle()
             self._refresh()
             return
         if self.mode == "pen":
+            self._push_undo()
             if self.pending_polygon and distance(point, self.pending_polygon[0]) <= 10.0 / max(self.display_scale, 0.01):
-                self._close_polygon()
+                self._close_polygon(record_undo=False)
             else:
                 self.pending_polygon.append(point)
             self._refresh()
@@ -968,6 +1069,7 @@ class AnnotationApp:
         self._zoom(1.1 if event.delta > 0 else 1 / 1.1)
 
     def _pan_start(self, event: Any) -> None:
+        self._push_undo()
         self.pan_anchor = (int(event.x), int(event.y), self.pan_offset[0], self.pan_offset[1])
 
     def _pan_move(self, event: Any) -> None:
@@ -977,20 +1079,31 @@ class AnnotationApp:
         self.pan_offset = (ox + int(event.x) - x0, oy + int(event.y) - y0)
         self._refresh()
 
+    def _pan_release(self, _event: Any) -> None:
+        self.pan_anchor = None
+
     def _zoom(self, factor: float) -> None:
         # Keep a fit-to-window baseline and apply a user zoom multiplier so
         # precise clicks remain possible on a large board.
+        self._push_undo()
         self.zoom_factor = max(0.25, min(5.0, self.zoom_factor * float(factor)))
         self._refresh()
 
+    def _fit_view(self) -> None:
+        self._push_undo()
+        self.zoom_factor = 1.0
+        self.pan_offset = (0.0, 0.0)
+        self._refresh()
+
     def _undo_point(self) -> None:
+        self._push_undo()
         if self.pending_polygon:
             self.pending_polygon.pop()
         elif self.pending_points:
             self.pending_points.pop()
         self._refresh()
 
-    def _rectify_current(self) -> None:
+    def _rectify_current(self, *, record_undo: bool = True) -> None:
         state = self.state
         image = state.get("image")
         points = state.get("board_points_source_px") or self.pending_points
@@ -1000,6 +1113,8 @@ class AnnotationApp:
         if len(points) != 4 or not _quad_is_valid(points):
             self.status_var.set("Set four valid board corners in TL, TR, BR, BL order first.")
             return
+        if record_undo:
+            self._push_undo()
         try:
             width_m = _finite_number(self.width_var.get(), "board width")
             height_m = _finite_number(self.height_var.get(), "board height")
@@ -1063,6 +1178,7 @@ class AnnotationApp:
         if right - left < 20 or bottom - top < 20:
             self.status_var.set("Crop is too small.")
             return
+        self._push_undo()
         state["image"] = image.crop((left, top, right + 1, bottom + 1))
         state["pixel_operations"].append({"operation": "crop", "box_xyxy": [left, top, right + 1, bottom + 1]})
         state["board_points_source_px"] = []
@@ -1086,6 +1202,7 @@ class AnnotationApp:
         if image is None:
             self.status_var.set("Open an image first.")
             return
+        self._push_undo()
         state["image"] = image.rotate(-90, expand=True)
         state["pixel_operations"].append({"operation": "rotate_90_clockwise"})
         state["board_points_source_px"] = []
@@ -1201,7 +1318,7 @@ class AnnotationApp:
         self.pending_points.clear()
         self.mode = "idle"
 
-    def _close_polygon(self) -> None:
+    def _close_polygon(self, *, record_undo: bool = True) -> None:
         if len(self.pending_polygon) < 3:
             if self.pending_polygon:
                 self.status_var.set("A polygon needs at least three vertices before it can close.")
@@ -1213,6 +1330,8 @@ class AnnotationApp:
         if not polygon_is_simple(self.pending_polygon):
             self.status_var.set("Polygon edges cross; close a simple boundary without self-intersections.")
             return
+        if record_undo:
+            self._push_undo()
         center = polygon_centroid(self.pending_polygon)
         self._append_annotation({
             "id": f"annotation_{self.next_id}",
@@ -1256,6 +1375,7 @@ class AnnotationApp:
         if index is None:
             self.status_var.set("Select an annotation in the list first.")
             return
+        self._push_undo()
         self.state["annotations"].pop(index)
         self._refresh()
 

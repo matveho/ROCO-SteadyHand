@@ -43,8 +43,10 @@ Open polylines are never exported as annotations. Polygon centers use the
 area-weighted centroid; circles retain the clicked center and radius. Part
 names and center coordinates can be toggled on the image, while the annotation
 list on the right keeps labels out of the board surface.
-Use the mouse wheel to zoom and middle-button drag to pan when placing a
-point precisely.
+Use **Move image** for left-button panning, or middle-button drag as a
+shortcut. **Zoom +**, **Zoom −**, **Fit view**, and the mouse wheel change only
+the viewport; stored board corners and shape coordinates stay in image pixels.
+`Ctrl+Z` undoes the last point, annotation, zoom, pan, crop, or rotation.
 
 The export writes two JSON files:
 
