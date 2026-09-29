@@ -103,6 +103,9 @@ def validate_profile(profile, robot_config, *, expected_part=None):
         _finite_vector(profile.get(name), size, f"{part}.{name}")
     for name in ("hover_clearance_m", "yaw_deg"):
         _finite(profile.get(name), f"{part}.{name}")
+    opening = profile.get("gripper_open_fraction")
+    if opening is not None and not 0.0 <= _finite(opening, "gripper opening") <= 1.0:
+        raise ValueError(f"{part}: gripper opening must be 0..1 (0 closed, 1 open)")
     if not 0.060 <= profile["hover_clearance_m"] <= 0.150:
         raise ValueError(f"{part}: hover clearance must be 60..150 mm")
     if abs(profile["yaw_deg"]) > 45:

@@ -99,6 +99,15 @@ class PartSession:
         self.targets = None
         self.tracker = None
         self.goal = None
+        self.goal_match = None
+        self.reference_feature = None
+        self.reference_match_score = None
+        self.goal_match_score = None
+        self.goal_match_error_px = None
+        self.alignment_verified = False
+        self.grasp_verified = False
+        self.gripper_open_fraction = None
+        self.step_mm = 5.0
         self.yaw = 0.
         self.history = []
         self.status = "created"
@@ -130,6 +139,9 @@ class PartSession:
                 "last_error": self.last_error,
                 "coarse_xy_m": list(self.coarse.position_m[:2]) if hasattr(self, "coarse") else None,
                 "yaw_deg": self.yaw,
+                "gripper_open_fraction": getattr(self, "gripper_open_fraction", None),
+                "alignment_verified": getattr(self, "alignment_verified", False),
+                "grasp_verified": getattr(self, "grasp_verified", False),
                 "grasp_clearance_m": getattr(self, "last_grasp_clearance", None),
                 "board_scene_paths": list(self.board_scene_paths),
                 "events_path": "events.jsonl",
@@ -182,6 +194,51 @@ class PartSession:
         print(f"{label.upper()} IMAGE: {raw}", flush=True)
         return rgb, raw
 
+    def _invalidate_alignment(self, reason):
+        if self.goal is not None:
+            self.alignment_verified = False
+            print(
+                f"ALIGNMENT INVALIDATED ({reason}); run 'center' again before grab",
+                flush=True,
+            )
+
+    def _gripper_speed(self):
+        return int(round(float((self.cfg.get("gripper") or {}).get("open_speed_dps", 500))))
+
+    def _set_gripper_fraction(self, fraction):
+        """Move the empty right jaw to an absolute 0..1 opening fraction."""
+        fraction = _number(fraction, 0.0, 1.0)
+        self.robot.connect_gripper()
+        result = self.robot._gripper.move_fraction(
+            fraction, speed=self._gripper_speed()
+        )
+        measured = self.robot.gripper_position()
+        try:
+            measured = float(measured)
+        except (TypeError, ValueError):
+            measured = None
+        self.gripper_open_fraction = fraction
+        self.event(
+            "gripper_opening",
+            {"requested_fraction": fraction, "measured_fraction": measured},
+        )
+        print(
+            "GRIPPER OPENING =",
+            f"{fraction * 100:.1f}%",
+            "MEASURED =",
+            "unknown" if measured is None else f"{measured * 100:.1f}%",
+            flush=True,
+        )
+        return result
+
+    def _read_gripper_fraction(self):
+        self.robot.connect_gripper()
+        value = self.robot.gripper_position()
+        value = float(value)
+        if not math.isfinite(value):
+            raise RuntimeError("gripper returned a non-finite position")
+        return max(0.0, min(1.0, value))
+
     def event(self, kind, fields):
         if "feature_uv" in fields:
             import cv2
@@ -198,26 +255,135 @@ class PartSession:
         return select_pixel(rgb, path, title, use_viewer=not self.args.no_viewer)
 
     def teach_feature(self, *, choose_goal=True):
-        rgb, path = self.frame("select a visible part edge, not the gripper")
-        feature = self.select(rgb, path, "Select a textured feature ON the selected part")
-        self.tracker = TemplateTracker(rgb, feature)
-        # Preserve the pre-servo reference: a final aligned frame may contain
-        # the jaw over the part and is a poor global reacquisition template.
-        self.reference_rgb = rgb.copy()
-        self.reference_feature = tuple(feature)
-        if choose_goal:
-            self.goal = self.select(rgb, path, "Select where that feature should lie for jaw alignment")
-        return feature
+        """Capture and teach the first, trackable feature annotation.
+
+        Feature-quality failures are annotation failures, so they stay inside
+        this loop.  Camera, motion, and other hardware exceptions still escape
+        to the session safety handler.
+        """
+        while True:
+            rgb, path = self.frame("select a visible part feature, not the gripper")
+            feature = self.select(rgb, path, "Select a distinctive textured feature ON the selected part")
+            try:
+                tracker = TemplateTracker(rgb, feature)
+                _, score = tracker.locate(rgb)
+            except (ValueError, RuntimeError) as exc:
+                print(
+                    "FEATURE REJECTED: this feature is weak or ambiguous; "
+                    f"capture another image and choose a different feature ({exc})",
+                    flush=True,
+                )
+                continue
+            self.tracker = tracker
+            # Preserve the pre-servo reference: a final aligned frame may
+            # contain the jaw over the part and is a poor global template.
+            self.reference_rgb = rgb.copy()
+            self.reference_feature = tuple(float(v) for v in feature)
+            self.reference_match_score = float(score)
+            self.goal = None
+            self.goal_match = None
+            self.goal_match_score = None
+            self.goal_match_error_px = None
+            self.alignment_verified = False
+            _write_overlay(
+                path.with_name(path.stem + "_reference.png"),
+                rgb,
+                self.reference_feature,
+                label=self.part,
+            )
+            self.event(
+                "reference_feature",
+                {"feature_uv": self.reference_feature, "score": self.reference_match_score},
+            )
+            print(
+                "REFERENCE FEATURE ACCEPTED:",
+                tuple(round(v, 1) for v in self.reference_feature),
+                f"score={self.reference_match_score:.3f}",
+                flush=True,
+            )
+            return self.reference_feature
+
+    def teach_goal_feature(self):
+        """Capture the aligned pose and require a second click on the same feature."""
+        if self.tracker is None or self.reference_feature is None:
+            raise RuntimeError("teach the first feature before selecting the goal")
+        while True:
+            rgb, path = self.frame(
+                "aligned grasp pose; select the SAME distinctive feature"
+            )
+            selected = self.select(
+                rgb,
+                path,
+                "Select the SAME feature again at the desired grasp alignment",
+            )
+            try:
+                located, score, error = self.tracker.verify_selected(
+                    rgb, selected, max_error_px=18.0
+                )
+            except (ValueError, RuntimeError) as exc:
+                print(
+                    "GOAL FEATURE REJECTED: the second click was not verified "
+                    "as the original feature; capture another image and retry "
+                    f"({exc})",
+                    flush=True,
+                )
+                continue
+            # The operator's second annotation is the desired image coordinate;
+            # the tracker match is retained as evidence that it is the same
+            # feature rather than an arbitrary pixel.
+            self.goal = tuple(float(v) for v in selected)
+            self.goal_match = tuple(float(v) for v in located)
+            self.goal_match_score = float(score)
+            self.goal_match_error_px = float(error)
+            self.alignment_verified = False
+            _write_overlay(
+                path.with_name(path.stem + "_goal.png"),
+                rgb,
+                self.goal_match,
+                self.goal,
+                label=self.part,
+            )
+            self.event(
+                "goal_feature",
+                {
+                    "goal_uv": self.goal,
+                    "matched_feature_uv": self.goal_match,
+                    "score": self.goal_match_score,
+                    "click_match_error_px": self.goal_match_error_px,
+                },
+            )
+            print(
+                "GOAL FEATURE ACCEPTED:",
+                tuple(round(v, 1) for v in self.goal),
+                "matched=",
+                tuple(round(v, 1) for v in self.goal_match),
+                f"score={self.goal_match_score:.3f}",
+                f"click_error={self.goal_match_error_px:.1f}px",
+                flush=True,
+            )
+            return self.goal
 
     def localize(self):
+        if self.tracker is None or self.goal is None:
+            raise RuntimeError("teach and verify the same-feature goal before centering")
         reference = _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz
-        result = run_xy_servo(
-            self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
-            probe_m=.008, gain=.65, max_step_m=.010, max_radius_m=.045,
-            tolerance_px=5., max_iterations=8, speed_scale=.45, event=self.event,
-            tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
-            reference_quaternion_wxyz=reference,
-        )
+        self.alignment_verified = False
+        try:
+            result = run_xy_servo(
+                self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
+                probe_m=.008, gain=.65, max_step_m=.010, max_radius_m=.045,
+                tolerance_px=5., max_iterations=8, speed_scale=.45, event=self.event,
+                tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
+                reference_quaternion_wxyz=reference,
+            )
+        except Exception:
+            # A tracker failure or a genuine motion failure leaves the robot at
+            # its current measured pose; do not issue a recovery move here.
+            self.alignment_verified = False
+            raise
+        self.alignment_verified = result.get("status") == "converged"
+        if self.alignment_verified:
+            print("ALIGNMENT VERIFIED: same feature reproduced at the taught goal", flush=True)
         return result
 
     def _reacquire(self, rgb):
@@ -229,6 +395,8 @@ class PartSession:
         validate_task_coordinate_extent(self.runtime[1], names=[f"{part}.pick"])
         self.yaw = float(profile["yaw_deg"]) if profile else float(initial_yaw or 0.0)
         coarse = self.targets[f"task.{part}.pick"]
+        if profile and profile.get("gripper_open_fraction") is not None:
+            self._set_gripper_fraction(profile["gripper_open_fraction"])
         self.move(coarse)
         if self.yaw:
             self.move(_yaw_pose(coarse, self.yaw), slow=True)
@@ -241,12 +409,14 @@ class PartSession:
             self.goal = tuple(profile["goal_uv"])
             _write_overlay(path.with_name(path.stem + "_match.png"), rgb, self.tracker.uv, self.goal, label=part)
         else:
-            self.teach_feature()
+            return None
         return self.localize()
 
     def grab(self, clearance):
         if clearance is None:
             raise ValueError("Set depth N first; N is millimetres below the 100 mm hover")
+        if self.goal is None or not self.alignment_verified:
+            raise RuntimeError("Verify same-feature alignment with 'center' before grab")
         if self.holding:
             raise ValueError("A part may already be held; inspect it before another grab")
         hover = self.robot.get_tcp_pose()
@@ -261,7 +431,11 @@ class PartSession:
             seed = self.robot._kinematics.solve(interpolate_pose(hover, grasp, i/10), seed)
         self.robot._kinematics.solve(hover, seed)
         self.robot.connect_gripper()
-        self.robot.open_gripper(self.part)
+        if self.gripper_open_fraction is None:
+            self.robot.open_gripper(self.part)
+            self.gripper_open_fraction = 1.0
+        else:
+            self._set_gripper_fraction(self.gripper_open_fraction)
         self.move(grasp, slow=True)
         self.holding = True  # Remains true on uncertain grip/error; no blind recovery.
         self.robot.grip(self.part)
@@ -329,13 +503,22 @@ class PartSession:
         print("Placement release completed; insertion/assembly is not inferred.")
 
     def teach(self, part, old=None):
-        result = self.begin_part(part, None, initial_yaw=(old or {}).get("yaw_deg"))
+        self.begin_part(part, None, initial_yaw=(old or {}).get("yaw_deg"))
         grasp = old.get("grasp_clearance_m") if old else None
         place = old.get("place") if old else None
-        grip_verified = False
-        print("Commands: forward/back/left/right N (mm), yaw N (degrees relative ready), undo,")
-        print("  center, feature, image, depth N (mm below 100 mm hover), grab, return,")
-        print("  place-config X Y DEPTH YAW (board XY offsets mm, depth mm, yaw degrees), save, abort")
+        self.gripper_open_fraction = old.get("gripper_open_fraction") if old else None
+        if self.gripper_open_fraction is not None:
+            self._set_gripper_fraction(self.gripper_open_fraction)
+        self.grasp_verified = False
+        self.last_grasp_clearance = grasp
+        self.teach_feature()
+        result = None
+        print("Commands:")
+        print("  forward/back/left/right [N] | step N | yaw N | undo")
+        print("  feature (new first annotation) | goal (second annotation of SAME feature)")
+        print("  image | center (verify visual alignment) | jaw N (0..100% open)")
+        print("  open N / close N (incremental percentage points) | depth N (mm below hover)")
+        print("  grab | confirm yes/no | return | place-config X Y DEPTH YAW | save | abort")
         while True:
             raw = input(f"{part}> ").strip().lower().split()
             if not raw:
@@ -345,12 +528,33 @@ class PartSession:
                 return 3 if self.holding else 1
             if command == "save":
                 if self.holding:
-                    print("Type return to put the test part back before saving its image profile.")
+                    print("Type return to put the test part back before saving.")
                     continue
-                rgb, path = self.frame("final taught pose")
-                feature, _ = self.tracker.locate(rgb)
-                # The final observed feature is recorded for audit, while the
-                # saved template remains the uncluttered pre-servo reference.
+                if self.goal is None or not self.alignment_verified:
+                    print("SAVE BLOCKED: run goal, then center, and verify alignment first.")
+                    continue
+                if grasp is None or not self.grasp_verified:
+                    print("SAVE BLOCKED: teach depth, grab, and confirm the physical grasp first.")
+                    continue
+                try:
+                    rgb, path = self.frame("final taught pose")
+                    feature, final_score = self.tracker.locate(rgb)
+                except (ValueError, RuntimeError) as exc:
+                    print(
+                        "SAVE BLOCKED: the original feature was not confidently "
+                        f"visible in the final image ({exc}); use image/feature/goal and retry.",
+                        flush=True,
+                    )
+                    continue
+                _write_overlay(
+                    path.with_name(path.stem + "_final.png"),
+                    rgb,
+                    feature,
+                    self.goal,
+                    label=part,
+                )
+                # The saved template remains the uncluttered first image;
+                # final/goal images and events provide the audit trail.
                 template, anchor = _crop_template(self.reference_rgb, self.reference_feature)
                 import cv2
                 directory = default_template_dir(ROOT)
@@ -362,9 +566,17 @@ class PartSession:
                 profile = {
                     "part": part, "working_arm": WORKING_ARM, "tcp_frame": TCP_FRAME, "wrist_camera": WRIST_CAMERA,
                     "calibration_sha256": cal["sha256"], "coarse_xy_m": list(self.coarse.position_m[:2]),
-                    "feature_uv": list(self.reference_feature), "goal_uv": list(self.goal), "image_shape": list(self.reference_rgb.shape[:2]),
+                    "feature_uv": list(self.reference_feature), "goal_uv": list(self.goal),
+                    "goal_source": "same_feature_second_annotation",
+                    "goal_match_uv": list(self.goal_match) if self.goal_match is not None else None,
+                    "goal_match_score": self.goal_match_score,
+                    "goal_click_match_error_px": self.goal_match_error_px,
+                    "reference_match_score": self.reference_match_score,
+                    "final_match_uv": list(feature), "final_match_score": float(final_score),
+                    "image_shape": list(self.reference_rgb.shape[:2]),
                     "hover_clearance_m": .100, "grasp_clearance_m": grasp, "yaw_deg": self.yaw,
-                    "place": place, "grasp_verified": grip_verified, "place_verified": False,
+                    "gripper_open_fraction": self.gripper_open_fraction,
+                    "place": place, "grasp_verified": self.grasp_verified, "place_verified": False,
                     "template": {"path": str(template_path.relative_to(ROOT)), "sha256": file_sha256(template_path), "template_uv": list(anchor)},
                     "localization_result": result, "created_at_utc": datetime.now(timezone.utc).isoformat(),
                 }
@@ -376,32 +588,108 @@ class PartSession:
                 print(json.dumps(profile, indent=2, default=str), flush=True)
                 return 0
             if command == "grab":
-                self.grab(grasp)
-                grip_verified = True
+                try:
+                    result = self.grab(grasp)
+                except RuntimeError as exc:
+                    if self.holding:
+                        print(
+                            "GRASP UNCERTAIN; the robot is left in holding state. "
+                            f"Inspect the jaws and type return before anything else ({exc})",
+                            flush=True,
+                        )
+                        continue
+                    raise
+                answer = input(
+                    "Did the selected part physically lift and remain held? Type yes or no: "
+                ).strip().lower()
+                self.grasp_verified = answer in ("y", "yes")
+                if self.grasp_verified:
+                    print("PHYSICAL GRASP CONFIRMED; type return before save.", flush=True)
+                else:
+                    print("GRASP NOT CONFIRMED; keep holding state and type return for inspection.", flush=True)
+                continue
+            if command == "confirm" and len(raw) == 2:
+                self.grasp_verified = raw[1] in ("y", "yes", "true", "1")
+                print("GRASP CONFIRMED =", self.grasp_verified, flush=True)
                 continue
             if command == "return":
                 self.return_part(grasp)
                 continue
             if self.holding:
-                print("A part is held. Use return or abort before adjusting the taught pose.")
+                print("A part is held. Use return or abort before adjusting the pose.")
                 continue
-            if command == "image":
-                rgb, path = self.frame()
-                feature, _ = self.tracker.locate(rgb)
-                _write_overlay(path.with_name(path.stem+"_tracked.png"), rgb, feature, self.goal, label=part)
+            if command in ("image", "capture", "snapshot"):
+                rgb, path = self.frame("manual wrist capture")
+                try:
+                    feature, score = self.tracker.locate(rgb)
+                    _write_overlay(path.with_name(path.stem + "_tracked.png"), rgb, feature, self.goal, label=part)
+                    print("TRACKED FEATURE =", tuple(round(v, 1) for v in feature), f"score={score:.3f}", flush=True)
+                except (ValueError, RuntimeError) as exc:
+                    print("FEATURE NOT VERIFIED IN THIS IMAGE:", exc, flush=True)
                 continue
-            if command == "feature":
+            if command in ("feature", "reference"):
                 self.teach_feature()
                 continue
-            if command == "center":
-                result = self.localize()
+            if command in ("goal", "target"):
+                self.teach_goal_feature()
+                continue
+            if command in ("center", "verify", "localize"):
+                try:
+                    result = self.localize()
+                except RuntimeError as exc:
+                    message = str(exc).lower()
+                    if any(word in message for word in ("feature", "lost", "ambiguous", "tracking", "centering stalled")):
+                        print(
+                            "VISUAL ALIGNMENT STOPPED: no further motion was issued; "
+                            "capture another image or teach a different feature.",
+                            flush=True,
+                        )
+                        continue
+                    raise
+                continue
+            if command == "status":
+                status = {
+                    "stage": self.status,
+                    "feature_uv": self.reference_feature,
+                    "goal_uv": self.goal,
+                    "alignment_verified": self.alignment_verified,
+                    "grasp_verified": self.grasp_verified,
+                    "grasp_clearance_m": grasp,
+                    "gripper_open_fraction": self.gripper_open_fraction,
+                    "step_mm": self.step_mm,
+                    "holding": self.holding,
+                }
+                print(json.dumps(status, default=str), flush=True)
+                continue
+            if command in ("help", "h", "?"):
+                print("forward/back/left/right [N] | step N | yaw N | undo", flush=True)
+                print("feature | goal | image | center | jaw N | open N | close N", flush=True)
+                print("depth N | grab | confirm yes/no | return | save | abort", flush=True)
                 continue
             try:
+                if command == "step" and len(raw) == 2:
+                    self.step_mm = _number(raw[1], .5, 20.0)
+                    print(f"STEP = {self.step_mm:g} mm", flush=True)
+                    continue
+                if command in ("jaw", "gripper") and len(raw) == 1:
+                    measured = self._read_gripper_fraction()
+                    print(f"GRIPPER OPENING = {measured * 100:.1f}%", flush=True)
+                    continue
+                if command in ("jaw", "gripper") and len(raw) == 2:
+                    self._set_gripper_fraction(_number(raw[1], 0., 100.) / 100.)
+                    continue
+                if command in ("open", "close"):
+                    amount = self.step_mm if len(raw) == 1 else _number(raw[1], .5, 100.)
+                    current = self._read_gripper_fraction()
+                    delta = amount / 100.0 * (1.0 if command == "open" else -1.0)
+                    self._set_gripper_fraction(max(0.0, min(1.0, current + delta)))
+                    continue
                 if command == "depth" and len(raw) == 2:
-                    depth = _number(raw[1], 0.001, 100.)
+                    depth = _number(raw[1], .001, 100.)
                     grasp = .100-depth/1000
-                    grip_verified = False
-                    print(f"Grasp clearance above calibrated surface: {grasp*1000:.1f} mm")
+                    self.last_grasp_clearance = grasp
+                    self.grasp_verified = False
+                    print(f"Grasp clearance above calibrated surface: {grasp*1000:.1f} mm", flush=True)
                     continue
                 if command == "place-config" and len(raw) == 5:
                     dx, dy = (_number(v, -50., 50.)/1000 for v in raw[1:3])
@@ -415,19 +703,18 @@ class PartSession:
                     if not self.history:
                         print("No adjustment to undo")
                         continue
-                    target, yaw = self.history[-1]
+                    target, old_yaw = self.history.pop()
                     self.move(target, slow=True)
-                    self.history.pop()
-                    changed_yaw = self.yaw != yaw
-                    self.yaw = yaw
-                    if changed_yaw:
-                        self.teach_feature(choose_goal=False)
+                    self.yaw = old_yaw
+                    self._invalidate_alignment("undo")
+                    self.frame("after undo")
                     continue
                 if command == "yaw" and len(raw) == 2:
                     yaw = _number(raw[1], -45., 45.)
                     target = Pose(current.position_m, _yaw_pose(self.runtime[3], yaw).quaternion_wxyz)
-                elif command in ("forward", "back", "left", "right") and len(raw) == 2:
-                    amount = _number(raw[1], .1, 30.)/1000
+                elif command in ("forward", "back", "left", "right") and len(raw) in (1, 2):
+                    amount = self.step_mm if len(raw) == 1 else _number(raw[1], .1, 30.)
+                    amount /= 1000.0
                     dx, dy = {"forward": (amount, 0), "back": (-amount, 0), "left": (0, amount), "right": (0, -amount)}[command]
                     x, y = current.position_m[0]+dx, current.position_m[1]+dy
                     if math.dist((x, y), self.coarse.position_m[:2]) > .060:
@@ -435,7 +722,7 @@ class PartSession:
                     target = Pose((x, y, self.surface(x, y)+.100), current.quaternion_wxyz)
                     yaw = self.yaw
                 else:
-                    print("Unknown command; use save, grab, depth N, yaw N, or a direction N.")
+                    print("Unknown command; use help, feature, goal, center, step N, jaw N, or a direction.")
                     continue
             except ValueError as exc:
                 print(exc)
@@ -443,11 +730,8 @@ class PartSession:
             self.move(target, slow=True)
             self.history.append((current, self.yaw))
             self.yaw = yaw
-            grip_verified = False
-            if command == "yaw":
-                self.teach_feature(choose_goal=False)
-            else:
-                self.frame("adjusted pose")
+            self._invalidate_alignment(f"{command} adjustment")
+            self.frame("after hover adjustment")
 
     def test(self, part, action, *, competition=False):
         self.part, self.action = part, action
@@ -461,6 +745,16 @@ class PartSession:
             self.status = "cancelled_before_grip"
             return 1
         self.grab(profile["grasp_clearance_m"])
+        if not competition:
+            confirmed = input(
+                "Did the selected part physically lift and remain held? Type yes or no: "
+            ).strip().lower() in ("y", "yes")
+            if not confirmed:
+                print("Pick not confirmed; type return to release it for inspection.", flush=True)
+                if input("return / exit: ").strip().lower() == "return":
+                    self.return_part(profile["grasp_clearance_m"])
+                self.status = "pick_not_confirmed"
+                return 2
         profile = dict(profile, grasp_verified=True)
         self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
         if action == "pick":

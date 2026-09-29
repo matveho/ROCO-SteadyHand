@@ -270,6 +270,42 @@ class TemplateTracker:
         self.uv = (float(x0+x+self.anchor[0]), float(y0+y+self.anchor[1]))
         return self.uv, score
 
+    def verify_selected(self, rgb, selected_uv, *, max_error_px=18.0):
+        """Verify that an operator's second click is the original feature.
+
+        Teaching uses two annotations: the first creates this tracker's patch,
+        and the second is supposed to identify that same patch after the jaws
+        have been aligned.  Temporarily searching around the second click with
+        the original patch rejects a different mark or a weak/ambiguous click
+        before the click can become a saved servo goal.
+        """
+        import math
+        point = tuple(float(v) for v in selected_uv)
+        if len(point) != 2 or not all(math.isfinite(v) for v in point):
+            raise ValueError("selected feature must contain two finite pixels")
+        if not (0 <= point[0] < self.shape[1] and 0 <= point[1] < self.shape[0]):
+            raise ValueError("selected feature is outside the wrist image")
+        previous = self.uv
+        self.uv = point
+        try:
+            located, score = self.locate(rgb)
+        except Exception:
+            self.uv = previous
+            raise RuntimeError(
+                "the second click could not be matched to the original feature; "
+                "capture another image and select the same distinctive feature"
+            )
+        error = math.dist(tuple(located), point)
+        if error > float(max_error_px):
+            self.uv = previous
+            raise RuntimeError(
+                "the second click does not identify the original feature "
+                f"(match is {error:.1f} px away); choose the same feature"
+            )
+        # Keep the tracker at the verified observation for the next servo run.
+        self.uv = tuple(float(v) for v in located)
+        return tuple(float(v) for v in located), float(score), float(error)
+
 
 def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
                  probe_m=0.012, gain=0.65, max_step_m=0.015, max_radius_m=0.06,
