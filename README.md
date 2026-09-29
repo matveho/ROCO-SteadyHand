@@ -47,6 +47,15 @@ contacts hardware and never claims physical success.
 
 See docs/ONSITE.md for the remaining repository-wide workflow notes.
 
+## Offline board annotation
+
+For a supervised initial/final photograph measurement workflow, use
+[`tools/board_annotation_tool.py`](tools/board_annotation_tool.py). It creates
+an audit project and a board-local `task_coordinates` export that can be
+reviewed before applying the existing live board calibration. The complete
+workflow and coordinate convention are documented in
+[`docs/BOARD_ANNOTATION_TOOL.md`](docs/BOARD_ANNOTATION_TOOL.md).
+
 
 ## Vega live stack
 
