@@ -213,12 +213,19 @@ class PartSession:
         # mirror image while option 6 appears correct because it uses an old
         # saved hover.
         teaching_task_data = dict(self.runtime[1])
-        teaching_frame_override = getattr(self.args, "mode", "calibrate") in ("calibrate", "drop")
+        # A fresh head image is still captured for board registration, but its
+        # generic dark-object association must not replace a verified physical
+        # wrist hover.  That association was the source of the mirrored
+        # competition target.  The reviewed task map shifts with the live
+        # board center; saved profiles remain authoritative for each part.
+        teaching_frame_override = getattr(self.args, "mode", "calibrate") in (
+            "calibrate", "drop", "test"
+        )
         if teaching_frame_override:
             teaching_task_data["task_coordinate_mirror_y"] = False
             print(
-                "TEACHING TARGET FRAME: validated physical orientation "
-                "(task_coordinate_mirror_y=false); competition saved poses unchanged.",
+                "WRIST TARGET FRAME: validated physical orientation "
+                "(task_coordinate_mirror_y=false); live part association disabled.",
                 flush=True,
             )
         self.targets = _task_targets(self.runtime, teaching_task_data, .100)
@@ -231,7 +238,7 @@ class PartSession:
         if teaching_frame_override:
             self.head_observations = {}
             print(
-                "TEACHING COARSE TARGETS: reviewed task map only; "
+                "WRIST COARSE TARGETS: reviewed task map only; "
                 "live part association disabled.",
                 flush=True,
             )
@@ -747,7 +754,13 @@ class PartSession:
                 self.head_observations.get(part, {}).get("selection")
                 == "head_detection"
             )
-            if self.calibration_hash_mismatch or detected_live_xy:
+            if competition and recorded is not None:
+                # Competition must preserve the physically taught hover.  A
+                # live board target is only a bounded fallback if that exact
+                # saved pose cannot be reached.
+                candidates = (("recorded arm hover", recorded),
+                              ("live reviewed task target fallback", coarse))
+            elif self.calibration_hash_mismatch or detected_live_xy:
                 candidates = (("live head-camera target", coarse),
                               ("recorded arm hover fallback", recorded))
             else:
