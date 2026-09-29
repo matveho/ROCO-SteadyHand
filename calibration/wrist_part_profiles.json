@@ -5,7 +5,7 @@
   "working_arm": "right",
   "tcp_frame": "tip_r",
   "wrist_camera": "wrist_a",
-  "generated_at_utc": "2026-09-12T17:30:09.109146+00:00",
+  "generated_at_utc": "2026-09-12T17:59:42.343940+00:00",
   "parts": {
     "battery_size1": {
       "part": "battery_size1",
@@ -446,6 +446,66 @@
         "gripped": true
       },
       "created_at_utc": "2026-09-12T15:19:32.862899+00:00"
+    },
+    "gear_20teeth": {
+      "part": "gear_20teeth",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.583771427403971,
+        -0.07236894300032215
+      ],
+      "feature_uv": [
+        921.0,
+        773.0
+      ],
+      "goal_uv": [
+        928.0,
+        676.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        928.0,
+        676.0
+      ],
+      "goal_match_score": 0.9600813388824463,
+      "goal_click_match_error_px": 0.0,
+      "reference_match_score": 1.0,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        927.0,
+        677.0
+      ],
+      "final_match_score": 0.9551112055778503,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.0050000000000000044,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.15000747687509344,
+      "place": null,
+      "grasp_verified": true,
+      "place_verified": false,
+      "template": {
+        "path": "calibration/wrist_templates/gear_20teeth_1789235982341767810.png",
+        "sha256": "1f8e32ab1b9bb44c087b02f859657eaf0e7b643d7f17f84cf4fcf4b530e293a6",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": -1050.48,
+        "peak_current": 1.14,
+        "stopped_by": "current",
+        "position": 0.04723462434043278,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T17:59:42.343433+00:00"
     }
   }
 }
