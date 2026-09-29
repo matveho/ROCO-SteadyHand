@@ -138,6 +138,27 @@ if [ -n "$DIRTY" ]; then
 fi
 
 git -C "$LIVE" fetch --force "$BUNDLE" main:refs/remotes/deploy/main
+
+# Calibration/profile artifacts were historically untracked on the Jetson.
+# They are now versioned in the laptop repository. Preserve any old untracked
+# copy before checkout so Git can materialize the canonical tracked file
+# instead of refusing with "untracked working tree files would be overwritten".
+# Nothing outside an incoming tracked path is removed.
+MIGRATION_BACKUP="/home/dexmate/roco_untracked_before_deploy_$(date -u +%Y%m%dT%H%M%SZ)"
+MIGRATION_COUNT=0
+while IFS= read -r PATHNAME; do
+    [ -n "$PATHNAME" ] || continue
+    if [ -e "$LIVE/$PATHNAME" ] && ! git -C "$LIVE" ls-files --error-unmatch -- "$PATHNAME" >/dev/null 2>&1; then
+        mkdir -p "$MIGRATION_BACKUP/$(dirname "$PATHNAME")"
+        cp -a "$LIVE/$PATHNAME" "$MIGRATION_BACKUP/$PATHNAME"
+        rm -rf -- "$LIVE/$PATHNAME"
+        MIGRATION_COUNT=$((MIGRATION_COUNT + 1))
+    fi
+done < <(git -C "$LIVE" ls-tree -r --name-only refs/remotes/deploy/main)
+if [ "$MIGRATION_COUNT" -gt 0 ]; then
+    echo "PRESERVED $MIGRATION_COUNT old untracked paths in $MIGRATION_BACKUP"
+fi
+
 git -C "$LIVE" checkout -B main refs/remotes/deploy/main
 
 ACTUAL="$(git -C "$LIVE" rev-parse HEAD)"
