@@ -15,8 +15,8 @@
   "default_action": "pick_place",
   "pipeline_speed_scale": 0.38,
   "task_clearance_mm": 100.0,
-  "max_retries_per_part": 1,
-  "retry_policy": "operator_confirmed_only",
-  "notes": "Successful pick_place earns both stages when the part is grasped and released. A failed action never retries blindly; inspect the gripper/part and choose retry, skip, or stop. Reorder this list only after physical evidence. Menu option 8 reloads this file while the menu is running.",
+  "max_retries_per_part": 2,
+  "retry_policy": "automatic_bounded",
+  "notes": "Competition actions retry automatically up to the configured bound and continue to the next eligible part after a clean failure. A possible held-part state remains a hard stop. Reorder this list only after physical evidence. Menu option 8 reloads this file while the menu is running.",
   "pick_only_note": "Pick-only actions retain the part and cannot be chained across parts. Use them for individual validation; the scoring plan uses pick_place so the hand is freed for the next part."
 }

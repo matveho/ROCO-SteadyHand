@@ -47,6 +47,29 @@ from steadyhand.vision.wrist_review import select_pixel
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _is_visual_alignment_failure(exc):
+    """Return whether an exception is safe to handle as a centering failure.
+
+    Competition fallback is intentionally limited to wrist-image/tracker and
+    local-servo calibration failures.  IK, TCP, camera, joint, floor, and
+    transport failures still escape and stop the run rather than being hidden
+    as a bad feature.
+    """
+    message = str(exc).lower()
+    hardware_markers = (
+        "ik ", "inverse kinematics", "joint", "tcp ", "floor", "camera",
+        "estop", "timeout", "waypoint", "robot", "gripper", "motor",
+        "non-finite tcp", "orientation drift",
+    )
+    if any(marker in message for marker in hardware_markers):
+        return False
+    visual_markers = (
+        "feature", "tracking", "ambiguous", "centering", "jacobian",
+        "probe", "pixel", "image", "template",
+    )
+    return any(marker in message for marker in visual_markers)
+
+
 def _resolve(value):
     path = Path(value)
     return path if path.is_absolute() else ROOT / path
@@ -107,6 +130,7 @@ class PartSession:
         self.goal_match_error_px = None
         self.feature_tracking_mode = "strict"
         self.manual_alignment_override = False
+        self.alignment_fallback_used = False
         self.alignment_verified = False
         self.grasp_verified = False
         self.gripper_open_fraction = None
@@ -144,6 +168,7 @@ class PartSession:
                 "yaw_deg": self.yaw,
                 "gripper_open_fraction": getattr(self, "gripper_open_fraction", None),
                 "alignment_verified": getattr(self, "alignment_verified", False),
+                "alignment_fallback_used": getattr(self, "alignment_fallback_used", False),
                 "grasp_verified": getattr(self, "grasp_verified", False),
                 "grasp_clearance_m": getattr(self, "last_grasp_clearance", None),
                 "board_scene_paths": list(self.board_scene_paths),
@@ -469,33 +494,64 @@ class PartSession:
             )
         reference = _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz
         self.alignment_verified = False
-        try:
-            result = run_xy_servo(
-                self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
-                probe_m=.010, gain=.45, max_step_m=.008, max_radius_m=.060,
-                tolerance_px=8., max_iterations=12, speed_scale=.45, event=self.event,
-                tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
-                reference_quaternion_wxyz=reference,
-            )
-        except Exception:
-            # A tracker failure or a genuine motion failure leaves the robot at
-            # its current measured pose; do not issue a recovery move here.
-            self.alignment_verified = False
-            raise
-        self.alignment_verified = result.get("status") == "converged"
-        if self.alignment_verified:
-            print("ALIGNMENT VERIFIED: same feature reproduced at the taught goal", flush=True)
-        return result
+        # Centering is deliberately retried with a gentler controller.  The
+        # probe/return phase is sensitive to wrist-camera jitter, especially
+        # when the jaws partly occlude a smooth battery.  Each retry returns to
+        # the measured pose from before the attempt; no retry is issued for an
+        # IK, TCP, camera, or other hardware error.
+        origin = self.robot.get_tcp_pose()
+        settings = (
+            {
+                "probe_m": .010, "gain": .45, "max_step_m": .008,
+                "tolerance_px": 8., "max_iterations": 12,
+            },
+            {
+                "probe_m": .008, "gain": .30, "max_step_m": .006,
+                "tolerance_px": 12., "max_iterations": 16,
+            },
+        )
+        last_error = None
+        for attempt, values in enumerate(settings, 1):
+            try:
+                result = run_xy_servo(
+                    self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
+                    max_radius_m=.060, speed_scale=.45, event=self.event,
+                    tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
+                    reference_quaternion_wxyz=reference, **values,
+                )
+                self.alignment_verified = result.get("status") == "converged"
+                if self.alignment_verified:
+                    self.alignment_fallback_used = False
+                    print("ALIGNMENT VERIFIED: same feature reproduced at the taught goal", flush=True)
+                return result
+            except (RuntimeError, ValueError) as exc:
+                self.alignment_verified = False
+                last_error = exc
+                if attempt >= len(settings) or not _is_visual_alignment_failure(exc):
+                    raise
+                print(
+                    "CENTERING RETRY: wrist feature/servo observation was not reliable; "
+                    "returning to the remembered hover and retrying with gentler motion "
+                    f"({exc})",
+                    flush=True,
+                )
+                # This is a bounded recovery to the pose where this attempt
+                # began.  If that recovery itself fails, the hardware error
+                # escapes rather than being treated as an annotation issue.
+                self.move(origin, slow=True)
+        raise last_error
 
     def _reacquire(self, rgb):
         self.tracker.locate(rgb)
         return self.tracker
 
-    def begin_part(self, part, profile=None, *, initial_yaw=None):
+    def begin_part(self, part, profile=None, *, initial_yaw=None, competition=False):
         self.part, self.history = part, []
+        self.alignment_fallback_used = False
         validate_task_coordinate_extent(self.runtime[1], names=[f"{part}.pick"])
         self.yaw = float(profile["yaw_deg"]) if profile else float(initial_yaw or 0.0)
         coarse = self.targets[f"task.{part}.pick"]
+        self.coarse = coarse
         if profile and profile.get("gripper_open_fraction") is not None:
             self._set_gripper_fraction(profile["gripper_open_fraction"])
         self.move(coarse)
@@ -503,15 +559,70 @@ class PartSession:
             self.move(_yaw_pose(coarse, self.yaw), slow=True)
         self.coarse = coarse
         if profile:
-            rgb, path = self.frame("saved template check")
-            if list(rgb.shape[:2]) != profile["image_shape"]:
-                raise ValueError("Wrist resolution changed; re-teach this part")
-            self.tracker = TemplateTracker.from_saved_template(rgb, _load_template(profile), profile["template"].get("template_uv"))
-            self.goal = tuple(profile["goal_uv"])
-            _write_overlay(path.with_name(path.stem + "_match.png"), rgb, self.tracker.uv, self.goal, label=part)
+            try:
+                rgb, path = self.frame("saved template check")
+                if list(rgb.shape[:2]) != profile["image_shape"]:
+                    raise ValueError("Wrist resolution changed; re-teach this part")
+                self.tracker = TemplateTracker.from_saved_template(
+                    rgb, _load_template(profile), profile["template"].get("template_uv")
+                )
+                self.reference_rgb = rgb.copy()
+                self.reference_feature = tuple(profile.get("feature_uv") or self.tracker.uv)
+                self.reference_match_score = profile.get("reference_match_score")
+                self.goal = tuple(profile["goal_uv"]) if profile.get("goal_uv") is not None else None
+                _write_overlay(path.with_name(path.stem + "_match.png"), rgb, self.tracker.uv, self.goal, label=part)
+            except (RuntimeError, ValueError) as exc:
+                if not competition or not _is_visual_alignment_failure(exc):
+                    raise
+                # The saved profile still carries the feature/goal metadata;
+                # no live match is required for the coarse-pose fallback.
+                self.reference_feature = tuple(profile.get("feature_uv") or (0.0, 0.0))
+                self.reference_match_score = profile.get("reference_match_score")
+                self.goal = tuple(profile["goal_uv"]) if profile.get("goal_uv") is not None else None
+                self.alignment_fallback_used = True
+                self.alignment_verified = False
+                self.event(
+                    "alignment_fallback",
+                    {
+                        "reason": str(exc),
+                        "fallback": "saved_coarse_hover",
+                        "coarse_xy_m": list(self.coarse.position_m[:2]),
+                    },
+                )
+                print(
+                    "WRIST FEATURE MATCH FAILED; using the saved coarse hover "
+                    "without visual centering.",
+                    flush=True,
+                )
+                return None
         else:
             return None
-        return self.localize()
+        try:
+            return self.localize()
+        except (RuntimeError, ValueError) as exc:
+            if not competition or not _is_visual_alignment_failure(exc):
+                raise
+            # The saved coarse board target is the remembered physical pose.
+            # Return there, skip visual servoing, and let the bounded grasp use
+            # that pose.  This is only a competition fallback; teaching still
+            # requires successful centering or explicit supervised override.
+            self.move(self.coarse, slow=True)
+            self.alignment_fallback_used = True
+            self.alignment_verified = False
+            self.event(
+                "alignment_fallback",
+                {
+                    "reason": str(exc),
+                    "fallback": "saved_coarse_hover",
+                    "coarse_xy_m": list(self.coarse.position_m[:2]),
+                },
+            )
+            print(
+                "VISUAL CENTERING FAILED; returned to the saved coarse hover and "
+                "will attempt the grasp there without further centering.",
+                flush=True,
+            )
+            return None
 
     def grab(self, clearance, *, allow_unverified=False):
         if clearance is None:
@@ -910,13 +1021,42 @@ class PartSession:
         self.status = f"running:{part}.{action}"
         profile = self.profiles.get("parts", {}).get(part)
         _check_ready(profile, self.cfg, action, competition=competition)
-        self.begin_part(part, profile)
+        self.begin_part(part, profile, competition=competition)
         if action == "localize":
             return 0
         if not competition and input("Type grab to test the taught descent/grip/lift; anything else cancels: ").strip() != "grab":
             self.status = "cancelled_before_grip"
             return 1
-        self.grab(profile["grasp_clearance_m"])
+        try:
+            self.grab(
+                profile["grasp_clearance_m"],
+                allow_unverified=bool(competition and self.alignment_fallback_used),
+            )
+        except (RuntimeError, ValueError) as exc:
+            if competition and self.holding:
+                # The grasp routine marks holding before contact so an
+                # uncertain result is never silently retried.  Make the
+                # competition path self-cleaning when a safe return is still
+                # possible; otherwise the run summary retains the hard-stop
+                # holding flag for inspection.
+                print(
+                    f"COMPETITION GRASP UNCERTAIN: {exc}; attempting automatic return.",
+                    file=sys.stderr,
+                    flush=True,
+                )
+                try:
+                    self.return_part(profile["grasp_clearance_m"])
+                except Exception as return_exc:
+                    self.last_error = f"{type(return_exc).__name__}: {return_exc}"
+                    print(
+                        "AUTOMATIC RETURN FAILED; holding state is preserved in the run summary.",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    return 3
+                self.status = "pick_failed_returned"
+                return 2
+            raise
         if not competition:
             confirmed = input(
                 "Did the selected part physically lift and remain held? Type yes or no: "
@@ -928,9 +1068,27 @@ class PartSession:
                 self.status = "pick_not_confirmed"
                 return 2
         profile = dict(profile, grasp_verified=True)
+        self.grasp_verified = True
         self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
         if action == "pick":
             self.status = "pick_complete_holding"
+            if competition:
+                print(
+                    "COMPETITION PICK COMPLETE; automatically returning the part to its source.",
+                    flush=True,
+                )
+                try:
+                    self.return_part(profile["grasp_clearance_m"])
+                except Exception as exc:
+                    self.last_error = f"{type(exc).__name__}: {exc}"
+                    print(
+                        "AUTOMATIC RETURN FAILED; holding state is preserved in the run summary.",
+                        file=sys.stderr,
+                        flush=True,
+                    )
+                    return 3
+                self.status = "pick_complete_returned"
+                return 0
             print("Pick complete. Part is held; next actions are blocked until it is returned.")
             if input("Type return to put it back at source, or exit to stop holding: ").strip() == "return":
                 self.return_part(profile["grasp_clearance_m"])

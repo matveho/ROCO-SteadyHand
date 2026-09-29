@@ -627,12 +627,13 @@ def _sequence_indices(raw, available=None):
 
 
 def _run_competition_action(args, part, action, *, retries=0):
-    """Run one gated action with bounded, operator-confirmed recovery.
+    """Run one gated action with automatic, bounded recovery.
 
-    A nonzero result is never retried automatically.  The operator must
-    inspect the robot and explicitly choose one retry; a result of 3 is
-    treated as a possible held-part state and therefore cannot be retried by
-    this helper.
+    Competition execution is deliberately non-interactive after launch: a
+    transient visual/IK setup failure is retried automatically, then the part
+    is recorded as skipped so the next eligible part can be attempted.  A
+    run that may still be holding a part remains a hard stop because issuing
+    another grasp would be unsafe.
     """
     command = [
         "--part", part, "--mode", "test", "--action", action,
@@ -690,19 +691,19 @@ def _run_competition_action(args, part, action, *, retries=0):
             )
             return result
         if attempt > retries:
-            print(f"FAILED {part}.{action}; retry budget exhausted.", file=sys.stderr, flush=True)
-            return result
-        answer = input(
-            f"{part}.{action} failed. Inspect that the gripper is empty and the board is stable; "
-            "[r]etry once / [s]kip part / [e]nd run: "
-        ).strip().lower()
-        if answer in ("r", "retry", "yes", "y"):
-            continue
-        if answer in ("s", "skip"):
-            print(f"SKIPPED {part}.{action} after operator inspection.", flush=True)
+            print(
+                f"FAILED {part}.{action}; automatic retry budget exhausted; continuing.",
+                file=sys.stderr,
+                flush=True,
+            )
             return -1
-        print("Competition run stopped by operator.", flush=True)
-        return result
+        print(
+            f"AUTOMATIC RETRY {part}.{action}: attempt {attempt + 1} of {retries + 1}",
+            flush=True,
+        )
+        # Keep retries distinct in the robot log without requiring operator
+        # input.  Do not sleep after a held-part stop (handled above).
+        time.sleep(0.25)
 
 
 def _profile_ready_for_action(profiles, part, action):

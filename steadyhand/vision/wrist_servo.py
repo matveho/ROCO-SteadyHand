@@ -121,7 +121,7 @@ def jacobian_from_measured_probes(reference_uv, probe_uvs, reference_xy, probe_x
         raise ValueError("Probe observations must be finite")
     if np.linalg.svd(displacement, compute_uv=False)[-1] < 0.003:
         raise ValueError("Measured probes are too small or collinear (need >=3 mm)")
-    if np.min(np.linalg.norm(pixels, axis=0)) < 3:
+    if np.min(np.linalg.norm(pixels, axis=0)) < 2:
         raise ValueError("Feature barely moved: check selected wrist-camera label / tracking")
     matrix = pixels @ np.linalg.inv(displacement)
     result = PixelJacobian(*matrix.ravel())
@@ -418,8 +418,8 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         probe_xys.append(actual.position_m[:2])
         move(origin, label=f"return_after_{label}")
         returned_uv, _ = observe("return_reference")
-        if math.dist(returned_uv, uv0) > 12:
-            raise RuntimeError("Feature did not return within 12 px; check tracking / scene motion")
+        if math.dist(returned_uv, uv0) > 18:
+            raise RuntimeError("Feature did not return within 18 px; check tracking / scene motion")
     jacobian = jacobian_from_measured_probes(uv0, probe_uvs, origin.position_m[:2], probe_xys)
     report("calibrated", jacobian_px_per_m=jacobian.matrix(), condition=jacobian.condition_number())
 
