@@ -170,8 +170,82 @@ class TemplateTracker:
         self.template = gray[v-r:v+r+1, u-r:u+r+1].copy()
         if float(self.template.std()) < 5:
             raise ValueError("Feature patch is textureless; select a corner/mark")
+        self.anchor = (float(r), float(r))
         self.uv = (float(u), float(v))
         self.locate(rgb)  # Reject an ambiguous initial patch before probing.
+
+    @classmethod
+    def from_saved_template(
+        cls,
+        rgb,
+        template_rgb,
+        template_uv=None,
+        *,
+        search_radius=180,
+        min_score=0.75,
+        min_margin=0.06,
+    ):
+        """Initialize from a taught part patch and locate it globally once.
+
+        A profile template is deliberately small and can retain visible board
+        edges around a partially covered part. The first match is global;
+        subsequent frames use the normal bounded local tracker. Ambiguous or
+        weak matches still stop before motion.
+        """
+        import cv2
+        import numpy as np
+
+        obj = cls.__new__(cls)
+        obj.cv2, obj.np = cv2, np
+        obj.radius = 20
+        obj.search_radius = int(search_radius)
+        obj.min_score = float(min_score)
+        obj.min_margin = float(min_margin)
+        gray = obj._gray(rgb)
+        template_gray = obj._gray(np.asarray(template_rgb, dtype=np.uint8))
+        if template_gray.ndim != 2 or min(template_gray.shape) < 8:
+            raise ValueError("saved wrist template is too small")
+        obj.shape = gray.shape
+        obj.template = template_gray.copy()
+        obj.radius = max(4, min(template_gray.shape) // 2)
+        if float(template_gray.std()) < 5:
+            raise ValueError("Saved feature patch is textureless")
+        if any(t > g for t, g in zip(template_gray.shape, gray.shape)):
+            raise ValueError("Saved feature patch is larger than wrist image")
+        obj.anchor = tuple(float(v) for v in (
+            template_uv if template_uv is not None
+            else ((template_gray.shape[1] - 1) / 2.0, (template_gray.shape[0] - 1) / 2.0)
+        ))
+        if (len(obj.anchor) != 2 or not all(math.isfinite(v) for v in obj.anchor)
+                or not 0 <= obj.anchor[0] < template_gray.shape[1]
+                or not 0 <= obj.anchor[1] < template_gray.shape[0]):
+            raise ValueError("Saved feature anchor is outside template")
+        obj._locate_global(rgb)
+        return obj
+
+    def _validate_match(self, scores, score, x, y, *, exclusion):
+        alternatives = scores.copy()
+        alternatives[max(0, y-exclusion):y+exclusion+1,
+                     max(0, x-exclusion):x+exclusion+1] = -1
+        margin = score - float(alternatives.max())
+        if not math.isfinite(score) or score < self.min_score or margin < self.min_margin:
+            raise RuntimeError(
+                f"Feature lost/ambiguous: score={score:.3f}, margin={margin:.3f}"
+            )
+        return float(score), float(margin)
+
+    def _locate_global(self, rgb):
+        gray = self._gray(rgb)
+        if gray.shape != self.shape:
+            raise ValueError("Wrist image size changed during servo")
+        scores = self.cv2.matchTemplate(gray, self.template, self.cv2.TM_CCOEFF_NORMED)
+        _, score, _, (x, y) = self.cv2.minMaxLoc(scores)
+        score, _ = self._validate_match(
+            scores, float(score), int(x), int(y),
+            exclusion=max(4, min(self.template.shape) // 4),
+        )
+        self.uv = (float(x + self.anchor[0]), float(y + self.anchor[1]))
+        return self.uv, score
 
     def _gray(self, rgb):
         array = self.np.asarray(rgb)
@@ -190,21 +264,18 @@ class TemplateTracker:
         scores = self.cv2.matchTemplate(gray[y0:y1, x0:x1], self.template,
                                         self.cv2.TM_CCOEFF_NORMED)
         _, score, _, (x, y) = self.cv2.minMaxLoc(scores)
-        alternatives = scores.copy()
-        exclusion = max(4, r//2)
-        alternatives[max(0,y-exclusion):y+exclusion+1,
-                     max(0,x-exclusion):x+exclusion+1] = -1
-        margin = score - float(alternatives.max())
-        if not math.isfinite(score) or score < self.min_score or margin < self.min_margin:
-            raise RuntimeError(f"Feature lost/ambiguous: score={score:.3f}, margin={margin:.3f}")
-        self.uv = (float(x0+x+r), float(y0+y+r))
-        return self.uv, float(score)
+        score, _ = self._validate_match(
+            scores, float(score), int(x), int(y), exclusion=max(4, r//2)
+        )
+        self.uv = (float(x0+x+self.anchor[0]), float(y0+y+self.anchor[1]))
+        return self.uv, score
 
 
 def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
                  probe_m=0.012, gain=0.65, max_step_m=0.015, max_radius_m=0.06,
                  tolerance_px=5.0, max_iterations=8, speed_scale=0.45,
-                 tracker_factory=TemplateTracker, event=None):
+                 tracker_factory=TemplateTracker, event=None,
+                 surface_z=None, reference_quaternion_wxyz=None):
     """Calibrate and center at the current hover pose; never descend or grip.
 
     capture_rgb must return a fresh post-motion image. Robot motion calls must
@@ -233,16 +304,25 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         raise ValueError("Non-finite live TCP pose")
     if z < floor_m + 0.06:
         raise ValueError("Wrist servo requires at least 60 mm clearance above TCP floor")
-    if quaternion_to_matrix(quat)[2][2] < math.cos(0.12):
+    if reference_quaternion_wxyz is not None:
+        if quaternion_angle(quat, reference_quaternion_wxyz) > 0.025:
+            raise ValueError("TCP does not match the measured ready/yaw orientation")
+    elif quaternion_to_matrix(quat)[2][2] < math.cos(0.12):
         raise ValueError("TCP is not in the corrected vertical tip_r orientation; use --move-to-board")
 
+    def commanded_z(x, y):
+        if surface_z is None:
+            return z
+        return z + float(surface_z(x, y)) - float(surface_z(*origin.position_m[:2]))
+
     def target(dx, dy):
-        return Pose((origin.position_m[0]+dx, origin.position_m[1]+dy, z), quat)
+        x, y = origin.position_m[0]+dx, origin.position_m[1]+dy
+        return Pose((x, y, commanded_z(x, y)), quat)
 
     def check_pose(pose):
         if not all(math.isfinite(v) for v in pose.position_m):
             raise RuntimeError("Non-finite TCP readback")
-        if abs(pose.position_m[2]-z) > 0.004 or quaternion_angle(pose.quaternion_wxyz, quat) > 0.025:
+        if abs(pose.position_m[2]-commanded_z(*pose.position_m[:2])) > 0.004 or quaternion_angle(pose.quaternion_wxyz, quat) > 0.025:
             raise RuntimeError("TCP Z/orientation drifted; local image calibration no longer valid")
         if math.dist(pose.position_m[:2], origin.position_m[:2]) > max_radius_m + 0.003:
             raise RuntimeError("Measured TCP left the local servo radius")
@@ -331,7 +411,8 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
             raise RuntimeError(f"Not centered after {max_iterations} corrections: {magnitude:.1f} px")
         dx, dy = jacobian.base_delta_for_pixel_error(error, gain=gain, max_step_m=max_step_m)
         correction_target = Pose(
-            (actual.position_m[0]+dx, actual.position_m[1]+dy, z),
+            (actual.position_m[0]+dx, actual.position_m[1]+dy,
+             commanded_z(actual.position_m[0]+dx, actual.position_m[1]+dy)),
             quat,
         )
         report(

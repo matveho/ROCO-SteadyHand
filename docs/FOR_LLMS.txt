@@ -239,6 +239,42 @@ The repository has only `calibration/battery_size1_grasp.template.json`; no
 physical jaw goal or grasp height has yet been accepted. No battery pick/place
 success is claimed by this handoff.
 
+Wrist part teaching and final pipeline menu:
+  `tools/vega_wrist_part_calibrate.py` is the shared right-arm workflow for
+  all nine confirmed parts. It captures a fresh board image, returns to
+  RIGHT_READY, reaches the selected board task hover, captures `wrist_a`, and
+  uses a bounded measured-Jacobian servo. The operator selects a visible
+  textured feature and the desired jaw-alignment pixel, then may use:
+  `forward N`, `back N`, `left N`, `right N` (mm), `yaw N` (degrees),
+  `center`, `image`, `feature`, `depth N` (mm below the 100 mm hover),
+  `grab`, `return`, `place-config X Y DEPTH YAW`, `undo`, `save`, `abort`.
+  `grab` is the only path that opens/descends/grips. The tool validates every
+  Cartesian segment with IK before issuing its first waypoint and stops on an
+  unverified grip. Profiles are stored in
+  `calibration/wrist_part_profiles.json`; immutable image templates and board
+  calibration hashes prevent stale or cross-robot use.
+
+The main pipeline menu is now:
+  1 recalibrate board; 2 fresh-image location tests; 3 wrist-camera teaching;
+  4 individual pick/pick-place task tests; 5 selected competition sequence;
+  6 preserved legacy task versions; 0 exit. Direct forms are
+  `--wrist-calibrate PART`, `--task-test PART.pick|PART.pick_place`, and
+  `--competition-sequence 1-5,8,9`. Competition sequence entries require a
+  profile with verified grasp (and verified place for pick-place); teaching and
+  individual tests stay separate so a failed trial cannot silently become a
+  competition action. A test/sequence always re-captures the board and then
+  goes to RIGHT_READY; no manual claw teaching is expected.
+
+The confirmed part order/identities are:
+  `gear_60teeth`, `gear_20teeth`, `usb_a`, `hdmi`, `pin`, `bolt_8mm`,
+  `rod_16mm`, `battery_size1` (large cylinder), `battery_size5` (slim
+  cylinder). `tools/vega_wrist_part_offline_demo.py` runs the same saved-patch
+  tracker on the supplied overhead image and writes clean/occluded overlays;
+  this is only an offline detector sanity check. The attached wrist reference
+  is severe fisheye with the gripper/fixture in frame, so live profiles must
+  be taught from the actual `wrist_a` view. Weak or ambiguous matches stop
+  before motion rather than guessing through a gripper occlusion.
+
 8. FILE MAP
 -----------
 Core runtime:
@@ -252,12 +288,21 @@ Core runtime:
   `steadyhand/vega_presets.py` — configured right-arm presets.
   `steadyhand/vision/scene.py` — live head board/part scene.
   `steadyhand/vision/task_parts.py` — rectification and count-agnostic parts.
-  `steadyhand/vision/wrist_servo.py` — bounded measured-Jacobian servo.
+  `steadyhand/vision/wrist_servo.py` — bounded measured-Jacobian servo,
+    surface-following Z and saved-template confidence gates.
+  `steadyhand/vision/wrist_review.py` — optional zoom/pan pixel selector;
+    Ctrl+Z undoes the last mark.
+  `steadyhand/wrist_part_profiles.py` — versioned per-part wrist/grasp/place
+    provenance and atomic JSON persistence.
 
 Calibration/operation tools:
   `vega_board_five_point_calibrate.py` — canonical five-point live calibration.
   `vega_board_manual_calibrate.py` — lower-level supervised ready/jog route.
   `vega_competition_pipeline.py` — menu, direct actions, recovery, task list.
+  `vega_wrist_part_calibrate.py` — onsite wrist feature, grasp and place
+    teaching/testing for every confirmed part.
+  `vega_wrist_part_offline_demo.py` — no-hardware clean/occlusion tracker
+    demonstration using the annotated overhead board photo.
   `vega_task_coordinate_reachability.py` — offline target/IK preflight.
   `vega_task_geometry_audit.py` — no-hardware audit of every pick/place/
     connect/grade target, fitted surface Z, hover Z, floor margin, and board
