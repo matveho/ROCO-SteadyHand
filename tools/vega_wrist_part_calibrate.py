@@ -104,6 +104,7 @@ class PartSession:
         self.reference_match_score = None
         self.goal_match_score = None
         self.goal_match_error_px = None
+        self.feature_tracking_mode = "strict"
         self.alignment_verified = False
         self.grasp_verified = False
         self.gripper_open_fraction = None
@@ -264,16 +265,47 @@ class PartSession:
         while True:
             rgb, path = self.frame("select a visible part feature, not the gripper")
             feature = self.select(rgb, path, "Select a distinctive textured feature ON the selected part")
+            self.feature_tracking_mode = "strict"
             try:
                 tracker = TemplateTracker(rgb, feature)
                 _, score = tracker.locate(rgb)
             except (ValueError, RuntimeError) as exc:
-                print(
-                    "FEATURE REJECTED: this feature is weak or ambiguous; "
-                    f"capture another image and choose a different feature ({exc})",
-                    flush=True,
-                )
-                continue
+                # Some valid part features have several nearly identical
+                # nearby patches (smooth batteries and gear teeth are common
+                # examples). Keep strict matching as the default, but accept
+                # an operator-selected high-score patch in a bounded local
+                # mode. The click-distance check plus the servo probe/return
+                # gates still stop if the tracker drifts.
+                message = str(exc).lower()
+                tracker = None
+                if isinstance(exc, RuntimeError) and "lost/ambiguous" in message:
+                    try:
+                        candidate = TemplateTracker(
+                            rgb,
+                            feature,
+                            search_radius=80,
+                            min_margin=0.0,
+                        )
+                        located, score = candidate.locate(rgb)
+                        click_error = math.dist(tuple(located), tuple(feature))
+                        if float(score) >= 0.90 and click_error <= 12.0:
+                            tracker = candidate
+                            self.feature_tracking_mode = "operator_local"
+                            print(
+                                "FEATURE ACCEPTED IN LOCAL MODE: "
+                                f"score={float(score):.3f}, click_error={click_error:.1f}px; "
+                                "probe/return checks remain enabled",
+                                flush=True,
+                            )
+                    except (ValueError, RuntimeError):
+                        tracker = None
+                if tracker is None:
+                    print(
+                        "FEATURE REJECTED: this feature is weak or ambiguous; "
+                        f"capture another image and choose a different feature ({exc})",
+                        flush=True,
+                    )
+                    continue
             self.tracker = tracker
             # Preserve the pre-servo reference: a final aligned frame may
             # contain the jaw over the part and is a poor global template.
@@ -293,7 +325,11 @@ class PartSession:
             )
             self.event(
                 "reference_feature",
-                {"feature_uv": self.reference_feature, "score": self.reference_match_score},
+                {
+                    "feature_uv": self.reference_feature,
+                    "score": self.reference_match_score,
+                    "tracking_mode": self.feature_tracking_mode,
+                },
             )
             print(
                 "REFERENCE FEATURE ACCEPTED:",
@@ -572,6 +608,7 @@ class PartSession:
                     "goal_match_score": self.goal_match_score,
                     "goal_click_match_error_px": self.goal_match_error_px,
                     "reference_match_score": self.reference_match_score,
+                    "feature_tracking_mode": self.feature_tracking_mode,
                     "final_match_uv": list(feature), "final_match_score": float(final_score),
                     "image_shape": list(self.reference_rgb.shape[:2]),
                     "hover_clearance_m": .100, "grasp_clearance_m": grasp, "yaw_deg": self.yaw,
