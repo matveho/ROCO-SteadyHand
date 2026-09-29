@@ -5,7 +5,7 @@
   "board_motion_model": "horizontal_translation_only_fixed_table_plane",
   "task_coordinate_rotation_deg": 180.0,
   "task_coordinate_mirror_x": false,
-  "task_coordinate_mirror_y": false,
+  "task_coordinate_mirror_y": true,
   "clearance_m": 0.1,
   "hard_floor_m": 0.4560002716867571,
   "calibration_path": "/home/sharpa/Documents/ChatGPT/SteadyHand/repository-audit/calibration/vega_board_manual.json",
@@ -20,19 +20,19 @@
         0.0
       ],
       "board_relative_xy_m": [
-        0.10175638746450662,
-        -0.14394480474253346
+        0.10175638746450665,
+        0.14394480474253346
       ],
       "base_xy_m": [
-        0.5847007528628716,
-        -0.13758821004359337
+        0.29682828223790914,
+        -0.1407295323359491
       ],
-      "surface_z_m": 0.46172197829654094,
-      "hover_z_m": 0.5617219782965409,
+      "surface_z_m": 0.5243495305989813,
+      "hover_z_m": 0.6243495305989812,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.1057217066097838,
-      "surface_distance_from_floor_m": 0.005721706609783828,
-      "distance_from_board_center_m": 0.17627952008725484,
+      "hover_distance_above_floor_m": 0.16834925891222413,
+      "surface_distance_from_floor_m": 0.06834925891222415,
+      "distance_from_board_center_m": 0.17627952008725487,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
@@ -47,18 +47,18 @@
         0.0
       ],
       "board_relative_xy_m": [
-        -0.04937979325457699,
-        -0.1140682911916755
+        -0.04937979325457696,
+        0.1140682911916755
       ],
       "base_xy_m": [
-        0.5531768877277154,
-        0.01321297400761556
+        0.325053886942454,
+        0.010723649946130651
       ],
-      "surface_z_m": 0.4693554131510961,
-      "hover_z_m": 0.5693554131510961,
+      "surface_z_m": 0.5187542303135436,
+      "hover_z_m": 0.6187542303135436,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.11335514146433895,
-      "surface_distance_from_floor_m": 0.013355141464338971,
+      "hover_distance_above_floor_m": 0.1627539586267865,
+      "surface_distance_from_floor_m": 0.06275395862678651,
       "distance_from_board_center_m": 0.1242977837181888,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -74,19 +74,19 @@
         0.0
       ],
       "board_relative_xy_m": [
-        0.03913671729717057,
-        -0.11030959336322166
+        0.039136717297170595,
+        0.11030959336322166
       ],
       "base_xy_m": [
-        0.5503842661259496,
-        -0.07533928013767772
+        0.3297782134663607,
+        -0.07774657774951153
       ],
-      "surface_z_m": 0.46964304985559885,
-      "hover_z_m": 0.5696430498555989,
+      "surface_z_m": 0.5175358695844952,
+      "hover_z_m": 0.6175358695844951,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.11364277816884177,
-      "surface_distance_from_floor_m": 0.01364277816884174,
-      "distance_from_board_center_m": 0.1170465250605842,
+      "hover_distance_above_floor_m": 0.16153559789773803,
+      "surface_distance_from_floor_m": 0.06153559789773805,
+      "distance_from_board_center_m": 0.11704652506058422,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
@@ -101,18 +101,18 @@
         0.0
       ],
       "board_relative_xy_m": [
-        -0.038348601652598784,
-        -0.15311743804842037
+        -0.03834860165259874,
+        0.15311743804842037
       ],
       "base_xy_m": [
-        0.5923440772963393,
-        0.0026085258987004045
+        0.28612743220377096,
+        -0.0007329717145703586
       ],
-      "surface_z_m": 0.46073806055229954,
-      "hover_z_m": 0.5607380605522996,
+      "surface_z_m": 0.5270808219981397,
+      "hover_z_m": 0.6270808219981396,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.10473778886554247,
-      "surface_distance_from_floor_m": 0.004737788865542436,
+      "hover_distance_above_floor_m": 0.17108055031138253,
+      "surface_distance_from_floor_m": 0.07108055031138255,
       "distance_from_board_center_m": 0.15784665052899144,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -129,17 +129,17 @@
       ],
       "board_relative_xy_m": [
         0.0710604707158125,
-        0.0018571688136023359
+        -0.0018571688136023532
       ],
       "base_xy_m": [
-        0.4385725192235489,
-        -0.1084850464465133
+        0.4422866357260208,
+        -0.10844451726030702
       ],
-      "surface_z_m": 0.4939905169257083,
-      "hover_z_m": 0.5939905169257083,
+      "surface_z_m": 0.4931842524261372,
+      "hover_z_m": 0.5931842524261373,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.13799024523895115,
-      "surface_distance_from_floor_m": 0.03799024523895117,
+      "hover_distance_above_floor_m": 0.13718398073938015,
+      "surface_distance_from_floor_m": 0.03718398073938012,
       "distance_from_board_center_m": 0.07108473517116781,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -155,18 +155,18 @@
         0.0
       ],
       "board_relative_xy_m": [
-        -0.08860180783938847,
-        0.11312674506574917
+        -0.0886018078393885,
+        -0.11312674506574914
       ],
       "base_xy_m": [
-        0.32556740398454465,
-        0.04995360326557644
+        0.5518074246236134,
+        0.05242237986902739
       ],
-      "surface_z_m": 0.518647388823772,
-      "hover_z_m": 0.618647388823772,
+      "surface_z_m": 0.4697382211218666,
+      "hover_z_m": 0.5697382211218666,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.1626471171370149,
-      "surface_distance_from_floor_m": 0.06264711713701493,
+      "hover_distance_above_floor_m": 0.11373794943510945,
+      "surface_distance_from_floor_m": 0.013737949435109476,
       "distance_from_board_center_m": 0.14369391358571498,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -182,18 +182,18 @@
         0.0
       ],
       "board_relative_xy_m": [
-        0.12216917210238823,
-        -0.05963451718822323
+        0.12216917210238826,
+        0.0596345171882232
       ],
       "base_xy_m": [
-        0.5006182196820974,
-        -0.15891973549460164
+        0.38135628571923874,
+        -0.1602211457023011
       ],
-      "surface_z_m": 0.48011527100592855,
-      "hover_z_m": 0.5801152710059285,
+      "surface_z_m": 0.5060602411650265,
+      "hover_z_m": 0.6060602411650264,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.12411499931917142,
-      "surface_distance_from_floor_m": 0.024114999319171437,
+      "hover_distance_above_floor_m": 0.15005996947826933,
+      "surface_distance_from_floor_m": 0.05005996947826935,
       "distance_from_board_center_m": 0.13594698324146604,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -209,19 +209,19 @@
         0.0
       ],
       "board_relative_xy_m": [
-        -0.05571251435941637,
-        0.07762752065052654
+        -0.05571251435941638,
+        -0.07762752065052654
       ],
       "base_xy_m": [
-        0.3614233882520284,
-        0.017453619390133773
+        0.5166691867935456,
+        0.01914769276468849
       ],
-      "surface_z_m": 0.5109891707580667,
-      "hover_z_m": 0.6109891707580667,
+      "surface_z_m": 0.4773688676994,
+      "hover_z_m": 0.5773688676994,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.15498889907130958,
-      "surface_distance_from_floor_m": 0.054988899071309605,
-      "distance_from_board_center_m": 0.09555059507190994,
+      "hover_distance_above_floor_m": 0.12136859601264288,
+      "surface_distance_from_floor_m": 0.021368596012642904,
+      "distance_from_board_center_m": 0.09555059507190995,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
@@ -237,17 +237,17 @@
       ],
       "board_relative_xy_m": [
         -0.13563199999999997,
-        -0.06599999999999999
+        0.06600000000000002
       ],
       "base_xy_m": [
-        0.5041703127800572,
-        0.09893554628844745
+        0.37217817110303664,
+        0.09749522149404927
       ],
-      "surface_z_m": 0.4801858855104727,
-      "hover_z_m": 0.5801858855104727,
+      "surface_z_m": 0.5086682906973466,
+      "hover_z_m": 0.6086682906973466,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.12418561382371557,
-      "surface_distance_from_floor_m": 0.02418561382371559,
+      "hover_distance_above_floor_m": 0.15266801901058952,
+      "surface_distance_from_floor_m": 0.05266801901058954,
       "distance_from_board_center_m": 0.150837791763205,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -264,17 +264,17 @@
       ],
       "board_relative_xy_m": [
         -0.11627481549078522,
-        -0.004661726766767918
+        0.004661726766767946
       ],
       "base_xy_m": [
-        0.44304690809804054,
-        0.07891021844002401
+        0.4337240096153316,
+        0.07880848509688938
       ],
-      "surface_z_m": 0.4934329116799094,
-      "hover_z_m": 0.5934329116799094,
+      "surface_z_m": 0.49544740639397916,
+      "hover_z_m": 0.5954474063939792,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.1374326399931523,
-      "surface_distance_from_floor_m": 0.03743263999315227,
+      "hover_distance_above_floor_m": 0.1394471347072221,
+      "surface_distance_from_floor_m": 0.039447134707222054,
       "distance_from_board_center_m": 0.11636822768206169,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -290,18 +290,18 @@
         0.0
       ],
       "board_relative_xy_m": [
-        0.16632258123701388,
-        -0.13509342968797824
+        0.16632258123701393,
+        0.1350934296879782
       ],
       "base_xy_m": [
-        0.5765544221017592,
-        -0.20224714224755042
+        0.3063836476925134,
+        -0.20519530007088205
       ],
-      "surface_z_m": 0.46320829858232987,
-      "hover_z_m": 0.5632082985823299,
+      "surface_z_m": 0.5220464067857927,
+      "hover_z_m": 0.6220464067857927,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.1072080268955728,
-      "surface_distance_from_floor_m": 0.007208026895572761,
+      "hover_distance_above_floor_m": 0.1660461350990356,
+      "surface_distance_from_floor_m": 0.06604613509903562,
       "distance_from_board_center_m": 0.21427420697369015,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -318,17 +318,17 @@
       ],
       "board_relative_xy_m": [
         -0.07924579658029551,
-        -0.003112959213537066
+        0.003112959213537085
       ],
       "base_xy_m": [
-        0.4419022767930269,
-        0.04186650451197775
+        0.435676729011997,
+        0.04179857008259581
       ],
-      "surface_z_m": 0.4936835747527999,
-      "hover_z_m": 0.5936835747527999,
+      "surface_z_m": 0.4950315961861633,
+      "hover_z_m": 0.5950315961861633,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.13768330306604276,
-      "surface_distance_from_floor_m": 0.037683303066042784,
+      "hover_distance_above_floor_m": 0.1390313244994062,
+      "surface_distance_from_floor_m": 0.03903132449940622,
       "distance_from_board_center_m": 0.07930691515063942,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -344,19 +344,19 @@
         0.0
       ],
       "board_relative_xy_m": [
-        -0.03499392165092583,
-        -0.05474481685554793
+        -0.03499392165092582,
+        0.05474481685554795
       ],
       "base_xy_m": [
-        0.4940139172596286,
-        -0.0018193523092989734
+        0.3845308017675071,
+        -0.0030140540832661582
       ],
-      "surface_z_m": 0.4822980926334926,
-      "hover_z_m": 0.5822980926334926,
+      "surface_z_m": 0.5060317168468744,
+      "hover_z_m": 0.6060317168468744,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.12629782094673553,
-      "surface_distance_from_floor_m": 0.026297820946735495,
-      "distance_from_board_center_m": 0.06497360637257732,
+      "hover_distance_above_floor_m": 0.1500314451601173,
+      "surface_distance_from_floor_m": 0.050031445160117316,
+      "distance_from_board_center_m": 0.06497360637257733,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
@@ -372,18 +372,18 @@
       ],
       "board_relative_xy_m": [
         -0.09166602772882687,
-        -0.049775251417439006
+        0.049775251417439034
       ],
       "base_xy_m": [
-        0.48842626707087966,
-        0.0547951542532128
+        0.38888169075118384,
+        0.053708903817395515
       ],
-      "surface_z_m": 0.4835763377943599,
-      "hover_z_m": 0.5835763377943599,
+      "surface_z_m": 0.5051070379531898,
+      "hover_z_m": 0.6051070379531898,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.1275760661076028,
-      "surface_distance_from_floor_m": 0.02757606610760277,
-      "distance_from_board_center_m": 0.10430837115616043,
+      "hover_distance_above_floor_m": 0.14910676626643266,
+      "surface_distance_from_floor_m": 0.04910676626643268,
+      "distance_from_board_center_m": 0.10430837115616044,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
@@ -398,18 +398,18 @@
         0.0
       ],
       "board_relative_xy_m": [
-        0.1054269709420907,
-        0.10772610684413395
+        0.10542697094209068,
+        -0.10772610684413397
       ],
       "base_xy_m": [
-        0.33308487569817746,
-        -0.14400469510721214
+        0.5485242629237044,
+        -0.14165377718764252
       ],
-      "surface_z_m": 0.5165279691685872,
-      "hover_z_m": 0.6165279691685872,
+      "surface_z_m": 0.46965866649921506,
+      "hover_z_m": 0.569658666499215,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.1605276974818301,
-      "surface_distance_from_floor_m": 0.06052769748183012,
+      "hover_distance_above_floor_m": 0.11365839481245793,
+      "surface_distance_from_floor_m": 0.013658394812457952,
       "distance_from_board_center_m": 0.15073075431980762,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -425,18 +425,18 @@
         0.0
       ],
       "board_relative_xy_m": [
-        0.03041955458563904,
-        0.1009506443437032
+        0.03041955458563901,
+        -0.1009506443437032
       ],
       "base_xy_m": [
-        0.33904148755228547,
-        -0.06892781334069006
+        0.540930756500779,
+        -0.06672475703677022
       ],
-      "surface_z_m": 0.5155873375188748,
-      "hover_z_m": 0.6155873375188747,
+      "surface_z_m": 0.4717719301810755,
+      "hover_z_m": 0.5717719301810755,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.15958706583211762,
-      "surface_distance_from_floor_m": 0.05958706583211765,
+      "hover_distance_above_floor_m": 0.11577165849431842,
+      "surface_distance_from_floor_m": 0.015771658494318386,
       "distance_from_board_center_m": 0.10543425389595891,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
@@ -453,18 +453,18 @@
       ],
       "board_relative_xy_m": [
         0.12599644329762216,
-        0.10242549543824134
+        -0.10242549543824137
       ],
       "base_xy_m": [
-        0.33860961640047116,
-        -0.16451510501129918
+        0.5434484119341585,
+        -0.1622798628801141
       ],
-      "surface_z_m": 0.515247000325094,
-      "hover_z_m": 0.6152470003250939,
+      "surface_z_m": 0.47065982408124046,
+      "hover_z_m": 0.5706598240812405,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.15924672863833683,
-      "surface_distance_from_floor_m": 0.059246728638336854,
-      "distance_from_board_center_m": 0.16237637093930912,
+      "hover_distance_above_floor_m": 0.11465955239448339,
+      "surface_distance_from_floor_m": 0.014659552394483355,
+      "distance_from_board_center_m": 0.16237637093930915,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
@@ -479,19 +479,19 @@
         0.0
       ],
       "board_relative_xy_m": [
-        0.07266254171618608,
-        0.10535523230716479
+        0.07266254171618605,
+        -0.10535523230716481
       ],
       "base_xy_m": [
-        0.33509809833449333,
-        -0.11121634651833097
+        0.5457960187754434,
+        -0.1089171684378523
       ],
-      "surface_z_m": 0.5162492227249661,
-      "hover_z_m": 0.6162492227249661,
+      "surface_z_m": 0.4704621603661043,
+      "hover_z_m": 0.5704621603661043,
       "hover_clearance_m": 0.1,
-      "hover_distance_above_floor_m": 0.16024895103820896,
-      "surface_distance_from_floor_m": 0.06024895103820899,
-      "distance_from_board_center_m": 0.12798269392051856,
+      "hover_distance_above_floor_m": 0.1144618886793472,
+      "surface_distance_from_floor_m": 0.014461888679347168,
+      "distance_from_board_center_m": 0.1279826939205186,
       "inside_calibrated_board_extent": true,
       "surface_below_hard_floor": false,
       "hover_below_hard_floor": false
