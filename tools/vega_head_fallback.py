@@ -419,7 +419,7 @@ class HeadFallbackSession:
         x, y = self.hover_pose.position_m[:2]
         release = Pose((x, y, self.surface(x, y) + (self.grasp_clearance_m or 0.02)), self.hover_pose.quaternion_wxyz)
         self.move(release, slow=True)
-        self.robot.open_gripper(self.part)
+        self.robot.release_gripper(self.part)
         self.holding = False
         self.move(self.hover_pose, slow=True)
 

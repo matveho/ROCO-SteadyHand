@@ -54,6 +54,9 @@ class MockAdapter(RobotAdapter):
     def open_gripper(self, part_name=None):
         self.commands.append(("open_gripper", part_name))
 
+    def release_gripper(self, part_name=None):
+        self.commands.append(("release_gripper", part_name))
+
     def close_gripper(self, part_name=None):
         self.commands.append(("close_gripper", part_name))
 

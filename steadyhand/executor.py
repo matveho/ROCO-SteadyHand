@@ -350,9 +350,9 @@ def _execute_part(
         emit("place", "completed")
 
     emit("release", "started")
-    robot.open_gripper(goal.name)
+    release_result = robot.release_gripper(goal.name)
     time.sleep(float(skill.get("release_settle_s", 0.0)))
-    emit("release", "completed")
+    emit("release", "completed", {"result": release_result})
 
     emit("retreat", "started")
     move_tcp_segmented(robot, retract, **move_kwargs)

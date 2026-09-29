@@ -387,6 +387,19 @@ class VegaAdapter(RobotAdapter):
         self._require_gripper()
         self._gripper.open()
 
+    def release_gripper(self, part_name=None) -> None:
+        """Open only a small measured amount from the current holding pose."""
+        self._require_gripper()
+        result = self._gripper.release_small()
+        print(
+            "GRIPPER BOUNDED RELEASE = "
+            f"{result['from_fraction'] * 100:.1f}% -> "
+            f"{result['to_fraction'] * 100:.1f}% "
+            f"(delta {result['delta_fraction'] * 100:.1f}%)",
+            flush=True,
+        )
+        return result
+
     def close_gripper(self, part_name=None) -> None:
         """Empty-jaw close. For objects use grip(), which is current limited."""
         self._require_gripper()

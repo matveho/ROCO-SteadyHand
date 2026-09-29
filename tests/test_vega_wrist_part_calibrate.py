@@ -18,6 +18,7 @@ class _FakeRobot:
         self._kinematics = _FakeKinematics()
         self.pose = Pose(position, (1.0, 0.0, 0.0, 0.0))
         self.opened = []
+        self.released = []
 
     def get_tcp_pose(self):
         return self.pose
@@ -27,6 +28,9 @@ class _FakeRobot:
 
     def open_gripper(self, part):
         self.opened.append(part)
+
+    def release_gripper(self, part):
+        self.released.append(part)
 
 
 class WristPartReturnTests(unittest.TestCase):
@@ -46,7 +50,8 @@ class WristPartReturnTests(unittest.TestCase):
         session.return_part(0.02)
 
         self.assertFalse(session.holding)
-        self.assertEqual(session.robot.opened, ["battery_size1"])
+        self.assertEqual(session.robot.released, ["battery_size1"])
+        self.assertEqual(session.robot.opened, [])
         self.assertEqual(len(moves), 2)
         self.assertEqual(moves[0][0].position_m, (0.10, 0.20, 0.52))
         self.assertTrue(moves[0][1])

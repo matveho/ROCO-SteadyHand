@@ -403,6 +403,22 @@ class GripperContractTests(unittest.TestCase):
         ])
         self.assertNotIn(("right", "release"), driver.calls)
 
+    def test_bounded_release_moves_only_five_percentage_points(self):
+        gripper = VegaCanGripper({
+            **self.cfg,
+            "release_max_delta_fraction": 0.05,
+            "release_speed_dps": 180,
+        })
+        gripper.connect()
+        driver = gripper._driver
+        result = gripper.release_small()
+        self.assertAlmostEqual(result["from_fraction"], 0.5)
+        self.assertAlmostEqual(result["to_fraction"], 0.55)
+        self.assertAlmostEqual(result["delta_fraction"], 0.05)
+        self.assertIn(("right", "move_to", 0.55, 180.0), driver.calls)
+        self.assertNotIn(("right", "open", 500.0), driver.calls)
+        gripper.close()
+
     def test_config_validation_never_imports_driver(self):
         self.path.write_text("raise RuntimeError('must not import')", encoding="utf-8")
         VegaCanGripper(self.cfg).validate_config()

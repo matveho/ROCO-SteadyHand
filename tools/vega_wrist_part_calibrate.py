@@ -863,14 +863,13 @@ class PartSession:
             seed = self.robot._kinematics.solve(interpolate_pose(hover, release, i / 10), seed)
         self.robot._kinematics.solve(hover, seed)
         self.move(release, slow=True)
-        if partial_release:
-            # A partial release clears the object while avoiding the slow
-            # full-open travel at every competition attempt.
-            self._set_gripper_fraction(max(.35, float(self.gripper_open_fraction or 0.0)))
-        else:
-            self.robot.open_gripper(self.part)
+        # Never use the hard-open stop to release a held part: it can push or
+        # move the board.  The adapter measures the live holding position and
+        # opens by at most five percentage points.
+        release_result = self.robot.release_gripper(self.part)
         self.event("place_release", {
             "requested_release_tcp": list(release.position_m),
+            "gripper_release": release_result,
             "settings": {
                 "return_to_source": True,
                 "clearance_m": float(clearance),
@@ -898,10 +897,7 @@ class PartSession:
         self.robot._kinematics.solve(release, seed)
         self.move(hover)
         self.move(release, slow=True)
-        if partial_release:
-            self._set_gripper_fraction(max(.35, float(self.gripper_open_fraction or 0.0)))
-        else:
-            self.robot.open_gripper(self.part)
+        self.robot.release_gripper(self.part)
         self.holding = False
         self.move(hover, slow=True)
         print("Placement release completed; insertion/assembly is not inferred.")

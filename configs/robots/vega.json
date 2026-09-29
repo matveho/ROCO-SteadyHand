@@ -214,7 +214,9 @@
     "skip_home_verified": false,
     "grip_current_a": 1,
     "open_speed_dps": 500,
-    "grip_speed_dps": 240
+    "grip_speed_dps": 240,
+    "release_max_delta_fraction": 0.05,
+    "release_speed_dps": 180
   },
   "cameras": {
     "head": {

@@ -79,6 +79,12 @@ class RobotAdapter(ABC):
     def open_gripper(self, part_name: str | None = None) -> None:
         raise NotImplementedError
 
+    def release_gripper(self, part_name: str | None = None) -> None:
+        """Release a held object without using an unbounded hard-open motion."""
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement bounded gripper release"
+        )
+
     @abstractmethod
     def close_gripper(self, part_name: str | None = None) -> None:
         raise NotImplementedError

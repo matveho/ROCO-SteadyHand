@@ -28,6 +28,11 @@ import time
 
 
 class VegaCanGripper:
+    # Releasing an object must not drive the jaws to the hard-open stop.  The
+    # held position is measured immediately before this motion and the target
+    # is at most five percentage points farther open.
+    DEFAULT_RELEASE_MAX_DELTA_FRACTION = 0.05
+
     def __init__(self, config):
         self.config = dict(config)
         self._driver = None
@@ -50,6 +55,18 @@ class VegaCanGripper:
         _positive(self.config.get("grip_current_a"), "gripper.grip_current_a")
         _positive(self.config.get("grip_speed_dps", 60), "gripper.grip_speed_dps")
         _positive(self.config.get("open_speed_dps", 500), "gripper.open_speed_dps")
+        release_delta = float(self.config.get(
+            "release_max_delta_fraction",
+            self.DEFAULT_RELEASE_MAX_DELTA_FRACTION,
+        ))
+        if not math.isfinite(release_delta) or not 0.0 < release_delta <= self.DEFAULT_RELEASE_MAX_DELTA_FRACTION:
+            raise ValueError(
+                "gripper.release_max_delta_fraction must be > 0 and <= 0.05"
+            )
+        _positive(
+            self.config.get("release_speed_dps", self.config.get("open_speed_dps", 500)),
+            "gripper.release_speed_dps",
+        )
         if (not self.config.get("home_on_connect", True)
                 and not self.config.get("skip_home_verified", False)):
             raise ValueError("Refusing to skip gripper homing without skip_home_verified=true")
@@ -132,6 +149,46 @@ class VegaCanGripper:
                 raise TypeError("Onsite Grippers driver has no both_move_to()")
             return self._driver.both_move_to(fraction, speed=speed)
         return self._motor().move_to(fraction, speed=speed)
+
+    def release_small(self):
+        """Release the held object with a bounded measured opening.
+
+        ``Motor.open()`` travels to the hard-open stop and can disturb a part
+        or the board.  Read the live holding fraction and move only the
+        configured small delta (capped at five percentage points).  Refuse to
+        guess if the driver cannot provide a finite position.
+        """
+        self._require()
+        current = self.position()
+        if isinstance(current, dict):
+            current = current.get("right")
+        try:
+            current = float(current)
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError("cannot perform bounded release without gripper position") from exc
+        if not math.isfinite(current):
+            raise RuntimeError("cannot perform bounded release with non-finite gripper position")
+        current = max(0.0, min(1.0, current))
+        delta = float(self.config.get(
+            "release_max_delta_fraction",
+            self.DEFAULT_RELEASE_MAX_DELTA_FRACTION,
+        ))
+        delta = max(0.0, min(self.DEFAULT_RELEASE_MAX_DELTA_FRACTION, delta))
+        target = min(1.0, current + delta)
+        speed = int(round(_positive(
+            self.config.get(
+                "release_speed_dps",
+                self.config.get("open_speed_dps", 500),
+            ),
+            "gripper.release_speed_dps",
+        )))
+        self.move_fraction(target, speed=speed)
+        return {
+            "from_fraction": current,
+            "to_fraction": target,
+            "delta_fraction": target - current,
+            "max_delta_fraction": self.DEFAULT_RELEASE_MAX_DELTA_FRACTION,
+        }
 
     def position(self):
         self._require()
