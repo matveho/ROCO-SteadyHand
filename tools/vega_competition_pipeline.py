@@ -32,7 +32,9 @@ from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
 from steadyhand.vega_camera_clear import move_camera_clear_for_image
 from steadyhand.vision.scene import detect_head_task_scene
+from steadyhand.wrist_part_profiles import PART_NAMES
 from tools.vega_board_five_point_calibrate import main as run_five_point_calibration
+from tools.vega_wrist_part_calibrate import main as run_wrist_part_calibration
 from tools.vega_task_coordinate_reachability import (
     _finite_vector,
     calibrated_surface_z,
@@ -62,6 +64,20 @@ COMPETITION_TASKS = OrderedDict([
     ("pin_pick_place_v1", "pin pick/snap place; scaffold"),
     ("battery_size5_pick_place_v1", "large battery pick/place; scaffold"),
 ])
+
+
+TASK_ACTIONS = OrderedDict(
+    (f"{part}.{action}",
+     f"{action.replace('_', ' ')} test; requires a taught wrist profile")
+    for part in PART_NAMES
+    for action in ("pick", "pick_place")
+)
+
+
+COMPETITION_SEQUENCE_ACTIONS = OrderedDict(
+    (str(index), f"{part}.pick_place")
+    for index, part in enumerate(PART_NAMES, 1)
+)
 
 
 def _load_runtime():
@@ -450,6 +466,94 @@ def _recalibrate():
     return 0
 
 
+def _run_wrist_calibration_menu(args):
+    if args.check_only:
+        print("Wrist calibration requires physical motion; remove --check-only.")
+        return 2
+    selected = _choose(
+        OrderedDict((part, "teach wrist_a feature, jaw pixel, yaw, and grasp depth") for part in PART_NAMES),
+        "WRIST CAMERA CALIBRATION",
+    )
+    for part in selected:
+        result = run_wrist_part_calibration([
+            "--part", part,
+            "--mode", "calibrate",
+            "--confirm-head-motion",
+            "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ])
+        if result:
+            return result
+    return 0
+
+
+def _run_task_tests_menu(args):
+    if args.check_only:
+        print("Task tests require physical motion; remove --check-only.")
+        return 2
+    selected = _choose(TASK_ACTIONS, "TASK TESTS (PICK / PICK-PLACE)")
+    for name in selected:
+        part, action = name.split(".", 1)
+        result = run_wrist_part_calibration([
+            "--part", part,
+            "--mode", "test",
+            "--action", action,
+            "--confirm-head-motion",
+            "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ])
+        if result:
+            return result
+    return 0
+
+
+def _sequence_indices(raw):
+    selected = []
+    for value in raw.replace(" ", "").split(","):
+        if not value:
+            continue
+        if "-" in value:
+            start, end = (int(v) for v in value.split("-", 1))
+            selected.extend(range(start, end + (1 if end >= start else -1), 1 if end >= start else -1))
+        else:
+            selected.append(int(value))
+    if not selected or any(str(index) not in COMPETITION_SEQUENCE_ACTIONS for index in selected):
+        raise ValueError("sequence choices must be numbered 1..9; ranges such as 1-5,8,9 are accepted")
+    return list(dict.fromkeys(selected))
+
+
+def _run_competition_sequence(args, raw=None):
+    if args.check_only:
+        print("Competition runs require physical motion; remove --check-only.")
+        return 2
+    if raw is None:
+        print("\nCOMPETITION SEQUENCE ACTIONS")
+        for index, action in COMPETITION_SEQUENCE_ACTIONS.items():
+            print(f"  {index}. {action}")
+        raw = input("Choose actions (for example 1-5,8,9), or 0 to cancel: ").strip()
+    if raw in ("0", "", "q", "quit", "exit"):
+        return 0
+    try:
+        indices = _sequence_indices(raw)
+    except ValueError as exc:
+        print(exc, file=sys.stderr)
+        return 2
+    for index in indices:
+        part, action = COMPETITION_SEQUENCE_ACTIONS[str(index)].split(".", 1)
+        result = run_wrist_part_calibration([
+            "--part", part,
+            "--mode", "test",
+            "--action", action,
+            "--competition",
+            "--confirm-head-motion",
+            "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ])
+        if result:
+            return result
+    return 0
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--confirm-head-motion", action="store_true")
@@ -467,6 +571,14 @@ def main(argv=None):
                          help="test named board/task points directly; use all for every point")
     actions.add_argument("--competition-task", nargs="+", metavar="TASK",
                          help="run named competition task versions directly")
+    actions.add_argument("--wrist-calibrate", metavar="PART",
+                         choices=PART_NAMES,
+                         help="teach one wrist_a part profile directly")
+    actions.add_argument("--task-test", metavar="ACTION",
+                         choices=list(TASK_ACTIONS),
+                         help="run one wrist-backed pick or pick-place test directly")
+    actions.add_argument("--competition-sequence", metavar="SEQUENCE",
+                         help="run numbered sequence choices such as 1-5,8,9 directly")
     args = p.parse_args(argv)
     if not args.check_only and (not args.confirm_head_motion or not args.confirm_physical_motion):
         p.error("physical pipeline requires --confirm-head-motion and --confirm-physical-motion")
@@ -478,6 +590,31 @@ def main(argv=None):
         if args.check_only:
             p.error("--recalibrate cannot be combined with --check-only")
         return _recalibrate()
+
+    if args.check_only and (
+        args.wrist_calibrate is not None
+        or args.task_test is not None
+        or args.competition_sequence is not None
+    ):
+        p.error("wrist/task/competition actions cannot be combined with --check-only")
+
+    if args.wrist_calibrate is not None:
+        return run_wrist_part_calibration([
+            "--part", args.wrist_calibrate, "--mode", "calibrate",
+            "--confirm-head-motion", "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ])
+
+    if args.task_test is not None:
+        part, action = args.task_test.split(".", 1)
+        return run_wrist_part_calibration([
+            "--part", part, "--mode", "test", "--action", action,
+            "--confirm-head-motion", "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ])
+
+    if args.competition_sequence is not None:
+        return _run_competition_sequence(args, args.competition_sequence)
 
     if args.test_positions is not None or args.competition_task is not None:
         try:
@@ -515,7 +652,10 @@ def main(argv=None):
         print("\n=== VEGA COMPETITION PIPELINE ===")
         print("  1. Recalibrate moved board (camera + CENTER/TR/BR/BL + heights)")
         print("  2. Test calibrated board/task positions")
-        print("  3. Run competition task version")
+        print("  3. Wrist camera calibration (per-part feature / yaw / grasp depth)")
+        print("  4. Task tests (all part pick and pick-place actions)")
+        print("  5. Competition run sequence (choose numbered actions/ranges)")
+        print("  6. Run preserved competition task version")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
         if choice in ("0", "q", "quit", "exit"):
@@ -567,6 +707,30 @@ def main(argv=None):
                 print(f"Position test failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         if choice == "3":
+            try:
+                _run_wrist_calibration_menu(args)
+            except (KeyboardInterrupt, EOFError):
+                print("Wrist calibration cancelled.")
+            except Exception as exc:
+                print(f"Wrist calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "4":
+            try:
+                _run_task_tests_menu(args)
+            except (KeyboardInterrupt, EOFError):
+                print("Task test cancelled.")
+            except Exception as exc:
+                print(f"Task test failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "5":
+            try:
+                _run_competition_sequence(args)
+            except (KeyboardInterrupt, EOFError):
+                print("Competition sequence cancelled.")
+            except Exception as exc:
+                print(f"Competition sequence failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "6":
             selected = _choose(COMPETITION_TASKS, "COMPETITION TASK VERSIONS")
             if selected:
                 for name in selected:
