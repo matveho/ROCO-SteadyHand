@@ -258,7 +258,7 @@ class _WristCameraBridge:
         self._selector = selectors.DefaultSelector()
         self._selector.register(self._process.stdout, selectors.EVENT_READ)
         try:
-            ready = self._read_line(10.0)
+            ready = self._read_line(45.0)
             if not ready.get("ready"):
                 raise RuntimeError(f"wrist camera bridge failed to start: {ready}")
         except Exception:

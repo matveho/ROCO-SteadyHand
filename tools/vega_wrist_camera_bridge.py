@@ -34,8 +34,26 @@ def _write_observation(obs, root, request):
 def main():
     root = Path(os.environ.get("VEGA_WRIST_BRIDGE_DIR", "/tmp/vega_wrist_bridge"))
     root.mkdir(parents=True, exist_ok=True)
-    manager = WristCameras()
-    cameras = manager.__enter__()
+
+    def open_manager():
+        last_error = None
+        for attempt in range(1, 4):
+            manager = WristCameras()
+            try:
+                return manager, manager.__enter__()
+            except Exception as exc:
+                last_error = exc
+                try:
+                    manager.__exit__(None, None, None)
+                except Exception:
+                    pass
+                if attempt < 3:
+                    time.sleep(0.5)
+        raise RuntimeError(
+            f"wrist camera startup failed after 3 attempts: {last_error}"
+        ) from last_error
+
+    manager, cameras = open_manager()
 
     def restart_manager():
         nonlocal manager, cameras
@@ -44,8 +62,7 @@ def main():
         except Exception:
             pass
         time.sleep(0.25)
-        manager = WristCameras()
-        cameras = manager.__enter__()
+        manager, cameras = open_manager()
 
     try:
         print(json.dumps({"ready": True}), flush=True)
