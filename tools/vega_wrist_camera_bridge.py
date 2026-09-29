@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import time
 import traceback
 
 import numpy as np
@@ -33,7 +34,20 @@ def _write_observation(obs, root, request):
 def main():
     root = Path(os.environ.get("VEGA_WRIST_BRIDGE_DIR", "/tmp/vega_wrist_bridge"))
     root.mkdir(parents=True, exist_ok=True)
-    with WristCameras() as cameras:
+    manager = WristCameras()
+    cameras = manager.__enter__()
+
+    def restart_manager():
+        nonlocal manager, cameras
+        try:
+            manager.__exit__(None, None, None)
+        except Exception:
+            pass
+        time.sleep(0.25)
+        manager = WristCameras()
+        cameras = manager.__enter__()
+
+    try:
         print(json.dumps({"ready": True}), flush=True)
         for raw in sys.stdin:
             request = json.loads(raw)
@@ -42,10 +56,21 @@ def main():
             if request.get("op") != "read":
                 raise ValueError(f"unknown wrist bridge operation: {request.get('op')!r}")
             try:
-                obs = cameras.get_obs(
-                    timeout=float(request.get("timeout_s", 3.0)),
-                    fresh=bool(request.get("fresh", True)),
-                )
+                kwargs = {
+                    "timeout": float(request.get("timeout_s", 3.0)),
+                    "fresh": bool(request.get("fresh", True)),
+                }
+                try:
+                    obs = cameras.get_obs(**kwargs)
+                except Exception as first_exc:
+                    if "trigger worker exited" not in str(first_exc).lower():
+                        raise
+                    # The vendor worker can die once when the arm has just
+                    # settled. Recreate the vendor context exactly once; the
+                    # parent control process remains alive and no blind motion
+                    # is issued by this recovery.
+                    restart_manager()
+                    obs = cameras.get_obs(**kwargs)
                 print(json.dumps(_write_observation(obs, root, int(request["request"]))), flush=True)
             except Exception as exc:
                 print(json.dumps({
@@ -53,6 +78,11 @@ def main():
                     "error": f"{type(exc).__name__}: {exc}",
                     "traceback": traceback.format_exc(),
                 }), flush=True)
+    finally:
+        try:
+            manager.__exit__(None, None, None)
+        except Exception:
+            pass
     return 0
 
 
