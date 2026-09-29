@@ -356,7 +356,11 @@ def _runtime_from_board_scene(runtime, scene):
     uy = matrix[:3, 1].copy()
     ux[2] = 0.0
     uy[2] = 0.0
-    ux_xy, uy_xy, _, _ = orthonormalize_xy_axes(ux[:2], uy[:2])
+    # The scene detector returns NumPy arrays; the canonical calibration
+    # validator intentionally accepts JSON-shaped lists/tuples only.
+    ux_xy, uy_xy, _, _ = orthonormalize_xy_axes(
+        ux[:2].tolist(), uy[:2].tolist()
+    )
 
     calibration_cfg = (bundle["robot"].get("board_calibration") or {})
     corrections = calibration_cfg.get("camera_target_corrections_m") or {}
