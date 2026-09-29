@@ -19,6 +19,12 @@ Wrists:
 
 from dataclasses import dataclass
 import math
+import json
+import os
+from pathlib import Path
+import selectors
+import subprocess
+import tempfile
 import time
 from typing import Any, Mapping
 
@@ -156,16 +162,38 @@ class VegaHeadCamera:
 
 
 class VegaWristCameras:
-    """Context-managed wrapper around the local dual-ISX031 API."""
+    """Context-managed wrapper around the local dual-ISX031 API.
+
+    On the competition Jetson the robot stack runs in Conda Python 3.13 while
+    the vendor ``wrist_cameras`` binding is available only to system Python
+    3.10 (through GObject).  If the in-process import fails, use the checked
+    in helper under ``/usr/bin/python3`` and exchange fresh NumPy frames via a
+    temporary directory.  This keeps robot/IK control in the tested Conda
+    process and does not alter the camera labels or servo contract.
+    """
 
     def __init__(self) -> None:
         self._manager = None
         self._cameras = None
+        self._bridge = None
 
     def connect(self) -> None:
-        if self._cameras is not None:
+        if self._cameras is not None or self._bridge is not None:
             return
-        from wrist_cameras import WristCameras
+        try:
+            from wrist_cameras import WristCameras
+        except ImportError as exc:
+            if os.environ.get("VEGA_WRIST_CAMERA_BRIDGE", "auto").lower() in ("0", "off", "false"):
+                raise
+            bridge = _WristCameraBridge()
+            print(
+                "WRIST CAMERA BRIDGE: using " + bridge.python,
+                f"after in-process import failed: {exc}",
+                flush=True,
+            )
+            bridge.connect()
+            self._bridge = bridge
+            return
 
         manager = WristCameras()
         cameras = manager.__enter__()
@@ -175,10 +203,15 @@ class VegaWristCameras:
     def close(self) -> None:
         if self._manager is not None:
             self._manager.__exit__(None, None, None)
+        if self._bridge is not None:
+            self._bridge.close()
         self._manager = None
         self._cameras = None
+        self._bridge = None
 
     def read(self, *, timeout: float = 3.0, fresh: bool = True) -> WristPair:
+        if self._bridge is not None:
+            return self._bridge.read(timeout=timeout, fresh=fresh)
         if self._cameras is None:
             raise RuntimeError("VegaWristCameras is not connected")
         obs = self._cameras.get_obs(timeout=timeout, fresh=fresh)
@@ -186,6 +219,122 @@ class VegaWristCameras:
             wrist_a=_wrist_record(obs["wrist_a"]),
             wrist_b=_wrist_record(obs["wrist_b"]),
         )
+
+
+class _WristCameraBridge:
+    """Persistent system-Python wrist-camera process used on the Jetson."""
+
+    def __init__(self) -> None:
+        self.python = os.environ.get("VEGA_WRIST_CAMERA_PYTHON", "/usr/bin/python3")
+        self.script = Path(__file__).resolve().parents[2] / "tools" / "vega_wrist_camera_bridge.py"
+        self._process = None
+        self._selector = None
+        self._temporary = None
+        self._request = 0
+
+    def connect(self) -> None:
+        if self._process is not None:
+            return
+        if not self.script.is_file():
+            raise RuntimeError(f"wrist camera bridge script is missing: {self.script}")
+        self._temporary = tempfile.TemporaryDirectory(prefix="vega_wrist_bridge_")
+        environment = os.environ.copy()
+        environment["VEGA_WRIST_BRIDGE_DIR"] = self._temporary.name
+        # The vendor module is installed outside normal site-packages on the
+        # Jetson.  Keep an explicit default for the child only; the parent
+        # Conda process remains untouched.
+        environment["PYTHONPATH"] = os.environ.get(
+            "VEGA_WRIST_CAMERA_PYTHONPATH", "/opt/wrist-cameras"
+        )
+        self._process = subprocess.Popen(
+            [self.python, str(self.script)],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            bufsize=1,
+            env=environment,
+        )
+        self._selector = selectors.DefaultSelector()
+        self._selector.register(self._process.stdout, selectors.EVENT_READ)
+        try:
+            ready = self._read_line(10.0)
+            if not ready.get("ready"):
+                raise RuntimeError(f"wrist camera bridge failed to start: {ready}")
+        except Exception:
+            self.close()
+            raise
+
+    def _read_line(self, timeout):
+        if self._process is None or self._process.stdout is None or self._selector is None:
+            raise RuntimeError("wrist camera bridge is not running")
+        events = self._selector.select(timeout)
+        if not events:
+            code = self._process.poll()
+            raise RuntimeError(f"wrist camera bridge timed out (returncode={code})")
+        line = self._process.stdout.readline()
+        if not line:
+            error = ""
+            if self._process.stderr is not None:
+                error = self._process.stderr.read().strip()
+            raise RuntimeError(f"wrist camera bridge exited: {error}")
+        try:
+            result = json.loads(line)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError(f"wrist camera bridge returned non-JSON output: {line!r}") from exc
+        if not result.get("ok", result.get("ready", False)):
+            raise RuntimeError(result.get("error", "wrist camera bridge request failed"))
+        return result
+
+    def read(self, *, timeout=3.0, fresh=True):
+        if self._process is None or self._process.stdin is None:
+            raise RuntimeError("wrist camera bridge is not connected")
+        self._request += 1
+        request = {
+            "op": "read", "request": self._request,
+            "timeout_s": float(timeout), "fresh": bool(fresh),
+        }
+        self._process.stdin.write(json.dumps(request) + "\n")
+        self._process.stdin.flush()
+        result = self._read_line(float(timeout) + 10.0)
+        directory = Path(result["directory"])
+        import numpy as np
+        frames = {
+            label: np.load(directory / f"{label}.npy", allow_pickle=False)
+            for label in ("wrist_a", "wrist_b")
+        }
+        return WristPair(
+            wrist_a=WristCameraFrame(
+                rgb=frames["wrist_a"], frame_id=result["wrist_a"].get("frame_id"),
+                timestamp_ns=result["wrist_a"].get("timestamp_ns"),
+                received_monotonic_ns=result["wrist_a"].get("received_monotonic_ns"),
+            ),
+            wrist_b=WristCameraFrame(
+                rgb=frames["wrist_b"], frame_id=result["wrist_b"].get("frame_id"),
+                timestamp_ns=result["wrist_b"].get("timestamp_ns"),
+                received_monotonic_ns=result["wrist_b"].get("received_monotonic_ns"),
+            ),
+        )
+
+    def close(self):
+        process, selector, temporary = self._process, self._selector, self._temporary
+        self._process = self._selector = self._temporary = None
+        if process is not None:
+            try:
+                if process.stdin is not None:
+                    process.stdin.write(json.dumps({"op": "close"}) + "\n")
+                    process.stdin.flush()
+                process.wait(timeout=3.0)
+            except (BrokenPipeError, OSError, subprocess.TimeoutExpired):
+                process.terminate()
+                try:
+                    process.wait(timeout=2.0)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+        if selector is not None:
+            selector.close()
+        if temporary is not None:
+            temporary.cleanup()
 
 
 def _wrist_record(record: Mapping[str, Any]) -> WristCameraFrame:
