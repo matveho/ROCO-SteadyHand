@@ -24,7 +24,6 @@ from steadyhand.board_calibration import file_sha256, load_board_calibration
 
 PART_NAME = "battery_size1"
 MEASURED_BOARD_WIDTH_MM = BOARD_SIZE_MM
-SCHEMA_VERSION = 1
 
 
 def load_manual_board_calibration(
