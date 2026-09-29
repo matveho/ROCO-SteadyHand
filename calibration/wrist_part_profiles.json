@@ -5,7 +5,7 @@
   "working_arm": "right",
   "tcp_frame": "tip_r",
   "wrist_camera": "wrist_a",
-  "generated_at_utc": "2026-09-12T18:15:48.675924+00:00",
+  "generated_at_utc": "2026-09-12T19:13:26.701290+00:00",
   "parts": {
     "battery_size1": {
       "part": "battery_size1",
@@ -278,54 +278,54 @@
         0.001033131513138377
       ],
       "feature_uv": [
-        929.0,
-        775.0
+        887.0,
+        704.0
       ],
       "goal_uv": [
-        910.0,
-        710.0
+        891.0,
+        693.0
       ],
       "goal_source": "operator_confirmed_current_pose",
       "goal_match_uv": [
-        910.0,
-        710.0
+        891.0,
+        693.0
       ],
-      "goal_match_score": 0.9406431317329407,
+      "goal_match_score": 0.9788572192192078,
       "goal_click_match_error_px": 0.0,
-      "reference_match_score": 1.0,
+      "reference_match_score": 0.9999991655349731,
       "feature_tracking_mode": "strict",
       "final_match_uv": [
-        910.0,
-        714.0
+        891.0,
+        696.0
       ],
-      "final_match_score": 0.9255523085594177,
+      "final_match_score": 0.9791333675384521,
       "image_shape": [
         1536,
         1920
       ],
       "hover_clearance_m": 0.1,
-      "grasp_clearance_m": 0.0050000000000000044,
+      "grasp_clearance_m": 0.0,
       "yaw_deg": 0.0,
       "gripper_open_fraction": 0.1,
       "place": null,
       "grasp_verified": true,
       "place_verified": false,
       "template": {
-        "path": "calibration/wrist_templates/pin_1789225140236191009.png",
-        "sha256": "9da9d56d48eb3dda3d5d1bda0df727d1f76dc65ab0d006cc8affb3499455fbd2",
+        "path": "calibration/wrist_templates/pin_1789240406699115552.png",
+        "sha256": "57744f86dcd7267388adc0ad414ed35644f657b2179968fe7a32740ed0d280c9",
         "template_uv": [
           20,
           20
         ]
       },
       "localization_result": {
-        "angle": -365.91,
-        "peak_current": 1.22,
+        "angle": -1085.57,
+        "peak_current": 1.27,
         "stopped_by": "current",
-        "position": 0.03923223174040288,
+        "position": 0.039484309243553894,
         "gripped": true
       },
-      "created_at_utc": "2026-09-12T14:59:00.237703+00:00"
+      "created_at_utc": "2026-09-12T19:13:26.700713+00:00"
     },
     "battery_size5": {
       "part": "battery_size5",
@@ -398,54 +398,54 @@
         -0.20099317386873783
       ],
       "feature_uv": [
-        924.0,
-        812.0
+        915.0,
+        783.0
       ],
       "goal_uv": [
-        924.0,
-        700.0
+        937.0,
+        678.0
       ],
       "goal_source": "operator_confirmed_current_pose",
       "goal_match_uv": [
-        924.0,
-        700.0
+        937.0,
+        678.0
       ],
-      "goal_match_score": 0.9451494216918945,
+      "goal_match_score": 0.9582929015159607,
       "goal_click_match_error_px": 0.0,
-      "reference_match_score": 0.9999988675117493,
+      "reference_match_score": 1.0,
       "feature_tracking_mode": "strict",
       "final_match_uv": [
-        916.0,
-        701.0
+        924.0,
+        680.0
       ],
-      "final_match_score": 0.8920079469680786,
+      "final_match_score": 0.9623321890830994,
       "image_shape": [
         1536,
         1920
       ],
       "hover_clearance_m": 0.1,
-      "grasp_clearance_m": 0.006000000000000005,
+      "grasp_clearance_m": 0.0010000000000000009,
       "yaw_deg": 0.0,
       "gripper_open_fraction": 0.1,
       "place": null,
       "grasp_verified": true,
       "place_verified": false,
       "template": {
-        "path": "calibration/wrist_templates/hdmi_1789226372861148022.png",
-        "sha256": "4e7cbecb4834a170006951d0ca05dcf571a6bc0d766e4fecd02b725462bc6ca1",
+        "path": "calibration/wrist_templates/hdmi_1789239793291401573.png",
+        "sha256": "d94d5ec82894636b8134e01b7b11e43e3abff6565e11a7c19e9fc07c33e9e0c0",
         "template_uv": [
           20,
           20
         ]
       },
       "localization_result": {
-        "angle": -379.86,
-        "peak_current": 1.43,
+        "angle": -1087.79,
+        "peak_current": 1.13,
         "stopped_by": "current",
-        "position": 0.03563692294546152,
+        "position": 0.03901006173762579,
         "gripped": true
       },
-      "created_at_utc": "2026-09-12T15:19:32.862899+00:00"
+      "created_at_utc": "2026-09-12T19:03:13.293025+00:00"
     },
     "gear_20teeth": {
       "part": "gear_20teeth",
@@ -506,6 +506,66 @@
         "gripped": true
       },
       "created_at_utc": "2026-09-12T18:15:48.675089+00:00"
+    },
+    "usb_a": {
+      "part": "usb_a",
+      "working_arm": "right",
+      "tcp_frame": "tip_r",
+      "wrist_camera": "wrist_a",
+      "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+      "coarse_xy_m": [
+        0.5093749092251347,
+        0.08550671744596296
+      ],
+      "feature_uv": [
+        903.0,
+        760.0
+      ],
+      "goal_uv": [
+        921.0,
+        671.0
+      ],
+      "goal_source": "operator_confirmed_current_pose",
+      "goal_match_uv": [
+        921.0,
+        671.0
+      ],
+      "goal_match_score": 0.9666416049003601,
+      "goal_click_match_error_px": 0.0,
+      "reference_match_score": 0.9999989867210388,
+      "feature_tracking_mode": "strict",
+      "final_match_uv": [
+        925.0,
+        673.0
+      ],
+      "final_match_score": 0.9481164216995239,
+      "image_shape": [
+        1536,
+        1920
+      ],
+      "hover_clearance_m": 0.1,
+      "grasp_clearance_m": 0.0020000000000000018,
+      "yaw_deg": 0.0,
+      "gripper_open_fraction": 0.17465766593322085,
+      "place": null,
+      "grasp_verified": true,
+      "place_verified": false,
+      "template": {
+        "path": "calibration/wrist_templates/usb_a_1789240122678577797.png",
+        "sha256": "c23727acc5a59759aed58bb427face3d8490ed5d0aaaa8526f5331e84d8b93df",
+        "template_uv": [
+          20,
+          20
+        ]
+      },
+      "localization_result": {
+        "angle": -1129.83,
+        "peak_current": 1.16,
+        "stopped_by": "current",
+        "position": 0.030029266625365866,
+        "gripped": true
+      },
+      "created_at_utc": "2026-09-12T19:08:42.680387+00:00"
     }
   }
 }
