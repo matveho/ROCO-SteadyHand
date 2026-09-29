@@ -163,6 +163,7 @@ class PartSession:
         self.part = None
         self.action = None
         self.board_scene_paths = []
+        self.drop_evidence_photos = []
 
     def start(self):
         self.status = "starting"
@@ -197,6 +198,7 @@ class PartSession:
                 "grasp_verified": getattr(self, "grasp_verified", False),
                 "grasp_clearance_m": getattr(self, "last_grasp_clearance", None),
                 "drop_release_photo": getattr(self, "drop_release_photo", None),
+                "drop_evidence_photos": list(getattr(self, "drop_evidence_photos", [])),
                 "board_scene_paths": list(self.board_scene_paths),
                 "events_path": "events.jsonl",
                 "calibration_path": "calibration/vega_board_manual.json",
@@ -1170,37 +1172,59 @@ class PartSession:
         profile["place_release_gripper"] = release_result
         if getattr(self, "drop_release_photo", None):
             profile["place_release_photo"] = self.drop_release_photo
+        if getattr(self, "drop_evidence_photos", None):
+            profile["place_evidence_photos"] = list(self.drop_evidence_photos)
         profile["place_taught_at_utc"] = datetime.now(timezone.utc).isoformat()
         self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
         return profile
 
-    def _capture_drop_release_photo(self):
-        """Save a plainly named wrist image of the taught release pose."""
+    def _capture_drop_evidence(self, label):
+        """Archive a named wrist frame without making camera capture a gate."""
         try:
-            # ``connect`` is idempotent in the camera adapter.  Calling the
-            # public method avoids depending on bridge/manager implementation
-            # details, and also permits drop mode to start camera-free and
-            # connect only for this archival snapshot.
             self.cameras.connect()
-            _rgb, raw = self.frame("drop release position")
+            _rgb, raw = self.frame(f"drop evidence {label}")
             archive = ROOT / "runs" / "drop_release_positions"
             archive.mkdir(parents=True, exist_ok=True)
             stamp = time.time_ns()
             destination = archive / (
-                f"DROP_RELEASE_POSITION__{self.part}__{stamp}__WRIST_A.png"
+                f"DROP_EVIDENCE__{self.part}__{stamp}__{label}__WRIST_A.png"
             )
             shutil.copyfile(raw, destination)
             relative = str(destination.relative_to(ROOT)).replace("\\", "/")
-            self.drop_release_photo = relative
-            print(f"DROP RELEASE POSITION PHOTO = {destination}", flush=True)
+            pose = self.robot.get_tcp_pose()
+            record = {
+                "label": str(label),
+                "path": relative,
+                "tcp_position_m": list(pose.position_m),
+                "quaternion_wxyz": list(pose.quaternion_wxyz),
+                "captured_at_utc": datetime.now(timezone.utc).isoformat(),
+            }
+            self.drop_evidence_photos.append(record)
+            # Write after every successful capture so an interrupted teach
+            # still leaves a self-describing evidence set for later CV work.
+            manifest = self.output / "drop_evidence_manifest.json"
+            manifest.write_text(
+                json.dumps({
+                    "schema_version": 1,
+                    "part": self.part,
+                    "photos": list(self.drop_evidence_photos),
+                }, indent=2, default=str) + "\n",
+                encoding="utf-8",
+            )
+            print(f"DROP EVIDENCE PHOTO [{label}] = {destination}", flush=True)
             return relative
         except Exception as exc:
-            self.drop_release_photo = None
             print(
-                f"DROP RELEASE POSITION PHOTO WARNING: {type(exc).__name__}: {exc}",
+                f"DROP EVIDENCE PHOTO WARNING [{label}]: {type(exc).__name__}: {exc}",
                 flush=True,
             )
             return None
+
+    def _capture_drop_release_photo(self):
+        """Keep the legacy release-photo field while using the evidence archive."""
+        relative = self._capture_drop_evidence("release_before")
+        self.drop_release_photo = relative
+        return relative
 
     def teach_drop(self, part, profile):
         """Teach a physical drop position using an existing pickup profile.
@@ -1218,6 +1242,7 @@ class PartSession:
         self.begin_part(part, profile, competition=True, no_cv=True)
         self.yaw = float((profile.get("place") or {}).get("yaw_deg", 0.0))
         self.history = []
+        self.drop_evidence_photos = []
         self.drop_release_photo = None
         self.grasp_verified = True
         self.grab(
@@ -1233,6 +1258,10 @@ class PartSession:
             _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz,
         )
         self.move(hover)
+        # Keep a view of the nominal, calibrated drop approach as well as the
+        # operator-adjusted release.  These frames are evidence for a later
+        # board/wrist CV pass and do not affect the control path.
+        self._capture_drop_evidence("nominal_hover_100mm")
         initial_clearance = .060  # 100 mm hover minus the requested 40 mm descent
         current = Pose(
             (hover.position_m[0], hover.position_m[1],
@@ -1240,6 +1269,7 @@ class PartSession:
             hover.quaternion_wxyz,
         )
         self.move(current, slow=True)
+        self._capture_drop_evidence("initial_40mm_below_hover")
         print(
             f"DROP CALIBRATION READY: {part}; nominal drop reached at 40 mm below hover.",
             flush=True,
@@ -1266,6 +1296,7 @@ class PartSession:
                     release_photo = self._capture_drop_release_photo()
                     release_result = self.robot.release_gripper(self.part)
                     self.holding = False
+                    self._capture_drop_evidence("release_after")
                     self.event("drop_release", {
                         "release_tcp": list(release_pose.position_m),
                         "place": settings,
@@ -1287,6 +1318,7 @@ class PartSession:
                     }, indent=2, default=str), flush=True)
                     try:
                         self.move(hover, slow=True)
+                        self._capture_drop_evidence("retreat_after_release")
                     except Exception as exc:
                         print(f"RETREAT AFTER DROP WARNING: {exc}", flush=True)
                     return 0
@@ -1368,6 +1400,9 @@ class PartSession:
                     continue
                 self.move(target, slow=True)
                 self.history.append((current, old_yaw))
+                self._capture_drop_evidence(
+                    f"adjust_{command}_{len(self.drop_evidence_photos):03d}"
+                )
             except (RuntimeError, ValueError) as exc:
                 print(f"COMMAND BLOCKED: {type(exc).__name__}: {exc}", flush=True)
                 continue
