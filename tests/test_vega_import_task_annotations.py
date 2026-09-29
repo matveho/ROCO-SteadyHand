@@ -18,6 +18,7 @@ class AnnotationImportTests(unittest.TestCase):
         self.assertEqual(self.task["board_height_m"], 0.386)
         self.assertEqual(self.task["task_coordinate_rotation_deg"], 180)
         self.assertFalse(self.task["task_coordinate_mirror_x"])
+        self.assertTrue(self.task["task_coordinate_mirror_y"])
         self.assertEqual(self.task["source_pose_frame"], "board_local_annotation")
 
     def test_physical_layout_matches_operator_orientation(self):
@@ -29,6 +30,7 @@ class AnnotationImportTests(unittest.TestCase):
             part_name, kind = name.split(".")
             return board_relative_task_xy(
                 part[part_name][kind][:2], center, rotation_deg=rotation,
+                mirror_y=part.get("task_coordinate_mirror_y", True),
             )
 
         small = xy("battery_size5.pick")
@@ -36,8 +38,8 @@ class AnnotationImportTests(unittest.TestCase):
         rod = xy("rod_16mm.place")
         self.assertGreater(small[0], large[0])
         self.assertGreater(large[0], rod[0])
-        self.assertGreater(small[1], 0)
-        self.assertGreater(large[1], 0)
+        self.assertLess(small[1], 0)
+        self.assertLess(large[1], 0)
         self.assertIn("rod_16mm", self.task["legacy_secondary_points"])
 
 

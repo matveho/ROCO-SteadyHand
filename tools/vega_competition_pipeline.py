@@ -214,6 +214,7 @@ def _task_targets(runtime, task_data, clearance_m):
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
     mirror_x = bool(task_data.get("task_coordinate_mirror_x", False))
+    mirror_y = bool(task_data.get("task_coordinate_mirror_y", False))
     targets = OrderedDict()
     for part in task_data["official_order"]:
         for kind in task_data["parts"][part]:
@@ -226,7 +227,7 @@ def _task_targets(runtime, task_data, clearance_m):
                 live_center=center, ux=ux, uy=uy,
                 surface_plane=plane, clearance_m=clearance_m,
                 quat=ready_pose.quaternion_wxyz, rotation_deg=rotation_deg,
-                mirror_x=mirror_x,
+                mirror_x=mirror_x, mirror_y=mirror_y,
             )
     return targets
 

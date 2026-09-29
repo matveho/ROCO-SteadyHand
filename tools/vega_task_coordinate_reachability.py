@@ -104,10 +104,10 @@ def _resolve_point(name, task_data):
     return part, kind, _finite_vector(value, 3, name)
 
 
-def _live_pose(source_xyz, *, source_center, live_center, ux, uy, surface_plane, clearance_m, quat, rotation_deg=0.0, mirror_x=False):
+def _live_pose(source_xyz, *, source_center, live_center, ux, uy, surface_plane, clearance_m, quat, rotation_deg=0.0, mirror_x=False, mirror_y=False):
     dx, dy = board_relative_task_xy(
         source_xyz[:2], source_center,
-        rotation_deg=rotation_deg, mirror_x=mirror_x,
+        rotation_deg=rotation_deg, mirror_x=mirror_x, mirror_y=mirror_y,
     )
     live_x = live_center[0] + ux[0] * dx + uy[0] * dy
     live_y = live_center[1] + ux[1] * dx + uy[1] * dy
@@ -152,6 +152,7 @@ def main(argv=None):
     validate_task_coordinate_extent(task_data, names=args.points)
     rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
     mirror_x = bool(task_data.get("task_coordinate_mirror_x", False))
+    mirror_y = bool(task_data.get("task_coordinate_mirror_y", False))
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     live_center, ux, uy, surface_plane = _load_manual(args.calibration, cfg)
     _, ready_pose = configured_right_preset(cfg, "right_ready")
@@ -165,7 +166,8 @@ def main(argv=None):
                                   clearance_m=float(args.hover_clearance_mm) / 1000.0,
                                   quat=ready_pose.quaternion_wxyz,
                                   rotation_deg=rotation_deg,
-                                  mirror_x=mirror_x)))
+                                  mirror_x=mirror_x,
+                                  mirror_y=mirror_y)))
 
     safety = load_vega_skills()["safety"]
     floor = float(safety["min_tcp_z_m"])

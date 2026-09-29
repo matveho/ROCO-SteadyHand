@@ -14,17 +14,20 @@ BOARD_MOTION_MODEL = "horizontal_translation_only_fixed_table_plane"
 
 
 def board_relative_task_xy(source_xy, source_center_xy, *, rotation_deg=0.0,
-                            mirror_x=False):
+                            mirror_x=False, mirror_y=False):
     """Map a task source point into the live board-relative XY convention.
 
     ``mirror_x`` is used for the legacy organizer coordinate export: its
-    source X direction is reversed relative to the physical board photo. New
-    annotation exports use the rectified image convention and leave it false.
+    source X direction is reversed relative to the physical board photo.
+    ``mirror_y`` applies the verified robot-facing forward/back reflection
+    while preserving left/right.
     """
     dx = float(source_xy[0]) - float(source_center_xy[0])
     dy = float(source_xy[1]) - float(source_center_xy[1])
     if mirror_x:
         dx = -dx
+    if mirror_y:
+        dy = -dy
     angle = math.radians(float(rotation_deg))
     return (
         dx * math.cos(angle) - dy * math.sin(angle),
@@ -41,11 +44,15 @@ def validate_declared_task_layout(task_data):
     center = task_data.get("source_board_center_xy_m")
     rotation = task_data.get("task_coordinate_rotation_deg", 0.0)
     mirror = bool(task_data.get("task_coordinate_mirror_x", False))
+    mirror_y = bool(task_data.get("task_coordinate_mirror_y", False))
 
     def point(name):
         part, kind = name.rsplit(".", 1)
         value = parts[part][kind]
-        return board_relative_task_xy(value[:2], center, rotation_deg=rotation, mirror_x=mirror)
+        return board_relative_task_xy(
+            value[:2], center, rotation_deg=rotation,
+            mirror_x=mirror, mirror_y=mirror_y,
+        )
 
     try:
         small = point(expected["small_battery"])
@@ -61,7 +68,8 @@ def validate_declared_task_layout(task_data):
         expected.get("small_battery"), expected.get("large_battery"),
     )
     try:
-        if any(point(name)[1] <= 0 for name in near_robot):
+        near_sign = -1.0 if mirror_y else 1.0
+        if any(point(name)[1] * near_sign <= 0 for name in near_robot):
             raise ValueError("task orientation does not put the declared near-robot parts on the near half")
     except (KeyError, TypeError, ValueError) as exc:
         if isinstance(exc, ValueError) and str(exc).startswith("task orientation"):
@@ -103,6 +111,7 @@ def validate_task_coordinate_extent(task_data, *, names=None, tolerance_m=0.0):
     center = task_data.get("source_board_center_xy_m")
     rotation = task_data.get("task_coordinate_rotation_deg", 0.0)
     mirror = bool(task_data.get("task_coordinate_mirror_x", False))
+    mirror_y = bool(task_data.get("task_coordinate_mirror_y", False))
     half = BOARD_SIZE_M / 2.0 + float(tolerance_m)
     outside = []
     selected = None if names is None else set(names)
@@ -112,7 +121,10 @@ def validate_task_coordinate_extent(task_data, *, names=None, tolerance_m=0.0):
                 continue
             if not isinstance(value, (list, tuple)) or len(value) < 2:
                 continue
-            x, y = board_relative_task_xy(value[:2], center, rotation_deg=rotation, mirror_x=mirror)
+            x, y = board_relative_task_xy(
+                value[:2], center, rotation_deg=rotation,
+                mirror_x=mirror, mirror_y=mirror_y,
+            )
             if abs(x) > half or abs(y) > half:
                 outside.append(f"{part}.{kind}")
     if outside:

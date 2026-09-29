@@ -42,6 +42,7 @@ def build_report(task_data, calibration, *, clearance_m=0.100, floor_m=0.456, ca
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
     mirror_x = bool(task_data.get("task_coordinate_mirror_x", False))
+    mirror_y = bool(task_data.get("task_coordinate_mirror_y", False))
     live_center, ux, uy, plane = calibration
     rows = []
     for part in task_data["official_order"]:
@@ -52,14 +53,14 @@ def build_report(task_data, calibration, *, clearance_m=0.100, floor_m=0.456, ca
             source_xyz = _resolve_point(name, task_data)[2]
             board_x, board_y = board_relative_task_xy(
                 source_xyz[:2], source_center,
-                rotation_deg=rotation_deg, mirror_x=mirror_x,
+                rotation_deg=rotation_deg, mirror_x=mirror_x, mirror_y=mirror_y,
             )
             pose = _live_pose(
                 source_xyz, source_center=source_center,
                 live_center=live_center, ux=ux, uy=uy,
                 surface_plane=plane, clearance_m=clearance_m,
                 quat=(1.0, 0.0, 0.0, 0.0), rotation_deg=rotation_deg,
-                mirror_x=mirror_x,
+                mirror_x=mirror_x, mirror_y=mirror_y,
             )
             surface_z = calibrated_surface_z(pose.position_m[0], pose.position_m[1], plane)
             rows.append({
@@ -89,6 +90,7 @@ def build_report(task_data, calibration, *, clearance_m=0.100, floor_m=0.456, ca
         "board_motion_model": task_data.get("board_motion_model"),
         "task_coordinate_rotation_deg": rotation_deg,
         "task_coordinate_mirror_x": mirror_x,
+        "task_coordinate_mirror_y": mirror_y,
         "clearance_m": float(clearance_m),
         "hard_floor_m": floor,
         "calibration_path": calibration_path,

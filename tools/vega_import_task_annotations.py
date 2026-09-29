@@ -70,6 +70,7 @@ def convert(project, *, rotation_deg=180):
         "source_board_center_xy_m": [BOARD_SIZE_M/2]*2,
         "task_coordinate_rotation_deg": rotation_deg,
         "task_coordinate_mirror_x": False,
+        "task_coordinate_mirror_y": True,
         "board_coordinate_convention": {"origin": "rectified image top-left", "x_positive": "image right", "y_positive": "image down", "runtime_x_positive": "robot-view board right", "runtime_y_positive": "robot-view board near edge"},
         "registration_notes": "Per-image rectified pixel fractions normalized to 386 mm. Rotate 180 degrees about board center to place batteries near robot, slim battery on right and rod destination near-left. Annotation Z is ignored; accepted board calibration owns Z.",
         "official_order": list(PART_NAMES), "parts": parts,

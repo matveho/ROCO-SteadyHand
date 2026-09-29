@@ -12,6 +12,7 @@
   ],
   "task_coordinate_rotation_deg": 180,
   "task_coordinate_mirror_x": false,
+  "task_coordinate_mirror_y": true,
   "board_coordinate_convention": {
     "origin": "rectified image top-left",
     "x_positive": "image right",
@@ -19,7 +20,7 @@
     "runtime_x_positive": "robot-view board right",
     "runtime_y_positive": "robot-view board near edge"
   },
-  "registration_notes": "Per-image rectified pixel fractions normalized to 386 mm. Rotate 180 degrees about board center to place batteries near robot, slim battery on right and rod destination near-left. Annotation Z is ignored; accepted board calibration owns Z.",
+  "registration_notes": "Per-image rectified pixel fractions normalized to 386 mm. Apply the reviewed 180-degree board mapping plus a forward/back-only reflection; preserve left/right so batteries remain robot-right and gears remain robot-right. Annotation Z is ignored; accepted board calibration owns Z.",
   "official_order": [
     "gear_60teeth",
     "gear_20teeth",
