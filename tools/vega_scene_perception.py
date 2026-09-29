@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.cameras.vega import VegaHeadCamera
 from steadyhand.config import load_bundle
+from steadyhand.board_geometry import configured_board_plane_z
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vision.scene import detect_head_task_scene, render_scene_overlay
 from steadyhand.vega_camera_clear import move_camera_clear
@@ -238,7 +239,11 @@ def main(argv=None):
     cfg = load_bundle("vega")["robot"]
     os.environ.setdefault("ROBOT_NAME", cfg["robot_name"])
     safety = load_vega_skills()["safety"]
-    plane_z = float(safety["min_tcp_z_m"] if args.plane_z is None else args.plane_z)
+    plane_z = (
+        configured_board_plane_z(cfg, safety["min_tcp_z_m"])
+        if args.plane_z is None
+        else float(args.plane_z)
+    )
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S_%fZ")
     output = Path(args.output) if args.output else ROOT / "runs" / f"scene_{stamp}"

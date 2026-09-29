@@ -32,12 +32,14 @@ class TaskPartVisionTests(unittest.TestCase):
 
     def test_separated_final_layout_can_still_be_labeled(self):
         from steadyhand.vision.task_parts import (
+            BOARD_SIZE_M,
             FINAL_LAYOUT_ORDER,
             detect_dark_part_boxes,
             label_final_layout,
             project_part_boxes_to_image,
         )
 
+        self.assertEqual(BOARD_SIZE_M, 0.386)
         parts = detect_dark_part_boxes(self._image(self._separated_nine()))
         self.assertEqual(len(parts), 9)
         labeled = label_final_layout(parts)

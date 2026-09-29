@@ -3,6 +3,11 @@ import unittest
 from pathlib import Path
 
 from steadyhand.models import Pose
+from steadyhand.board_geometry import (
+    BOARD_SIZE_M,
+    configured_board_plane_z,
+    validate_task_board_geometry,
+)
 from tools.vega_task_coordinate_reachability import calibrated_surface_z, _live_pose, _resolve_point
 
 
@@ -40,6 +45,14 @@ class TaskCoordinateReachabilityTests(unittest.TestCase):
             part, kind, xyz = _resolve_point(name, self.data)
             self.assertEqual(name, f"{part}.{kind}")
             self.assertEqual(len(xyz), 3)
+
+    def test_board_geometry_is_fixed_386mm_horizontal_table_plane(self):
+        self.assertEqual(BOARD_SIZE_M, 0.386)
+        cfg = {"board_calibration": {"board_plane_z_m": 0.456}}
+        self.assertEqual(configured_board_plane_z(cfg, 0.5), 0.456)
+        validate_task_board_geometry(self.data)
+        with self.assertRaises(ValueError):
+            validate_task_board_geometry({"board_width_m": 0.4, "board_height_m": 0.386})
 
     def test_secondary_connect_and_grade_points_are_preserved(self):
         for name in ("rod_16mm.connect", "gear_20teeth.grade"):

@@ -22,9 +22,11 @@ import json
 import math
 from pathlib import Path
 
+from steadyhand.board_geometry import BOARD_SIZE_MM
+
 
 PART_NAME = "battery_size1"
-MEASURED_BOARD_WIDTH_MM = 383.0
+MEASURED_BOARD_WIDTH_MM = BOARD_SIZE_MM
 SCHEMA_VERSION = 1
 
 
@@ -122,7 +124,7 @@ def dimensions_from_measured_width(
     other_dimension_mm,
     measured_width_mm=MEASURED_BOARD_WIDTH_MM,
 ):
-    """Map the measured 383 mm width onto explicit board X or board Y."""
+    """Map the fixed 386 mm board span onto explicit board X or board Y."""
     width = _finite_positive(measured_width_mm, "measured board width")
     other = _finite_positive(other_dimension_mm, "other board dimension")
     if width_axis not in ("x", "y"):

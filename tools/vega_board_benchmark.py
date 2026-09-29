@@ -25,6 +25,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.cameras.vega import VegaHeadCamera, intrinsics_from_camera_info
 from steadyhand.config import load_bundle
+from steadyhand.board_geometry import configured_board_plane_z
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
@@ -200,7 +201,11 @@ def main(argv=None):
     skills_cfg = load_vega_skills()
     safety = dict(skills_cfg.get("safety") or {})
     floor = float(safety["min_tcp_z_m"])
-    plane_z = floor if args.plane_z is None else float(args.plane_z)
+    plane_z = (
+        configured_board_plane_z(cfg, floor)
+        if args.plane_z is None
+        else float(args.plane_z)
+    )
     if not (floor + 0.03 <= float(args.hover_z) <= floor + 0.10 + 1e-9):
         raise SystemExit(
             f"--hover-z must stay 3-10 cm above hard TCP floor {floor:.6f} m; "

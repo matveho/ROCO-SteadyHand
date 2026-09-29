@@ -72,20 +72,20 @@ class SourceGeometryTests(unittest.TestCase):
                 )
 
     def test_measured_width_requires_explicit_axis_and_second_dimension(self):
-        self.assertEqual(MEASURED_BOARD_WIDTH_MM, 383.0)
+        self.assertEqual(MEASURED_BOARD_WIDTH_MM, 386.0)
         self.assertEqual(
             dimensions_from_measured_width(
                 width_axis="x",
                 other_dimension_mm=301.0,
             ),
-            (383.0, 301.0),
+            (386.0, 301.0),
         )
         self.assertEqual(
             dimensions_from_measured_width(
                 width_axis="y",
                 other_dimension_mm=301.0,
             ),
-            (301.0, 383.0),
+            (301.0, 386.0),
         )
         with self.assertRaises(ValueError):
             dimensions_from_measured_width(
@@ -111,10 +111,10 @@ class SourceGeometryTests(unittest.TestCase):
         self.assertAlmostEqual(fraction[1], 0.25, places=5)
         offset = metric_offset_from_fraction(
             fraction,
-            board_x_mm=383.0,
+            board_x_mm=386.0,
             board_y_mm=300.0,
         )
-        self.assertAlmostEqual(offset[0], 0.09575, places=6)
+        self.assertAlmostEqual(offset[0], 0.0965, places=6)
         self.assertAlmostEqual(offset[1], -0.075, places=6)
         manual = {
             "center_base_xy_m": (0.5, 0.1),
@@ -122,7 +122,7 @@ class SourceGeometryTests(unittest.TestCase):
             "board_y_unit_base_xy": (0.0, 1.0),
         }
         base = base_xy_from_board_offset(manual, offset)
-        self.assertAlmostEqual(base[0], 0.59575, places=6)
+        self.assertAlmostEqual(base[0], 0.5965, places=6)
         self.assertAlmostEqual(base[1], 0.025, places=6)
 
     @unittest.skipIf(np is None or cv2 is None, "requires NumPy/OpenCV")
@@ -193,10 +193,11 @@ class SourceCliTests(unittest.TestCase):
             )
             self.assertEqual(
                 record["board_geometry"]["measured_width_mm"],
-                383.0,
+                386.0,
             )
             self.assertTrue(record["board_geometry"]["no_400mm_assumption"])
-            self.assertAlmostEqual(record["coarse_base_xy_m"][0], 0.59575, places=5)
+            self.assertEqual(record["board_geometry"]["board_size_contract"], "386_mm_span")
+            self.assertAlmostEqual(record["coarse_base_xy_m"][0], 0.5965, places=5)
             self.assertAlmostEqual(record["coarse_base_xy_m"][1], 0.025, places=5)
             self.assertEqual(
                 record["battery_size1"]["identity_source"],

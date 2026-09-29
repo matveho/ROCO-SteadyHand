@@ -248,10 +248,11 @@ def homography(args):
         "xm_yp": _validate_pixel(args.corner_xm_yp, rgb.shape, "corner xm_yp"),
     }
     fraction, H = homography_board_fraction(battery_uv, corners)
+    board_width_mm = MEASURED_BOARD_WIDTH_MM
     board_x_mm, board_y_mm = dimensions_from_measured_width(
         width_axis=args.width_axis,
         other_dimension_mm=args.other_dimension_mm,
-        measured_width_mm=args.board_width_mm,
+        measured_width_mm=board_width_mm,
     )
     offset = metric_offset_from_fraction(
         fraction,
@@ -270,14 +271,15 @@ def homography(args):
         method="explicit_four_corner_homography",
     )
     record["board_geometry"] = {
-        "measured_width_mm": float(args.board_width_mm),
-        "measured_width_source": "operator_measured_2026-09-28",
+        "measured_width_mm": float(board_width_mm),
+        "measured_width_source": "fixed_competition_board_specification",
         "width_axis": args.width_axis,
         "other_dimension_mm": float(args.other_dimension_mm),
         "other_dimension_source": "operator_supplied",
         "board_x_dimension_mm": board_x_mm,
         "board_y_dimension_mm": board_y_mm,
         "no_400mm_assumption": True,
+        "board_size_contract": "386_mm_span",
     }
     record["homography"] = {
         "corner_semantics": {
@@ -335,7 +337,7 @@ def board_offset(args):
     )
     record["board_geometry"] = {
         "measured_width_mm": MEASURED_BOARD_WIDTH_MM,
-        "measured_width_source": "operator_measured_2026-09-28",
+        "measured_width_source": "fixed_competition_board_specification",
         "width_axis": None,
         "other_dimension_mm": None,
         "note": (
@@ -343,6 +345,7 @@ def board_offset(args):
             "The second dimension remains intentionally unspecified."
         ),
         "no_400mm_assumption": True,
+        "board_size_contract": "386_mm_span",
     }
     record["board_coordinates"] = {
         "offset_from_center_m": list(offset),
@@ -383,16 +386,10 @@ def main(argv=None):
     hom.add_argument("--corner-xp-yp", nargs=2, type=float, required=True, metavar=("U", "V"))
     hom.add_argument("--corner-xm-yp", nargs=2, type=float, required=True, metavar=("U", "V"))
     hom.add_argument(
-        "--board-width-mm",
-        type=float,
-        default=MEASURED_BOARD_WIDTH_MM,
-        help="operator-measured board width; current verified value is 383 mm",
-    )
-    hom.add_argument(
         "--width-axis",
         choices=("x", "y"),
         required=True,
-        help="which manually calibrated board axis the measured 383 mm width spans",
+        help="which manually calibrated board axis the 386 mm span occupies",
     )
     hom.add_argument(
         "--other-dimension-mm",

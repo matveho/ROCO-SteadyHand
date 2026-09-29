@@ -100,6 +100,9 @@
     "joint_timeout_s": 30
   },
   "board_calibration": {
+    "board_size_m": 0.386,
+    "board_motion_model": "horizontal_translation_only_fixed_table_plane",
+    "board_plane_z_m": 0.4560002716867571,
     "forward_rise_angle_deg": 12.418744602,
     "fallback_file": "calibration/vega_board_manual_fallback.json",
     "camera_target_corrections_m": {

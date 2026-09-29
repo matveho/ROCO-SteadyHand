@@ -17,6 +17,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.cameras.vega import VegaHeadCamera
 from steadyhand.config import load_bundle
+from steadyhand.board_geometry import (
+    configured_board_plane_z,
+    validate_task_board_geometry,
+)
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
@@ -58,6 +62,7 @@ COMPETITION_TASKS = OrderedDict([
 def _load_runtime():
     bundle = load_bundle("vega")
     task_data = json.loads(TASK_COORDINATES.read_text(encoding="utf-8"))
+    validate_task_board_geometry(task_data)
     path = CALIBRATION if CALIBRATION.is_file() else FALLBACK_CALIBRATION
     center, ux, uy, plane = _load_manual(path, bundle["robot"])
     _, ready_pose = configured_right_preset(bundle["robot"], "right_ready")
@@ -203,7 +208,9 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle):
         frame.left_rgb,
         frame.camera_info,
         measured_head_q,
-        plane_z_m=float(floor_m),
+        plane_z_m=configured_board_plane_z(
+            bundle["robot"], floor_m
+        ),
         lift_m=float(cfg["kinematics"]["fixed_joint_values"]["Lift"]),
         torso_flip_rad=float(cfg["kinematics"]["fixed_joint_values"]["torso_flip"]),
         layout="unlabeled",

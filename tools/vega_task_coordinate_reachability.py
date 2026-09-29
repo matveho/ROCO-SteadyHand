@@ -14,6 +14,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters.vega import VegaAdapter
+from steadyhand.board_geometry import validate_task_board_geometry
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
@@ -212,8 +213,7 @@ def main(argv=None):
     task_data = json.loads(task_path.read_text(encoding="utf-8"))
     if task_data.get("source_pose_frame") != "roco_organizer_sim_stage":
         raise ValueError("task coordinates must retain the organizer source frame")
-    if abs(float(task_data.get("board_width_m")) - 0.386) > 1e-9:
-        raise ValueError("task coordinate registration must declare board_width_m=0.386")
+    validate_task_board_geometry(task_data)
     rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     live_center, ux, uy, surface_plane = _load_manual(args.calibration, cfg)

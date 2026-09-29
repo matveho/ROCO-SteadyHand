@@ -95,9 +95,11 @@ Active config (`configs/robots/vega.json`):
   to 100 mm above that surface. The final fit residual in the last record was
   about 1.7 mm.
 
-Board dimensions: the task coordinate file declares a 386 mm field. An onsite
-measurement reported 383 mm for one physical board span. Keep those facts
-explicit; do not silently replace one with the other in new geometry work.
+Board dimensions: the competition field is **386 mm**. This is hardcoded as
+the board-size contract across task coordinates, head perception, snapshots,
+and source localization. The board is assumed to translate only in X/Y on the
+flat table, at the configured fixed table-plane height; its height/orientation
+must not be re-estimated from each photo.
 
 Task coordinates (`configs/task_coordinates.json`) are rotated CCW 90 degrees
 around the declared source board center before live board-axis mapping. Source
@@ -218,8 +220,8 @@ Battery source localization is operator-assisted and does not move the robot:
   `... board-offset ...` (operator supplies measured board-relative mm)
 The preferred mapping is same-image four-corner homography -> metric board
 offset -> calibrated base XY. It must not infer identity from part count/order.
-The 383 mm measurement is the current physical-width input; the second
-dimension must be measured before homography mode.
+The source-localization bridge uses the same fixed 386 mm span. Do not
+introduce alternate board-size constants in new tools.
 
 Coarse hover bridge:
   `tools/vega_battery_size1_coarse_hover.py`
@@ -240,6 +242,7 @@ success is claimed by this handoff.
 8. FILE MAP
 -----------
 Core runtime:
+  `steadyhand/board_geometry.py` — single 386 mm/fixed-table-plane contract.
   `steadyhand/adapters/vega.py` — dexcontrol adapter, state/readback, E-stop.
   `steadyhand/executor.py` — segmented Cartesian motion and safety guards.
   `steadyhand/vega_camera_clear.py` — measured high right-arm camera-clear.

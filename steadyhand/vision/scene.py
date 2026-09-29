@@ -42,7 +42,7 @@ def detect_head_task_scene(
 
     layout="unlabeled" returns generic spatial detections.
     layout="final" attaches operator-confirmed assembled-layout names.
-    Board-relative coordinates use the known physical 0.400 m square board,
+    Board-relative coordinates use the known physical 0.386 m square board,
     with origin at board center, +X TL->TR and +Y TL->BL.
     """
     import numpy as np

@@ -20,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.cameras.vega import VegaHeadCamera
 from steadyhand.config import load_bundle
+from steadyhand.board_geometry import configured_board_plane_z
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
@@ -107,7 +108,7 @@ def main(argv=None):
             frame.left_rgb,
             frame.camera_info,
             head_q,
-            plane_z_m=floor,
+            plane_z_m=configured_board_plane_z(cfg, floor),
             lift_m=float(cfg["kinematics"]["fixed_joint_values"]["Lift"]),
             torso_flip_rad=float(
                 cfg["kinematics"]["fixed_joint_values"]["torso_flip"]

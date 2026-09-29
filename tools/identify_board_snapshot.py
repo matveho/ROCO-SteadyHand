@@ -25,6 +25,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.vision.board import detect_white_board_corners
+from steadyhand.board_geometry import BOARD_SIZE_M
 from steadyhand.vision.task_parts import (
     detect_dark_part_boxes,
     label_final_layout,
@@ -88,7 +89,7 @@ def main(argv=None):
     result = {
         "source": str(source),
         "image_shape": list(rgb.shape),
-        "board_size_m": 0.400,
+        "board_size_m": BOARD_SIZE_M,
         "parameters": {
             "min_value": args.min_value,
             "max_chroma": args.max_chroma,

@@ -1,6 +1,6 @@
 """Task-board part segmentation after coarse board-corner detection.
 
-The competition board is known and approximately 400 x 400 mm.  We first
+The competition board is 386 x 386 mm. We first
 perspective-rectify the detected board to a square, then segment dark task
 parts from the bright board surface.  This deliberately exploits the fixed
 competition layout instead of attempting general object recognition.
@@ -13,8 +13,7 @@ valid dark connected components it sees and never requires a specific count.
 
 from __future__ import annotations
 
-
-BOARD_SIZE_M = 0.400
+from steadyhand.board_geometry import BOARD_SIZE_M
 
 
 # Confirmed by operator against the Sep-27 physical final-state head image.
