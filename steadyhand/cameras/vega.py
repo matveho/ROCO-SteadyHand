@@ -105,15 +105,17 @@ class VegaHeadCamera:
         robot_name = os.environ.get("ROBOT_NAME") or getattr(configs, "robot_name", None)
         last_error = None
         for attempt in range(2):
-            sensors = Sensors({"head_camera": configs.sensors["head_camera"]})
+            sensors = None
             try:
+                sensors = Sensors({"head_camera": configs.sensors["head_camera"]})
                 sensors.wait_for_all_active(timeout=10)
             except Exception as exc:
                 last_error = exc
-                try:
-                    sensors.shutdown()
-                except Exception:
-                    pass
+                if sensors is not None:
+                    try:
+                        sensors.shutdown()
+                    except Exception:
+                        pass
                 if attempt == 0 and robot_name:
                     print(
                         "HEAD CAMERA START FAILED; restarting dexsensor and retrying once",
