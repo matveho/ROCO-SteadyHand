@@ -616,6 +616,27 @@ def _run_wrist_calibration_menu(args):
     return 0
 
 
+def _run_drop_calibration_menu(args):
+    if args.check_only:
+        print("Drop calibration requires physical motion; remove --check-only.")
+        return 2
+    selected = _choose(
+        OrderedDict((part, "pick with saved calibration, teach drop hover/depth, release and save") for part in PART_NAMES),
+        "DROP-OFF POSITION CALIBRATION",
+    )
+    for part in selected:
+        result = run_wrist_part_calibration([
+            "--part", part,
+            "--mode", "drop",
+            "--confirm-head-motion",
+            "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ])
+        if result:
+            return result
+    return 0
+
+
 def _run_task_tests_menu(args):
     if args.check_only:
         print("Task tests require physical motion; remove --check-only.")
@@ -893,6 +914,9 @@ def main(argv=None):
     actions.add_argument("--wrist-calibrate", metavar="PART",
                          choices=PART_NAMES,
                          help="teach one wrist_a part profile directly")
+    actions.add_argument("--drop-calibrate", metavar="PART",
+                         choices=PART_NAMES,
+                         help="teach one physical drop position from its saved pickup profile")
     actions.add_argument("--task-test", metavar="ACTION",
                          choices=list(TASK_ACTIONS),
                          help="run one wrist-backed pick or pick-place test directly")
@@ -924,6 +948,7 @@ def main(argv=None):
 
     if args.check_only and (
         args.wrist_calibrate is not None
+        or args.drop_calibrate is not None
         or args.task_test is not None
         or args.competition_sequence is not None
     ):
@@ -932,6 +957,13 @@ def main(argv=None):
     if args.wrist_calibrate is not None:
         return run_wrist_part_calibration([
             "--part", args.wrist_calibrate, "--mode", "calibrate",
+            "--confirm-head-motion", "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ])
+
+    if args.drop_calibrate is not None:
+        return run_wrist_part_calibration([
+            "--part", args.drop_calibrate, "--mode", "drop",
             "--confirm-head-motion", "--confirm-physical-motion",
             "--speed-scale", str(args.speed_scale),
         ])
@@ -997,6 +1029,7 @@ def main(argv=None):
         print("  7. Run preserved competition task version")
         print("  8. Reload operator settings / show readiness")
         print("  9. Attempt pickup of all calibrated objects (NO CV only)")
+        print(" 10. Calibrate drop-off position (saved pickup -> 40 mm descent -> release/save)")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
         if choice in ("0", "q", "quit", "exit"):
@@ -1092,6 +1125,14 @@ def main(argv=None):
                 print("No-CV pickup run cancelled.")
             except Exception as exc:
                 print(f"No-CV pickup run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "10":
+            try:
+                _run_drop_calibration_menu(args)
+            except (KeyboardInterrupt, EOFError):
+                print("Drop calibration cancelled.")
+            except Exception as exc:
+                print(f"Drop calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         if choice == "7":
             selected = _choose(COMPETITION_TASKS, "COMPETITION TASK VERSIONS")

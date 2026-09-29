@@ -154,7 +154,11 @@ class PartSession:
         self.status = "starting"
         self.robot.connect()
         self.retake()
-        self.cameras.connect()
+        # Drop teaching deliberately reuses the saved pickup hover/grasp and
+        # does not need a wrist frame.  Avoid making the procedure depend on a
+        # live wrist-camera bridge that is irrelevant to this stage.
+        if getattr(self.args, "mode", "calibrate") != "drop":
+            self.cameras.connect()
         self.status = "ready"
 
     def close(self):
@@ -178,6 +182,7 @@ class PartSession:
                 "alignment_fallback_used": getattr(self, "alignment_fallback_used", False),
                 "grasp_verified": getattr(self, "grasp_verified", False),
                 "grasp_clearance_m": getattr(self, "last_grasp_clearance", None),
+                "drop_release_photo": getattr(self, "drop_release_photo", None),
                 "board_scene_paths": list(self.board_scene_paths),
                 "events_path": "events.jsonl",
                 "calibration_path": "calibration/vega_board_manual.json",
@@ -902,6 +907,240 @@ class PartSession:
         self.move(hover, slow=True)
         print("Placement release completed; insertion/assembly is not inferred.")
 
+    def _drop_settings_from_pose(self, pose):
+        """Convert the measured drop TCP pose to the profile's board offset."""
+        target = self.targets[f"task.{self.part}.place"]
+        _, ux, uy, _ = self.runtime[2]
+        dx = float(pose.position_m[0]) - float(target.position_m[0])
+        dy = float(pose.position_m[1]) - float(target.position_m[1])
+        clearance = float(pose.position_m[2]) - self.surface(
+            pose.position_m[0], pose.position_m[1]
+        )
+        if not math.isfinite(clearance) or not 0.001 <= clearance < 0.100:
+            raise ValueError(
+                f"drop clearance must be 1..99 mm above the calibrated surface; "
+                f"measured {clearance * 1000:.1f} mm"
+            )
+        return {
+            "offset_board_xy_m": [
+                dx * float(ux[0]) + dy * float(ux[1]),
+                dx * float(uy[0]) + dy * float(uy[1]),
+            ],
+            "clearance_m": clearance,
+            "yaw_deg": float(self.yaw),
+        }
+
+    def _save_drop_profile(self, pose, settings, release_result):
+        """Persist the operator-confirmed release immediately after release."""
+        profile = dict(self.profiles["parts"][self.part])
+        profile["place"] = settings
+        profile["place_verified"] = True
+        profile["place_release_tcp_m"] = list(pose.position_m)
+        profile["place_release_gripper"] = release_result
+        if getattr(self, "drop_release_photo", None):
+            profile["place_release_photo"] = self.drop_release_photo
+        profile["place_taught_at_utc"] = datetime.now(timezone.utc).isoformat()
+        self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
+        return profile
+
+    def _capture_drop_release_photo(self):
+        """Save a plainly named wrist image of the taught release pose."""
+        try:
+            # ``connect`` is idempotent in the camera adapter.  Calling the
+            # public method avoids depending on bridge/manager implementation
+            # details, and also permits drop mode to start camera-free and
+            # connect only for this archival snapshot.
+            self.cameras.connect()
+            _rgb, raw = self.frame("drop release position")
+            archive = ROOT / "runs" / "drop_release_positions"
+            archive.mkdir(parents=True, exist_ok=True)
+            stamp = time.time_ns()
+            destination = archive / (
+                f"DROP_RELEASE_POSITION__{self.part}__{stamp}__WRIST_A.png"
+            )
+            shutil.copyfile(raw, destination)
+            relative = str(destination.relative_to(ROOT)).replace("\\", "/")
+            self.drop_release_photo = relative
+            print(f"DROP RELEASE POSITION PHOTO = {destination}", flush=True)
+            return relative
+        except Exception as exc:
+            self.drop_release_photo = None
+            print(
+                f"DROP RELEASE POSITION PHOTO WARNING: {type(exc).__name__}: {exc}",
+                flush=True,
+            )
+            return None
+
+    def teach_drop(self, part, profile):
+        """Teach a physical drop position using an existing pickup profile.
+
+        The pickup uses the saved arm hover and grasp calibration without
+        wrist centering.  The part is then carried to its task drop target,
+        descended 40 mm below the 100 mm hover, and adjusted interactively.
+        ``release`` records the measured TCP and saves the profile before any
+        retreat motion is attempted.
+        """
+        if profile is None:
+            raise ValueError("No saved pickup profile. Teach and verify this part first.")
+        _check_ready(profile, self.cfg, "pick", competition=True, no_cv=True)
+        self.part, self.action = part, "drop_calibrate"
+        self.begin_part(part, profile, competition=True, no_cv=True)
+        self.yaw = float((profile.get("place") or {}).get("yaw_deg", 0.0))
+        self.history = []
+        self.drop_release_photo = None
+        self.grasp_verified = True
+        self.grab(
+            profile["grasp_clearance_m"],
+            allow_unverified=True,
+        )
+        self.grasp_verified = True
+
+        nominal = self.targets[f"task.{part}.place"]
+        hover = Pose(
+            (nominal.position_m[0], nominal.position_m[1],
+             self.surface(nominal.position_m[0], nominal.position_m[1]) + .100),
+            _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz,
+        )
+        self.move(hover)
+        initial_clearance = .060  # 100 mm hover minus the requested 40 mm descent
+        current = Pose(
+            (hover.position_m[0], hover.position_m[1],
+             self.surface(hover.position_m[0], hover.position_m[1]) + initial_clearance),
+            hover.quaternion_wxyz,
+        )
+        self.move(current, slow=True)
+        print(
+            f"DROP CALIBRATION READY: {part}; nominal drop reached at 40 mm below hover.",
+            flush=True,
+        )
+        print(
+            "Commands: forward/back/left/right N (mm) | step N | yaw N (deg) | "
+            "down N (mm) | up N | undo | status | release | return | abort",
+            flush=True,
+        )
+        while True:
+            raw = input(f"drop {part}> ").strip().lower().split()
+            if not raw:
+                continue
+            command = raw[0]
+            if command in ("abort", "exit", "q"):
+                if self.holding:
+                    print("A part is held; use return before aborting.", flush=True)
+                    continue
+                return 1
+            if command == "release":
+                try:
+                    release_pose = self.robot.get_tcp_pose()
+                    settings = self._drop_settings_from_pose(release_pose)
+                    release_photo = self._capture_drop_release_photo()
+                    release_result = self.robot.release_gripper(self.part)
+                    self.holding = False
+                    self.event("drop_release", {
+                        "release_tcp": list(release_pose.position_m),
+                        "place": settings,
+                        "release_photo": release_photo,
+                        "gripper_release": release_result,
+                    })
+                    profile = self._save_drop_profile(
+                        release_pose, settings, release_result
+                    )
+                    self.status = "drop_profile_saved"
+                    print("DROP PROFILE SAVED AFTER RELEASE", flush=True)
+                    print(json.dumps({
+                        "part": part,
+                        "place": settings,
+                        "place_release_tcp_m": list(release_pose.position_m),
+                        "place_release_photo": release_photo,
+                        "place_verified": profile["place_verified"],
+                        "gripper_release": release_result,
+                    }, indent=2, default=str), flush=True)
+                    try:
+                        self.move(hover, slow=True)
+                    except Exception as exc:
+                        print(f"RETREAT AFTER DROP WARNING: {exc}", flush=True)
+                    return 0
+                except (RuntimeError, ValueError) as exc:
+                    self.last_error = f"{type(exc).__name__}: {exc}"
+                    print(f"RELEASE BLOCKED: {exc}; part remains held.", flush=True)
+                    continue
+            if command == "return":
+                try:
+                    self.move(self.coarse, slow=True)
+                    self.return_part(profile["grasp_clearance_m"])
+                    self.status = "drop_cancelled_returned"
+                    return 1
+                except (RuntimeError, ValueError) as exc:
+                    print(f"RETURN BLOCKED: {exc}; part remains held.", flush=True)
+                    continue
+            if command == "status":
+                pose = self.robot.get_tcp_pose()
+                print(json.dumps({
+                    "tcp_position_m": list(pose.position_m),
+                    "clearance_mm": (pose.position_m[2] - self.surface(*pose.position_m[:2])) * 1000,
+                    "yaw_deg": self.yaw,
+                    "holding": self.holding,
+                }), flush=True)
+                continue
+            if command == "step" and len(raw) == 2:
+                try:
+                    self.step_mm = _number(raw[1], .5, 20.0)
+                    print(f"STEP = {self.step_mm:g} mm", flush=True)
+                except ValueError as exc:
+                    print(f"COMMAND BLOCKED: {exc}", flush=True)
+                continue
+            if command == "undo":
+                if not self.history:
+                    print("No drop adjustment to undo", flush=True)
+                    continue
+                previous, old_yaw = self.history.pop()
+                try:
+                    self.move(previous, slow=True)
+                    self.yaw = old_yaw
+                except (RuntimeError, ValueError) as exc:
+                    print(f"UNDO BLOCKED: {exc}", flush=True)
+                continue
+            try:
+                current = self.robot.get_tcp_pose()
+                old_yaw = self.yaw
+                x, y, z = current.position_m
+                if command in ("forward", "back", "left", "right"):
+                    amount = self.step_mm if len(raw) == 1 else _number(raw[1], .1, 30.0)
+                    amount /= 1000.0
+                    dx, dy = {
+                        "forward": (amount, 0.0), "back": (-amount, 0.0),
+                        "left": (0.0, amount), "right": (0.0, -amount),
+                    }[command]
+                    x, y = x + dx, y + dy
+                    if math.dist((x, y), nominal.position_m[:2]) > .120:
+                        raise ValueError("drop adjustment exceeds 120 mm from nominal target")
+                    clearance = z - self.surface(*current.position_m[:2])
+                    target = Pose(
+                        (x, y, self.surface(x, y) + clearance),
+                        current.quaternion_wxyz,
+                    )
+                elif command in ("down", "up") and len(raw) == 2:
+                    amount = _number(raw[1], .1, 20.0) / 1000.0
+                    target_z = z + amount if command == "up" else z - amount
+                    if target_z < self.floor + .005:
+                        raise ValueError("drop target would cross the configured TCP floor")
+                    if target_z <= self.surface(x, y) + .001:
+                        raise ValueError("drop target must remain at least 1 mm above the board")
+                    target = Pose((x, y, target_z), current.quaternion_wxyz)
+                elif command == "yaw" and len(raw) == 2:
+                    self.yaw = _number(raw[1], -45.0, 45.0)
+                    target = Pose(
+                        current.position_m,
+                        _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz,
+                    )
+                else:
+                    print("Unknown command; use help, directions, down N, yaw N, release, return, or abort.", flush=True)
+                    continue
+                self.move(target, slow=True)
+                self.history.append((current, old_yaw))
+            except (RuntimeError, ValueError) as exc:
+                print(f"COMMAND BLOCKED: {type(exc).__name__}: {exc}", flush=True)
+                continue
+
     def teach(self, part, old=None):
         self.begin_part(part, None, initial_yaw=(old or {}).get("yaw_deg"))
         grasp = old.get("grasp_clearance_m") if old else None
@@ -1319,7 +1558,7 @@ def _check_ready(profile, cfg, action, *, competition=False, no_cv=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--part", choices=PART_NAMES)
-    parser.add_argument("--mode", choices=("calibrate", "test"), default="calibrate")
+    parser.add_argument("--mode", choices=("calibrate", "test", "drop"), default="calibrate")
     parser.add_argument("--action", choices=("localize", "pick", "pick_place"), default="localize")
     parser.add_argument("--sequence", nargs="+", help="Explicit part.action sequence")
     parser.add_argument("--competition", action="store_true")
@@ -1351,7 +1590,11 @@ def main(argv=None):
         float(cfg["motion"]["joint_reached_tolerance_rad"]), 0.020
     )
     profiles = load_profiles(_resolve(args.profiles), cfg)
-    actions = args.sequence or ([f"{args.part}.{args.action}"] if args.part else None)
+    if args.mode == "drop" and args.sequence:
+        parser.error("--mode drop accepts one --part and does not use --sequence")
+    actions = None if args.mode == "drop" else (
+        args.sequence or ([f"{args.part}.{args.action}"] if args.part else None)
+    )
     if actions and args.mode == "test":
         for value in actions:
             part, action = value.split(".")
@@ -1368,6 +1611,10 @@ def main(argv=None):
     session = PartSession(args, output, cfg, profiles)
     try:
         session.start()
+        if args.mode == "drop":
+            if not args.part:
+                parser.error("--mode drop requires --part")
+            return session.teach_drop(args.part, profiles["parts"].get(args.part))
         if actions:
             for value in actions:
                 part, action = value.split(".")
