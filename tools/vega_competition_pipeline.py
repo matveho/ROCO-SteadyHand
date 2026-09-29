@@ -352,15 +352,14 @@ def _runtime_from_board_scene(runtime, scene):
     if matrix.shape != (4, 4) or not np.all(np.isfinite(matrix)):
         raise RuntimeError("fresh board image did not provide a finite board transform")
     center = matrix[:3, 3].copy()
-    ux = matrix[:3, 0].copy()
-    uy = matrix[:3, 1].copy()
-    ux[2] = 0.0
-    uy[2] = 0.0
-    # The scene detector returns NumPy arrays; the canonical calibration
-    # validator intentionally accepts JSON-shaped lists/tuples only.
-    ux_xy, uy_xy, _, _ = orthonormalize_xy_axes(
-        ux[:2].tolist(), uy[:2].tolist()
-    )
+    # The board is calibrated as a horizontal translation-only object.  A
+    # single camera retake may label image edges with a mirrored or rotated
+    # sign, so it must never replace the operator-validated board axes.  Keep
+    # the calibrated axes (and therefore the reviewed 180-degree task frame)
+    # and use the image only to update board translation.
+    _, calibrated_ux, calibrated_uy, _ = runtime[2]
+    ux_xy = tuple(float(v) for v in calibrated_ux)
+    uy_xy = tuple(float(v) for v in calibrated_uy)
 
     calibration_cfg = (bundle["robot"].get("board_calibration") or {})
     corrections = calibration_cfg.get("camera_target_corrections_m") or {}
