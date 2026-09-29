@@ -1036,7 +1036,7 @@ def main(argv=None):
         action = "pick" if args.competition_plan != "priority_pick_place" else "pick_place"
         return _priority_competition_actions(
             args, action=action,
-            no_cv=(args.competition_plan == "priority_pick_no_cv" or action == "pick"),
+            no_cv=(args.competition_plan == "priority_pick_no_cv"),
         )
 
     if args.test_positions is not None or args.competition_task is not None:
