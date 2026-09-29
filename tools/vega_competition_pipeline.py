@@ -435,6 +435,16 @@ def _run_motion_targets(
     if available_targets is None:
         available_targets = targets
     cfg = bundle["robot"]
+    # The Vega motion plugin can finish with a stationary joint a few
+    # milliradians outside the nominal 5 mrad state-stream gate.  Position
+    # testing is supervised and already validates the measured TCP pose, so
+    # use the same 20 mrad settled-state tolerance used by board and wrist
+    # calibration.  This prevents a false E-stop/retry when the robot has
+    # actually stopped at the requested Cartesian target.
+    cfg.setdefault("motion", {})["joint_reached_tolerance_rad"] = max(
+        float(cfg.get("motion", {}).get("joint_reached_tolerance_rad", 0.005)),
+        0.020,
+    )
     cfg["allow_robot_init_head_motion"] = bool(confirm_physical)
     cfg["auto_clear_software_estop_on_connect"] = True
     floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
