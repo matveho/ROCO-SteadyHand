@@ -31,3 +31,5 @@
     "rod_16mm": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "usb_a": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "hdmi": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"}
+  }
+}
