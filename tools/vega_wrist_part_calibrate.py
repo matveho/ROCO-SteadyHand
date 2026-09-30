@@ -215,7 +215,11 @@ class PartSession:
         # Drop teaching deliberately reuses the saved pickup hover/grasp and
         # does not need a wrist frame.  Avoid making the procedure depend on a
         # live wrist-camera bridge that is irrelevant to this stage.
-        if getattr(self.args, "mode", "calibrate") != "drop" or self.remote_safe:
+        mode = getattr(self.args, "mode", "calibrate")
+        needs_wrist = mode not in ("drop", "test") or (
+            mode == "test" and (not getattr(self.args, "no_cv", False)
+                                or getattr(self.args, "place_cv", False)))
+        if needs_wrist or self.remote_safe:
             self.cameras.connect()
         self.status = "ready"
 
@@ -736,7 +740,7 @@ class PartSession:
                 self.alignment_verified = result.get("status") == "converged"
                 if self.alignment_verified:
                     self.alignment_fallback_used = False
-                    if getattr(self.args, "competition", False):
+                    if getattr(self.args, "mode", "calibrate") == "test":
                         # The wrist image goal is consistently about 15 mm
                         # forward of the physical grasp center on this setup.
                         # Apply the operator-editable correction only after a
@@ -760,7 +764,7 @@ class PartSession:
                             self.move(corrected, slow=True)
                             result["competition_center_backoff_m"] = backoff
                             print(
-                                "COMPETITION CENTER BACKOFF: "
+                                "EXECUTION CENTER BACKOFF: "
                                 f"moved {backoff * 1000:.0f} mm back from the visual goal",
                                 flush=True,
                             )
@@ -827,6 +831,61 @@ class PartSession:
         self.tracker.locate(rgb)
         return self.tracker
 
+    def _load_saved_feature(self, profile):
+        """Read a new frame; never reuse another part's tracker on rejection."""
+        self.tracker = None
+        self.alignment_verified = False
+        rgb, path = self.frame("saved template check")
+        if list(rgb.shape[:2]) != profile["image_shape"]:
+            raise ValueError("Wrist image resolution changed; re-teach this part's feature")
+        tracker = TemplateTracker.from_saved_template(
+            rgb, _load_template(profile), profile["template"].get("template_uv"),
+            initial_uv=profile.get("feature_uv"),
+        )
+        self.tracker = tracker
+        self.reference_rgb = rgb.copy()
+        self.reference_pose = self.robot.get_tcp_pose()
+        self.reference_feature = tuple(profile.get("feature_uv") or tracker.uv)
+        self.reference_match_score = profile.get("reference_match_score")
+        self.goal = tuple(profile["goal_uv"]) if profile.get("goal_uv") is not None else None
+        _write_overlay(path.with_name(path.stem + "_match.png"), rgb, tracker.uv, self.goal, label=self.part)
+
+    def use_recorded_grasp(self):
+        """Restore the projected successful grasp, not the last CV probe pose."""
+        if self.holding or getattr(self, "motion_faulted", False):
+            raise RuntimeError("Recorded grasp blocked: holding or motion fault requires inspection")
+        self.move(self.grasp_target, slow=True)
+        self.no_cv_mode = True
+        self.alignment_fallback_used = True
+        self.alignment_verified = False
+        self.tracker = None
+        print("SAVED GRASP HOVER REACHED; taught depth and jaw opening are unchanged.", flush=True)
+
+    def _visual_recovery(self, exc, *, competition=False):
+        """A visual rejection permits inspection; a motion/camera fault does not."""
+        if getattr(self, "motion_faulted", False) or not _is_visual_alignment_failure(exc):
+            raise exc
+        self.alignment_verified = False
+        self.alignment_fallback_used = True
+        self.event("alignment_fallback", {"reason": str(exc),
+                   "fallback": "projected_taught_grasp" if competition else "operator_review"})
+        if competition:
+            self.use_recorded_grasp()
+        else:
+            print(f"WRIST ALIGNMENT NOT VERIFIED: {exc}\n"
+                  "Arm left at its current hover; no grasp commanded. "
+                  "Use saved for the taught grasp, center to retry, image to inspect, or abort.",
+                  flush=True)
+
+    def retry_saved_alignment(self, profile):
+        self.no_cv_mode = False
+        try:
+            self._load_saved_feature(profile)
+            return self.localize()
+        except (RuntimeError, ValueError) as exc:
+            self._visual_recovery(exc)
+            return None
+
     def profile_pose(self, profile, action, *, no_cv=False, clearance=.100):
         from steadyhand.board_relative import resolve_profile_target
         nominal = self.targets[f"task.{self.part or profile['part']}.{action}"]
@@ -852,7 +911,15 @@ class PartSession:
 
     def begin_part(self, part, profile=None, *, initial_yaw=None, competition=False,
                    no_cv=False):
+        if self.holding or getattr(self, "motion_faulted", False):
+            raise RuntimeError("Next part blocked: holding or motion fault requires inspection")
         self.part, self.history = part, []
+        self.tracker = None
+        self.goal = self.goal_match = None
+        self.reference_feature = None
+        self.reference_match_score = None
+        self.alignment_verified = False
+        self.manual_alignment_override = False
         self.no_cv_mode = bool(no_cv)
         self.no_cv_used_recorded = False
         self.alignment_fallback_used = False
@@ -909,7 +976,7 @@ class PartSession:
                 )
         if profile and profile.get("gripper_open_fraction") is not None:
             opening = float(profile["gripper_open_fraction"])
-            if competition:
+            if competition or getattr(self.args, "mode", "calibrate") == "test":
                 # Keep competition jaws away from both hard stops.  A zero
                 # opening is too tight before descent, while a saved 100%
                 # opening wastes time on a long travel.  The profile itself is
@@ -939,21 +1006,7 @@ class PartSession:
         self.remote_checkpoint("coarse_hover")
         if profile:
             try:
-                rgb, path = self.frame("saved template check")
-                if list(rgb.shape[:2]) != profile["image_shape"]:
-                    raise ValueError("Wrist resolution changed; re-teach this part")
-                self.tracker = TemplateTracker.from_saved_template(
-                    rgb,
-                    _load_template(profile),
-                    profile["template"].get("template_uv"),
-                    initial_uv=profile.get("feature_uv"),
-                )
-                self.reference_rgb = rgb.copy()
-                self.reference_pose = self.robot.get_tcp_pose()
-                self.reference_feature = tuple(profile.get("feature_uv") or self.tracker.uv)
-                self.reference_match_score = profile.get("reference_match_score")
-                self.goal = tuple(profile["goal_uv"]) if profile.get("goal_uv") is not None else None
-                _write_overlay(path.with_name(path.stem + "_match.png"), rgb, self.tracker.uv, self.goal, label=part)
+                self._load_saved_feature(profile)
             except (RuntimeError, ValueError) as exc:
                 if getattr(self.args, "mode", "calibrate") == "calibrate" and _is_visual_alignment_failure(exc):
                     # Re-teaching must never be blocked by a stale/occluded
@@ -968,29 +1021,12 @@ class PartSession:
                         flush=True,
                     )
                     return None
-                if not competition or not _is_visual_alignment_failure(exc):
-                    raise
-                # The saved profile still carries the feature/goal metadata;
-                # no live match is required for the coarse-pose fallback.
+                # Keep identity metadata for an explicit manual approval, but
+                # never call an ambiguous candidate a verified alignment.
                 self.reference_feature = tuple(profile.get("feature_uv") or (0.0, 0.0))
                 self.reference_match_score = profile.get("reference_match_score")
                 self.goal = tuple(profile["goal_uv"]) if profile.get("goal_uv") is not None else None
-                self.alignment_fallback_used = True
-                self.alignment_verified = False
-                self.event(
-                    "alignment_fallback",
-                    {
-                        "reason": str(exc),
-                        "fallback": "projected_taught_grasp",
-                        "coarse_xy_m": list(self.coarse.position_m[:2]),
-                    },
-                )
-                self.move(self.grasp_target, slow=True)
-                print(
-                    "WRIST FEATURE MATCH FAILED; using the projected taught grasp "
-                    "without visual centering.",
-                    flush=True,
-                )
+                self._visual_recovery(exc, competition=competition)
                 return None
         else:
             return None
@@ -999,36 +1035,16 @@ class PartSession:
             if competition and not self.alignment_verified:
                 if self.motion_faulted:
                     raise RuntimeError("Visual servo motion failed; automatic grasp blocked")
-                self.move(self.grasp_target, slow=True)
-                self.alignment_fallback_used = True
+                self.use_recorded_grasp()
                 print("CENTERING UNVERIFIED: returned to projected taught grasp", flush=True)
             return result
         except (RuntimeError, ValueError) as exc:
-            if self.motion_faulted or not competition or not _is_visual_alignment_failure(exc):
-                raise
-            # The saved coarse board target is the remembered physical pose.
-            # Return there, skip visual servoing, and let the bounded grasp use
-            # that pose.  This is only a competition fallback; teaching still
-            # requires successful centering or explicit supervised override.
-            self.move(self.grasp_target, slow=True)
-            self.alignment_fallback_used = True
-            self.alignment_verified = False
-            self.event(
-                "alignment_fallback",
-                {
-                    "reason": str(exc),
-                    "fallback": "projected_taught_grasp",
-                    "coarse_xy_m": list(self.coarse.position_m[:2]),
-                },
-            )
-            print(
-                "VISUAL CENTERING FAILED; returned to the projected taught grasp and "
-                "will attempt the grasp there without further centering.",
-                flush=True,
-            )
+            self._visual_recovery(exc, competition=competition)
             return None
 
     def grab(self, clearance, *, allow_unverified=False):
+        if getattr(self, "motion_faulted", False):
+            raise RuntimeError("Grasp blocked after a motion fault; inspect before restarting")
         if clearance is None:
             raise ValueError("Set depth N first; N is millimetres below the 100 mm hover")
         if (self.goal is None or not self.alignment_verified) and not allow_unverified:
@@ -1224,9 +1240,18 @@ class PartSession:
             (x, y, self.surface(x, y) + clearance),
             hover.quaternion_wxyz,
         )
+        retreat = hover
+        pickup_hover = getattr(self, "pickup_hover", None)
+        if (pickup_hover is not None and
+                math.dist(pickup_hover.position_m[:2], hover.position_m[:2]) <= .010 and
+                pickup_hover.position_m[2] > hover.position_m[2]):
+            # A normal "no object gripped" result occurs before lift. Release
+            # there, then retreat vertically to the original pickup height;
+            # don't leave the arm at grasp height before the next attempt.
+            retreat = Pose((x, y, pickup_hover.position_m[2]), hover.quaternion_wxyz)
         seed = self.robot._read_joint_positions()
         seed = preflight_tcp_segmented(self.robot._kinematics, seed, hover, release, **MOTION_STEPS)
-        preflight_tcp_segmented(self.robot._kinematics, seed, release, hover, **MOTION_STEPS)
+        preflight_tcp_segmented(self.robot._kinematics, seed, release, retreat, **MOTION_STEPS)
         self.remote_checkpoint("before_return_descent")
         self.move(release, slow=True)
         self.remote_checkpoint("return_release_height")
@@ -1245,7 +1270,7 @@ class PartSession:
         self.holding = False
         self.remote_checkpoint("returned_part_released")
         self.remote_checkpoint("before_return_retreat")
-        self.move(hover, slow=True)
+        self.move(retreat, slow=True)
         self.remote_checkpoint("return_retreat_complete")
 
     def _place_visual_align(self, settings):
@@ -1495,21 +1520,25 @@ class PartSession:
                 self.grab(profile["grasp_clearance_m"], allow_unverified=True)
                 return True
             except PickupPreflightError as exc:
-                print(f"PICKUP PLAN BLOCKED: {exc}\n"
-                      "No descent or grip was commanded. The arm remains at the pickup hover.\n"
-                      "Inspect before retrying; the saved calibration has not been changed.", flush=True)
-                if self.remote_safe:
-                    self.frame("pickup preflight blocked")
-                while True:
-                    command = input("PICKUP PLAN [retry / image / abort]: ").strip().lower()
-                    if command == "retry":
-                        break
-                    if command == "image":
-                        self.frame("pickup preflight inspection")
-                    elif command in ("abort", "stop", "exit", "q"):
-                        return False
-                    else:
-                        print("Use retry to recheck IK, image to inspect, or abort to finish.", flush=True)
+                if not self._pickup_plan_retry(exc):
+                    return False
+
+    def _pickup_plan_retry(self, exc):
+        print(f"PICKUP PLAN BLOCKED: {exc}\n"
+              "No descent or grip was commanded. The arm remains at the pickup hover.\n"
+              "Inspect before retrying; the saved calibration has not been changed.", flush=True)
+        if self.remote_safe:
+            self.frame("pickup preflight blocked")
+        while True:
+            command = input("PICKUP PLAN [retry / image / abort]: ").strip().lower()
+            if command == "retry":
+                return True
+            if command == "image":
+                self.frame("pickup preflight inspection")
+            elif command in ("abort", "stop", "exit", "q"):
+                return False
+            else:
+                print("Use retry to recheck IK, image to inspect, or abort to finish.", flush=True)
 
     def teach_drop(self, part, profile):
         """Teach a physical drop position using an existing pickup profile.
@@ -1662,7 +1691,7 @@ class PartSession:
                         "left": (0.0, amount), "right": (0.0, -amount),
                     }[command]
                     x, y = x + dx, y + dy
-                    if math.dist((x, y), nominal.position_m[:2]) > .120:
+                    if math.dist((x, y), hover.position_m[:2]) > .120:
                         raise ValueError("drop adjustment exceeds 120 mm from nominal target")
                     clearance = z - self.surface(*current.position_m[:2])
                     target = Pose(
@@ -2119,40 +2148,54 @@ class PartSession:
         self.place_cv_settings = profile.get("place_cv") if place_cv else None
         self.begin_part(part, profile, competition=competition, no_cv=no_cv)
         if action == "localize":
-            return 0
+            return 0 if self.alignment_verified else 1
         manual = False
         if not competition:
             if not self.alignment_verified and not no_cv:
                 print("CV alignment was not verified. Inspect the current hover; "
                       "'grab manual' explicitly approves it, 'center' retries localization.", flush=True)
             while True:
-                choice = input("grab / grab manual / center / image / abort: ").strip().lower()
+                choice = input("grab / grab manual / saved / center / image / abort: ").strip().lower()
                 if choice == "image":
                     self.frame("supervised pickup review")
                     continue
                 if choice == "center":
-                    self.localize()
+                    self.retry_saved_alignment(profile)
+                    continue
+                if choice == "saved":
+                    self.use_recorded_grasp()
                     continue
                 if choice == "grab manual":
                     manual = True
                     break
                 if choice == "grab":
-                    if not no_cv and not self.alignment_verified:
+                    if not self.no_cv_mode and not self.alignment_verified:
                         print("Use 'grab manual' to approve this unverified hover, or center/image/abort.")
                         continue
                     break
-                self.status = "cancelled_before_grip"
-                return 1
+                if choice in ("abort", "stop", "exit", "q"):
+                    self.status = "cancelled_before_grip"
+                    return 1
+                print("Choose grab, grab manual, saved, center, image, or abort.", flush=True)
         _, pickup_clearance = self._execution_target(
             "pickup", self.robot.get_tcp_pose(), profile["grasp_clearance_m"]
         )
         try:
-            self.grab(
-                pickup_clearance,
-                allow_unverified=bool(
-                    no_cv or manual or (competition and self.alignment_fallback_used)
-                ),
-            )
+            while True:
+                try:
+                    self.grab(
+                        pickup_clearance,
+                        allow_unverified=bool(
+                            self.no_cv_mode or manual or (competition and self.alignment_fallback_used)
+                        ),
+                    )
+                    break
+                except PickupPreflightError as exc:
+                    if competition:
+                        raise
+                    if not self._pickup_plan_retry(exc):
+                        self.status = "cancelled_before_grip"
+                        return 1
         except (RuntimeError, ValueError) as exc:
             if competition and self.holding and isinstance(exc, GripNotVerifiedError) and not self.motion_faulted:
                 # The grasp routine marks holding before contact so an
@@ -2248,7 +2291,11 @@ def _number(value, low, high):
 def _load_template(profile):
     import cv2
     path = _resolve(profile["template"]["path"])
-    if file_sha256(path) != profile["template"]["sha256"]:
+    try:
+        actual_hash = file_sha256(path)
+    except OSError as exc:
+        raise ValueError(f"Wrist template unavailable: {path}: {exc}") from exc
+    if actual_hash != profile["template"]["sha256"]:
         raise ValueError("Wrist template hash changed; re-teach the part")
     image = cv2.imread(str(path), cv2.IMREAD_COLOR)
     if image is None:
@@ -2275,7 +2322,10 @@ def _check_ready(profile, cfg, action, *, competition=False, no_cv=False):
             "registration.",
             flush=True,
         )
-    if not no_cv:
+    # Pickup tests/competition check the template at the hover, where a visual
+    # rejection can offer the saved physical grasp. Localization-only requests
+    # still require the visual asset up front.
+    if not no_cv and action == "localize":
         _load_template(profile)
     if action != "localize" and profile.get("grasp_clearance_m") is None:
         raise ValueError("Grasp depth has not been taught")

@@ -101,6 +101,7 @@ class ExecutionOffsetTests(unittest.TestCase):
                 # distinct from the original pose to catch corrections applied
                 # before, rather than after, the servo.
                 aligned = Pose((.43, -.12, s.surface(.43, -.12) + .1), QUAT)
+                s.no_cv_mode = no_cv
                 s.begin_part = lambda *a, **kw: setattr(s.robot, "pose", aligned)
                 grabs = []
                 def grab(clearance, **kw):

@@ -966,17 +966,34 @@ def _run_task_tests_menu(args):
     selected = _choose(TASK_ACTIONS, "TASK TESTS (PICK / PICK-PLACE)")
     for name in selected:
         part, action = name.split(".", 1)
-        result = run_wrist_part_calibration([
-            "--part", part,
-            "--mode", "test",
-            "--action", action,
-            "--confirm-head-motion",
-            "--confirm-physical-motion",
-            "--speed-scale", str(args.speed_scale),
-        ] + (["--remote-safe"] if getattr(args, "remote_safe", False) else []))
+        result = run_wrist_part_calibration(_task_test_command(args, part, action))
         if result:
             return result
     return 0
+
+
+def _task_test_command(args, part, action):
+    """Exercise competition's part settings, but retain supervised grasp gates."""
+    settings = _load_competition_actions()
+    entry = settings["parts"][part]
+    speed = args.speed_scale if getattr(args, "speed_scale_cli", False) else settings["pipeline_speed_scale"]
+    profiles = load_profiles(ROOT / "calibration/wrist_part_profiles.json", load_bundle("vega")["robot"])
+    profile = profiles.get("parts", {}).get(part) or {}
+    pick_cv = entry["use_wrist_pick_cv"]
+    place_cv = bool(action == "pick_place" and settings["use_place_cv"]
+                    and entry["use_place_cv"] and profile.get("place_cv", {}).get("enabled", False))
+    print(f"TASK TEST {part}.{action}: pickup CV={'on' if pick_cv else 'off'}, "
+          f"placement CV={'on' if place_cv else 'off'}, speed={speed:g}; "
+          "competition settings with operator approval before grasp.", flush=True)
+    command = ["--part", part, "--mode", "test", "--action", action,
+               "--confirm-head-motion", "--confirm-physical-motion", "--speed-scale", str(speed)]
+    if not pick_cv:
+        command.append("--no-cv")
+    if place_cv:
+        command.append("--place-cv")
+    if getattr(args, "remote_safe", False):
+        command.append("--remote-safe")
+    return command
 
 
 def _sequence_indices(raw, available=None):
@@ -1481,11 +1498,7 @@ def main(argv=None):
 
     if args.task_test is not None:
         part, action = args.task_test.split(".", 1)
-        return run_wrist_part_calibration([
-            "--part", part, "--mode", "test", "--action", action,
-            "--confirm-head-motion", "--confirm-physical-motion",
-            "--speed-scale", str(args.speed_scale),
-        ] + (["--remote-safe"] if args.remote_safe else []))
+        return run_wrist_part_calibration(_task_test_command(args, part, action))
 
     if args.competition_sequence is not None:
         return _run_competition_sequence(args, args.competition_sequence)
@@ -1541,21 +1554,17 @@ def main(argv=None):
 
     while True:
         print("\n=== VEGA COMPETITION PIPELINE ===")
-        print("  1. Recalibrate moved board (camera + CENTER/TR/BR/BL + heights)")
+        print("  1. Full board calibration (only if board geometry/height needs re-teaching)")
         print("  2. Test calibrated board/task positions")
         print("  3. Wrist camera calibration (per-part feature / yaw / grasp depth)")
-        print("  4. Task tests (all part pick and pick-place actions)")
+        print("  4. Supervised task tests (same pickup/place settings as competition)")
         print("  5. Run configured competition routine (configs/competition_actions.json)")
         print("  6. Run all calibrated (with placement CV where taught)")
         print("  7. Run all calibrated (without placement CV)")
         print("  8. Reload operator settings / show readiness")
-        print("  9. Legacy competition task versions")
         print(" 10. Calibrate drop-off position (saved pickup -> 40 mm descent -> release/save)")
-        print(" 11. Remote-safe pickup calibration (confirm below 40 mm)")
-        print(" 12. Remote-safe drop calibration (confirm below 40 mm)")
         print(" 13. Head-camera target preview (100 or 40 mm hover, never grabs)")
         print(" 14. Teach placement CV target (held part; no automatic release)")
-        print(" 15. Launch an archived rollback version")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
         if choice in ("0", "q", "quit", "exit"):
@@ -1661,29 +1670,8 @@ def main(argv=None):
             except Exception as exc:
                 print(f"Drop calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
-        if choice == "11":
-            previous_remote_safe = args.remote_safe
-            args.remote_safe = True
-            try:
-                _run_wrist_calibration_menu(args)
-            except (KeyboardInterrupt, EOFError):
-                print("Remote-safe pickup calibration cancelled.")
-            except Exception as exc:
-                print(f"Remote-safe pickup calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            finally:
-                args.remote_safe = previous_remote_safe
-            continue
-        if choice == "12":
-            previous_remote_safe = args.remote_safe
-            args.remote_safe = True
-            try:
-                _run_drop_calibration_menu(args)
-            except (KeyboardInterrupt, EOFError):
-                print("Remote-safe drop calibration cancelled.")
-            except Exception as exc:
-                print(f"Remote-safe drop calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            finally:
-                args.remote_safe = previous_remote_safe
+        if choice in ("11", "12"):
+            print("Remote-only menu options removed. Use 3 for pickup or 10 for drop teaching.")
             continue
         if choice == "13":
             try:
@@ -1701,23 +1689,8 @@ def main(argv=None):
             except Exception as exc:
                 print(f"Placement CV teaching failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
-        if choice == "15":
-            try:
-                from tools.vega_version_menu import main as run_version_menu
-                run_version_menu([])
-            except (KeyboardInterrupt, EOFError):
-                print("Version selection cancelled.")
-            except Exception as exc:
-                print(f"Archived version launch failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice == "9":
-            selected = _choose(COMPETITION_TASKS, "COMPETITION TASK VERSIONS")
-            if selected:
-                for name in selected:
-                    try:
-                        _run_competition_task(name, runtime, task_data, args)
-                    except Exception as exc:
-                        print(f"Task {name} failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        if choice in ("9", "15"):
+            print("Archived workflows are available via --versions or --competition-task; use 5 for competition.")
             continue
         print("Unknown menu option.")
 

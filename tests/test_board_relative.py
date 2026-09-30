@@ -269,6 +269,7 @@ class BoardRelativeTests(unittest.TestCase):
         baseline = session.profile_pose(profile, "pick", no_cv=True)
         session.event = session.move = session.remote_checkpoint = mock.Mock()
         session._set_gripper_fraction = mock.Mock()
+        session.holding = False
         session.begin_part(session.part, profile, competition=True, no_cv=True)
         np.testing.assert_allclose(session.grasp_target.position_m[:2],
             np.array(baseline.position_m[:2]) + [.01, .005])
