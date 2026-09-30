@@ -145,6 +145,26 @@ def _load_competition_plan():
 
 def _load_competition_actions():
     """Load the one operator-editable competition routine configuration."""
+    def strict_bool(value, label, default):
+        if value is None:
+            return bool(default)
+        if isinstance(value, bool):
+            return value
+        raise ValueError(f"{label} must be true or false")
+
+    def strict_int(value, label, low, high):
+        # bool is an int subclass, but accepting true as one attempt makes a
+        # mistyped JSON file surprisingly dangerous.
+        if isinstance(value, bool):
+            raise ValueError(f"{label} must be an integer {low}..{high}")
+        try:
+            number = float(value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{label} must be an integer {low}..{high}") from exc
+        if not number.is_integer() or not low <= number <= high:
+            raise ValueError(f"{label} must be an integer {low}..{high}")
+        return int(number)
+
     defaults = {
         "order": list(DEFAULT_PICK_PRIORITY),
         "retries_per_action": 1,
@@ -156,7 +176,18 @@ def _load_competition_actions():
         "pipeline_speed_scale": DEFAULT_PIPELINE_SPEED_SCALE,
         "task_clearance_mm": DEFAULT_TASK_CLEARANCE_MM,
         "visual_center_backoff_mm": 15.0,
-        "parts": {part: {"enabled": True, "mode": "auto"} for part in PART_NAMES},
+        "parts": {
+            part: {
+                "enabled": True,
+                "mode": "auto",
+                "pick_enabled": True,
+                "place_enabled": True,
+                "use_wrist_pick_cv": True,
+                "use_place_cv": True,
+                "max_attempts": 2,
+            }
+            for part in PART_NAMES
+        },
     }
     if not COMPETITION_ACTIONS.is_file():
         return defaults
@@ -169,22 +200,11 @@ def _load_competition_actions():
     parts = value.get("parts", defaults["parts"])
     if not isinstance(parts, dict) or set(parts) != set(PART_NAMES):
         raise ValueError("competition_actions.json parts must configure every known part")
-    normalized_parts = {}
-    for part in PART_NAMES:
-        entry = parts[part]
-        if not isinstance(entry, dict):
-            raise ValueError(f"competition_actions.json entry for {part} must be an object")
-        mode = entry.get("mode", "auto")
-        if mode not in ("auto", "pick", "pick_place"):
-            raise ValueError(f"competition action mode for {part} must be auto, pick, or pick_place")
-        normalized_parts[part] = {
-            "enabled": bool(entry.get("enabled", True)),
-            "mode": mode,
-            "use_place_cv": bool(entry.get("use_place_cv", True)),
-        }
     try:
-        retries = int(value.get("retries_per_action", defaults["retries_per_action"]))
-        attempts = int(value.get("max_attempts_per_action", retries + 1))
+        retries = strict_int(value.get("retries_per_action", defaults["retries_per_action"]),
+                             "retries_per_action", 0, 2)
+        attempts = strict_int(value.get("max_attempts_per_action", retries + 1),
+                              "max_attempts_per_action", 1, 3)
         speed = float(value.get("pipeline_speed_scale", defaults["pipeline_speed_scale"]))
         clearance = float(value.get("task_clearance_mm", defaults["task_clearance_mm"]))
         backoff = float(value.get("visual_center_backoff_mm", defaults["visual_center_backoff_mm"]))
@@ -201,14 +221,37 @@ def _load_competition_actions():
         raise ValueError("task_clearance_mm must be 20..100")
     if not 0.0 <= backoff <= 30.0:
         raise ValueError("visual_center_backoff_mm must be 0..30")
+    global_pick_cv = strict_bool(value.get("use_wrist_cv"), "use_wrist_cv", True)
+    global_place_cv = strict_bool(value.get("use_place_cv"), "use_place_cv", True)
+    normalized_parts = {}
+    for part in PART_NAMES:
+        entry = parts[part]
+        if not isinstance(entry, dict):
+            raise ValueError(f"competition_actions.json entry for {part} must be an object")
+        mode = entry.get("mode", "auto")
+        if mode not in ("auto", "pick", "pick_place"):
+            raise ValueError(f"competition action mode for {part} must be auto, pick, or pick_place")
+        part_attempts = strict_int(entry.get("max_attempts", attempts),
+                                   f"max_attempts for {part}", 1, 3)
+        normalized_parts[part] = {
+            "enabled": strict_bool(entry.get("enabled"), f"{part}.enabled", True),
+            "mode": mode,
+            # These explicit fields are the preferred contract.  The older
+            # enabled/mode/global fields remain accepted for old deployments.
+            "pick_enabled": strict_bool(entry.get("pick_enabled"), f"{part}.pick_enabled", True),
+            "place_enabled": strict_bool(entry.get("place_enabled"), f"{part}.place_enabled", mode != "pick"),
+            "use_wrist_pick_cv": strict_bool(entry.get("use_wrist_pick_cv"), f"{part}.use_wrist_pick_cv", global_pick_cv),
+            "use_place_cv": strict_bool(entry.get("use_place_cv"), f"{part}.use_place_cv", global_place_cv),
+            "max_attempts": part_attempts,
+        }
     return {
         "order": order,
         "retries_per_action": retries,
         "max_attempts_per_action": attempts,
-        "use_wrist_cv": bool(value.get("use_wrist_cv", True)),
-        "retry_without_wrist_cv": bool(value.get("retry_without_wrist_cv", True)),
-        "use_place_cv": bool(value.get("use_place_cv", True)),
-        "head_reacquire_on_failure": bool(value.get("head_reacquire_on_failure", True)),
+        "use_wrist_cv": global_pick_cv,
+        "retry_without_wrist_cv": strict_bool(value.get("retry_without_wrist_cv"), "retry_without_wrist_cv", True),
+        "use_place_cv": global_place_cv,
+        "head_reacquire_on_failure": strict_bool(value.get("head_reacquire_on_failure"), "head_reacquire_on_failure", True),
         "pipeline_speed_scale": speed,
         "task_clearance_mm": clearance,
         "visual_center_backoff_mm": backoff,
@@ -368,9 +411,16 @@ def _make_test_targets(selected, runtime, task_data, clearance_m):
     return targets
 
 
-def _capture_downward_head_frame(robot, *, floor_m, bundle):
+def _capture_downward_head_frame(robot, *, floor_m, bundle, speed_scale=None,
+                                 checkpoint=None, output=None):
     """Move the arm/head clear, capture one downward board frame, then return."""
-    move_camera_clear_for_image(robot, floor_m=floor_m, speed_scale=0.90)
+    if checkpoint:
+        checkpoint("before_camera_clear")
+    move_camera_clear_for_image(robot, floor_m=floor_m,
+                                speed_scale=.90 if speed_scale is None else speed_scale)
+    if checkpoint:
+        checkpoint("after_camera_clear")
+        checkpoint("before_head_down")
     head_before = list(robot._robot.head.get_joint_pos())
     print("HEAD BEFORE =", head_before, flush=True)
     # Do not preserve a stale pitch/yaw from a previous operation.  The board
@@ -382,7 +432,7 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle):
     moved_head = False
     if callable(move_head):
         try:
-            handle = move_head(head_q, velocity_scale=0.45)
+            handle = move_head(head_q, velocity_scale=.45 if speed_scale is None else speed_scale)
             wait_fn = getattr(handle, "wait", None)
             if callable(wait_fn):
                 wait_fn(timeout=5.0)
@@ -416,8 +466,13 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle):
     finally:
         camera.close()
     print("BOARD CAMERA FRAME CAPTURED", flush=True)
+    if output is not None:
+        import cv2
+        path = Path(output) / f"head_board_{time.time_ns()}.png"
+        if not cv2.imwrite(str(path), cv2.cvtColor(frame.left_rgb, cv2.COLOR_RGB2BGR)):
+            raise RuntimeError("Failed to save head camera evidence")
     cfg = bundle["robot"]
-    return detect_head_task_scene(
+    scene = detect_head_task_scene(
         frame.left_rgb,
         frame.camera_info,
         measured_head_q,
@@ -428,6 +483,10 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle):
         torso_flip_rad=float(cfg["kinematics"]["fixed_joint_values"]["torso_flip"]),
         layout="unlabeled",
     )
+    if output is not None:
+        scene["head_image_path"] = str(path)
+        path.with_suffix(".json").write_text(json.dumps(scene, indent=2, default=str) + "\n")
+    return scene
 
 
 def _runtime_from_board_scene(runtime, scene):
@@ -800,13 +859,18 @@ def _run_head_preview_menu(args):
         OrderedDict((part, "head-camera target, 40 mm hover, no grip") for part in PART_NAMES),
         "HEAD-CAMERA TARGET PREVIEW",
     )
+    center = input(
+        "Run bounded wrist centering after reaching the 40 mm hover? [y/N]: "
+    ).strip().lower() in ("y", "yes")
     from tools.vega_head_target_preview import main as run_head_target_preview
     for part in selected:
         result = run_head_target_preview([
             "--part", part,
             "--confirm-head-motion", "--confirm-physical-motion",
             "--hover-clearance-mm", "40",
-        ] + (["--remote-safe"] if getattr(args, "remote_safe", False) else []))
+        ] + (["--center"] if center else []) + (
+            ["--remote-safe"] if getattr(args, "remote_safe", False) else []
+        ))
         if result:
             return result
     return 0
@@ -857,6 +921,8 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
     run that may still be holding a part remains a hard stop because issuing
     another grasp would be unsafe.
     """
+    if isinstance(retries, bool) or not isinstance(retries, int) or not 0 <= retries <= 2:
+        raise ValueError("competition retries must be an integer 0..2 (maximum three attempts)")
     command = [
         "--part", part, "--mode", "test", "--action", action,
         "--competition", "--confirm-head-motion", "--confirm-physical-motion",
@@ -876,16 +942,16 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
         )
         print(f"\nCOMPETITION ACTION {part}.{action} (attempt {attempt})", flush=True)
         attempt_command = list(command)
-        if attempt >= 2 and head_reacquire:
-            # A second attempt is deliberately a fresh-head-target attempt;
-            # the wrist profile remains unchanged and the saved hover stays a
-            # bounded fallback if the live target is not reachable.
-            attempt_command.append("--head-reacquire")
-        if attempt >= 3 and not no_cv:
-            # Final bounded attempt uses the saved physical hover and skips
-            # wrist visual feedback; this is the deliberate brute-force
-            # fallback requested for an unreliable remote image stream.
+        if attempt == 2 and not no_cv:
+            # Second attempt: keep the saved calibrated arm pose but disable
+            # wrist centering.  This isolates a bad visual feature from a
+            # physically good taught grasp.
             attempt_command.append("--no-cv")
+        if attempt >= 3 and head_reacquire:
+            # Final attempt: fresh head-camera part association followed by
+            # the aggressive bounded wrist path (unless the part is globally
+            # configured no-CV, in which case the saved pose remains active).
+            attempt_command.append("--head-reacquire")
         try:
             result = run_wrist_part_calibration(attempt_command + ["--output", str(output)])
         except Exception as exc:
@@ -1036,7 +1102,7 @@ def _configured_competition_run(args):
     skipped = []
     for part in settings["order"]:
         entry = settings["parts"][part]
-        if not entry["enabled"]:
+        if not entry["enabled"] or not entry["pick_enabled"]:
             skipped.append((part, "disabled in competition_actions.json"))
             continue
         profile = (profiles.get("parts") or {}).get(part)
@@ -1045,8 +1111,12 @@ def _configured_competition_run(args):
             continue
         mode = entry["mode"]
         if mode == "auto":
-            mode = "pick_place" if profile.get("place") and profile.get("place_verified") else "pick"
-        if mode == "pick_place" and not (profile.get("place") and profile.get("place_verified")):
+            mode = "pick_place" if (
+                entry["place_enabled"] and profile.get("place") and profile.get("place_verified")
+            ) else "pick"
+        if mode == "pick_place" and not (
+            entry["place_enabled"] and profile.get("place") and profile.get("place_verified")
+        ):
             # A missing drop calibration must never prevent a verified pickup
             # from earning the first competition point.
             print(f"{part}: place calibration missing; using pickup action", flush=True)
@@ -1054,7 +1124,10 @@ def _configured_competition_run(args):
         actions.append((part, mode))
     print("\nCONFIGURED COMPETITION RUN", flush=True)
     print(f"Actions JSON: {COMPETITION_ACTIONS}", flush=True)
-    print(f"Retries per action: {settings['retries_per_action']}", flush=True)
+    print("Attempts per part: " + ", ".join(
+        f"{part}={settings['parts'][part]['max_attempts']}"
+        for part, _ in actions
+    ), flush=True)
     print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a in actions) or "none"), flush=True)
     for part, reason in skipped:
         print(f"Skipped: {part} ({reason})", flush=True)
@@ -1067,11 +1140,23 @@ def _configured_competition_run(args):
     completed = 0
     failed = []
     for part, action in actions:
+        part_settings = settings["parts"][part]
+        profile = (profiles.get("parts") or {}).get(part) or {}
+        # Enabling the placement-CV switch is opt-in, but a missing taught
+        # release reference is a normal state while profiles are being built.
+        # Use the verified saved release pose until menu 14 has produced a
+        # placement reference; never make a held part depend on an absent
+        # template during a non-interactive competition run.
+        use_place_cv = bool(
+            settings["use_place_cv"]
+            and part_settings["use_place_cv"]
+            and profile.get("place_cv", {}).get("enabled", False)
+        )
         result = _run_competition_action(
             args, part, action,
-            retries=settings["retries_per_action"],
-            no_cv=not settings["use_wrist_cv"],
-            place_cv=(settings["use_place_cv"] and settings["parts"][part]["use_place_cv"]),
+            retries=part_settings["max_attempts"] - 1,
+            no_cv=not part_settings["use_wrist_pick_cv"],
+            place_cv=use_place_cv,
             head_reacquire=settings["head_reacquire_on_failure"],
         )
         if result == 0:
@@ -1080,11 +1165,9 @@ def _configured_competition_run(args):
         if result == 3:
             return result
         failed.append((part, action))
-    if settings["retry_without_wrist_cv"] and failed:
-        print(
-            "NO-CV FALLBACK WAS ALREADY USED ON THE FINAL BOUNDED ATTEMPT; "
-            "failed parts are skipped.", flush=True,
-        )
+    if failed:
+        print("Failed parts were skipped after their bounded attempt budgets: "
+              + ", ".join(f"{part}.{action}" for part, action in failed), flush=True)
     print(
         f"CONFIGURED RUN FINISHED: {completed}/{len(actions)} actions completed.",
         flush=True,
@@ -1100,11 +1183,14 @@ def _all_calibrated_competition_run(args, *, place_cv=False):
     actions = []
     for part in settings["order"]:
         profile = (profiles.get("parts") or {}).get(part)
-        entry = settings["parts"][part]
-        if not entry["enabled"] or not isinstance(profile, dict) or not profile.get("grasp_verified"):
+        if not isinstance(profile, dict) or not profile.get("grasp_verified"):
             continue
-        action = "pick_place" if profile.get("place") and profile.get("place_verified") else "pick"
-        actions.append((part, action, bool(place_cv and action == "pick_place" and profile.get("place_cv"))))
+        action = "pick_place" if (
+            profile.get("place") and profile.get("place_verified")
+        ) else "pick"
+        actions.append((part, action, bool(
+            place_cv and action == "pick_place" and profile.get("place_cv", {}).get("enabled", False)
+        )))
     print("\nALL CALIBRATED COMPETITION RUN", flush=True)
     print("Placement CV:", "enabled where taught" if place_cv else "disabled", flush=True)
     print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a, _ in actions) or "none"), flush=True)
@@ -1121,6 +1207,7 @@ def _all_calibrated_competition_run(args, *, place_cv=False):
             retries=2,
             no_cv=False,
             place_cv=use_cv,
+            head_reacquire=True,
         )
         if result == 0:
             completed += 1
@@ -1221,6 +1308,14 @@ def main(argv=None):
         choices=("priority_pick_place", "priority_pick", "priority_pick_no_cv"),
         help="run verified profiles in the operator-configured easiest-first order",
     )
+    actions.add_argument(
+        "--versions", action="store_true",
+        help="list and launch an archived rollback checkout; no robot motion",
+    )
+    actions.add_argument(
+        "--list-versions", action="store_true",
+        help="print archived rollback checkouts without motion",
+    )
     args = p.parse_args(argv)
     args.speed_scale_cli = args.speed_scale is not None
     args.clearance_mm_cli = args.clearance_mm is not None
@@ -1231,6 +1326,9 @@ def main(argv=None):
         args.speed_scale = min(float(args.speed_scale), 0.20)
     if args.clearance_mm is None:
         args.clearance_mm = operator_plan["task_clearance_mm"]
+    if args.versions or args.list_versions:
+        from tools.vega_version_menu import main as run_version_menu
+        return run_version_menu(["--list"] if args.list_versions else [])
     if not args.check_only and (not args.confirm_head_motion or not args.confirm_physical_motion):
         p.error("physical pipeline requires --confirm-head-motion and --confirm-physical-motion")
     if not 20.0 <= args.clearance_mm <= 100.0:
@@ -1355,6 +1453,7 @@ def main(argv=None):
         print(" 12. Remote-safe drop calibration (slow + pause at every stage)")
         print(" 13. Head-camera target preview (40 mm hover, never grabs)")
         print(" 14. Teach placement CV target (held part; no automatic release)")
+        print(" 15. Launch an archived rollback version")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
         if choice in ("0", "q", "quit", "exit"):
@@ -1460,6 +1559,7 @@ def main(argv=None):
                 print(f"Drop calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         if choice == "11":
+            previous_remote_safe = args.remote_safe
             args.remote_safe = True
             try:
                 _run_wrist_calibration_menu(args)
@@ -1467,8 +1567,11 @@ def main(argv=None):
                 print("Remote-safe pickup calibration cancelled.")
             except Exception as exc:
                 print(f"Remote-safe pickup calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            finally:
+                args.remote_safe = previous_remote_safe
             continue
         if choice == "12":
+            previous_remote_safe = args.remote_safe
             args.remote_safe = True
             try:
                 _run_drop_calibration_menu(args)
@@ -1476,6 +1579,8 @@ def main(argv=None):
                 print("Remote-safe drop calibration cancelled.")
             except Exception as exc:
                 print(f"Remote-safe drop calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            finally:
+                args.remote_safe = previous_remote_safe
             continue
         if choice == "13":
             try:
@@ -1492,6 +1597,15 @@ def main(argv=None):
                 print("Placement CV teaching cancelled.")
             except Exception as exc:
                 print(f"Placement CV teaching failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "15":
+            try:
+                from tools.vega_version_menu import main as run_version_menu
+                run_version_menu([])
+            except (KeyboardInterrupt, EOFError):
+                print("Version selection cancelled.")
+            except Exception as exc:
+                print(f"Archived version launch failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
         if choice == "9":
             selected = _choose(COMPETITION_TASKS, "COMPETITION TASK VERSIONS")

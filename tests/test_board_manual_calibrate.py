@@ -34,7 +34,7 @@ class BoardManualCalibrationTests(unittest.TestCase):
         self.assertEqual(joints, (-2.1, -0.1, 0.2, -1.4, 0.3, 0.7, -0.2))
         self.assertEqual(pose.position_m, (0.40, -0.20, 0.90))
 
-    def test_manual_right_ready_rejects_low_pose(self):
+    def test_manual_right_ready_records_low_pose_for_operator_review(self):
         class FakeRobot:
             def _read_joint_positions(self):
                 return (0.0,) * 7
@@ -43,8 +43,9 @@ class BoardManualCalibrationTests(unittest.TestCase):
                 return Pose((0.40, -0.20, 0.50), (1.0, 0.0, 0.0, 0.0))
 
         with mock.patch("builtins.input", return_value=""):
-            with self.assertRaisesRegex(RuntimeError, "below"):
-                _capture_current_right_ready(FakeRobot(), floor=0.456)
+            joints, pose = _capture_current_right_ready(FakeRobot(), floor=0.456)
+        self.assertEqual(len(joints), 7)
+        self.assertAlmostEqual(pose.position_m[2], 0.50)
 
     def test_coarse_target_preserves_taught_orientation(self):
         current = Pose(

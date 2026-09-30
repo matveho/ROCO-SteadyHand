@@ -39,6 +39,22 @@ class WristProfileTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 save_profile(root / "p.json", self.cfg, profile)
 
+    def test_shipped_profiles_keep_template_hashes_and_board_hashes(self):
+        root = Path(__file__).resolve().parents[1]
+        path = root / "calibration" / "wrist_part_profiles.json"
+        if not path.is_file():
+            self.skipTest("onsite calibration bundle is not present")
+        value = json.loads(path.read_text(encoding="utf-8"))
+        for part, profile in value.get("parts", {}).items():
+            self.assertEqual(len(profile.get("calibration_sha256", "")), 64, part)
+            template = root / profile["template"]["path"]
+            self.assertTrue(template.is_file(), part)
+            self.assertEqual(
+                hashlib.sha256(template.read_bytes()).hexdigest(),
+                profile["template"]["sha256"],
+                part,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -155,12 +155,15 @@ class ImageServoTests(unittest.TestCase):
         self.assertEqual(len(self.robot.moves), 4)
 
     def test_nonvertical_or_low_tcp_rejected_before_capture(self):
-        for pose in (Pose((.56, 0, .49), (1, 0, 0, 0)), Pose((.56, 0, .64), (0, 1, 0, 0))):
-            self.robot.pose = pose
-            with self.assertRaises(ValueError):
-                self.run_servo()
-        self.assertEqual(self.frames, 0)
-        self.assertEqual(self.robot.moves, [])
+        # The provisional TCP floor is no longer a runtime gate.  A low but
+        # vertical pose is allowed; a non-vertical pose remains invalid.
+        self.robot.pose = Pose((.56, 0, .49), (math.sqrt(.5), 0, 0, -math.sqrt(.5)))
+        self.run_servo(max_iterations=1, tolerance_px=1000)
+        frames_after_low = self.frames
+        self.robot.pose = Pose((.56, 0, .64), (0, 1, 0, 0))
+        with self.assertRaises(ValueError):
+            self.run_servo()
+        self.assertEqual(self.frames, frames_after_low)
 
     def test_fine_servo_logs_every_motion_and_correction(self):
         events = []

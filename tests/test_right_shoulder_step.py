@@ -28,8 +28,9 @@ class ShoulderStepTests(unittest.TestCase):
     def test_rejects_lowering_or_low_path(self):
         with self.assertRaisesRegex(ValueError, 'lower'):
             plan_step(FakeFK(True), [0]*7, .1, .456)
-        with self.assertRaisesRegex(ValueError, '0.30'):
-            plan_step(FakeFK(), [-.3]*7, .1, .456)
+        goal, samples = plan_step(FakeFK(), [-.3]*7, .1, .456)
+        self.assertAlmostEqual(goal[0], -.2)
+        self.assertEqual(len(samples), 101)
 
     def test_limits_and_invalid_requests(self):
         with self.assertRaisesRegex(ValueError, 'joint limit'):

@@ -181,10 +181,14 @@ class PartSession:
         self.remote_step_mm = 2.0
         self.remote_checkpoint_index = 0
         self.place_cv_settings = None
+        if self.remote_safe:
+            self.step_mm = self.remote_step_mm
 
     def start(self):
         self.status = "starting"
         self.robot.connect()
+        if self.remote_safe:
+            self.cameras.connect()
         self.retake()
         # Drop teaching deliberately reuses the saved pickup hover/grasp and
         # does not need a wrist frame.  Avoid making the procedure depend on a
@@ -232,10 +236,16 @@ class PartSession:
             raise RuntimeError("Retake blocked while a part may be held")
         from tools.vega_competition_pipeline import _capture_downward_head_frame, _load_runtime, _runtime_from_board_scene, _task_targets
         runtime = _load_runtime()
-        scene = _capture_downward_head_frame(self.robot, floor_m=self.floor, bundle=runtime[0])
+        scene = _capture_downward_head_frame(
+            self.robot, floor_m=self.floor, bundle=runtime[0], output=self.output,
+            speed_scale=.18 if self.remote_safe else None,
+            checkpoint=self.remote_checkpoint if self.remote_safe else None,
+        )
         self.runtime = _runtime_from_board_scene(runtime, scene)
         ready_q, _ = configured_right_preset(self.cfg, "right_ready")
+        self.remote_checkpoint("before_right_ready")
         self.robot.move_joints(ready_q, speed_scale=self.args.speed_scale)
+        self.remote_checkpoint("after_right_ready")
         # The reflected task frame is retained for the verified competition
         # path (where saved arm hovers are preferred).  Teaching and release
         # setup must use the physically validated frame, however: these are
@@ -249,17 +259,9 @@ class PartSession:
         # wrist hover.  That association was the source of the mirrored
         # competition target.  The reviewed task map shifts with the live
         # board center; saved profiles remain authoritative for each part.
-        teaching_frame_override = (
-            getattr(self.args, "mode", "calibrate") in ("calibrate", "drop", "test")
-            and not getattr(self.args, "head_reacquire", False)
-        )
-        if teaching_frame_override:
-            teaching_task_data["task_coordinate_mirror_y"] = False
-            print(
-                "WRIST TARGET FRAME: validated physical orientation "
-                "(task_coordinate_mirror_y=false); live part association disabled.",
-                flush=True,
-            )
+        teaching_frame_override = not getattr(self.args, "head_reacquire", False)
+        teaching_task_data["task_coordinate_mirror_y"] = False
+        print("WRIST TARGET FRAME: validated physical orientation (task_coordinate_mirror_y=false).", flush=True)
         self.targets = _task_targets(self.runtime, teaching_task_data, .100)
         # During teaching/drop setup, do not let the generic dark-object
         # association select a similarly shaped object on the reflected side
@@ -278,7 +280,7 @@ class PartSession:
             try:
                 from tools.vega_head_fallback import match_expected_parts
                 self.head_observations = match_expected_parts(
-                    scene, self.runtime, self.targets, task_data=teaching_task_data
+                    scene, self.runtime, self.targets
                 )
             except Exception as exc:
                 self.head_observations = {}
@@ -334,6 +336,7 @@ class PartSession:
         speed = .18 if self.remote_safe else (.25 if slow else self.args.speed_scale)
         move_tcp_segmented(self.robot, target, speed_scale=speed,
                            max_translation_step_m=step_m, max_orientation_step_rad=.08,
+                           after_waypoint=(lambda: self.remote_checkpoint("cartesian_waypoint")) if self.remote_safe else None,
                            min_tcp_z_m=None)
 
     def remote_checkpoint(self, label, *, capture=True):
@@ -364,9 +367,15 @@ class PartSession:
             "  Press Enter to continue, or type abort to stop safely.",
             flush=True,
         )
-        answer = input("REMOTE-SAFE> ").strip().lower()
-        if answer in ("abort", "a", "q", "quit", "exit", "stop"):
-            raise KeyboardInterrupt()
+        while True:
+            answer = input("REMOTE-SAFE> ").strip().lower()
+            if answer in ("abort", "a", "q", "quit", "exit", "stop"):
+                self.event("checkpoint_decision", {"checkpoint": label, "decision": "abort"})
+                raise KeyboardInterrupt()
+            if not answer:
+                self.event("checkpoint_decision", {"checkpoint": label, "decision": "continue"})
+                return
+            print("Press Enter to continue or type abort; other input does not authorize motion.", flush=True)
 
     def frame(self, label="wrist"):
         rgb = self.capture()
@@ -421,6 +430,9 @@ class PartSession:
     def _set_gripper_fraction(self, fraction):
         """Move the empty right jaw to an absolute 0..1 opening fraction."""
         fraction = _number(fraction, 0.0, 1.0)
+        if getattr(self, "remote_safe", False):
+            fraction = min(.60, fraction)
+            self.remote_checkpoint("before_pregrasp_jaw_adjustment")
         self.robot.connect_gripper()
         result = self.robot._gripper.move_fraction(
             fraction, speed=self._gripper_speed()
@@ -665,9 +677,11 @@ class PartSession:
         last_error = None
         for attempt, values in enumerate(settings, 1):
             try:
+                self.remote_checkpoint("before_wrist_centering")
                 result = run_xy_servo(
                     self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
-                    max_radius_m=.060, speed_scale=.45, event=self.event,
+                    max_radius_m=.060, speed_scale=.18 if self.remote_safe else .45, event=self.event,
+                    checkpoint=self.remote_checkpoint if self.remote_safe else None,
                     tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
                     reference_quaternion_wxyz=reference, **values,
                 )
@@ -703,6 +717,7 @@ class PartSession:
                                 flush=True,
                             )
                     print("ALIGNMENT VERIFIED: same feature reproduced at the taught goal", flush=True)
+                    self.remote_checkpoint("after_wrist_centering")
                 return result
             except (RuntimeError, ValueError) as exc:
                 self.alignment_verified = False
@@ -783,7 +798,7 @@ class PartSession:
                     f"({sx:.4f}, {sy:.4f}) m",
                     flush=True,
                 )
-        elif competition and profile:
+        elif competition and profile and not getattr(self.args, "head_reacquire", False):
             saved_xy = profile.get("coarse_xy_m")
             if isinstance(saved_xy, (list, tuple)) and len(saved_xy) == 2:
                 sx, sy = (float(v) for v in saved_xy)
@@ -797,6 +812,10 @@ class PartSession:
                     flush=True,
                 )
         self.coarse = coarse
+        if getattr(self.args, "head_reacquire", False):
+            observation = self.head_observations.get(part, {})
+            if observation.get("selection") != "head_detection":
+                raise ValueError("Head reacquisition has no unique nearby detection; part skipped")
         if profile:
             # A field recalibration changes the board surface/registration hash.
             # It must not invalidate a previously verified grasp profile: the
@@ -879,6 +898,7 @@ class PartSession:
                 if target is None:
                     continue
                 try:
+                    self.remote_checkpoint("before_coarse_hover")
                     self.move(target)
                     self.coarse = target
                     self.no_cv_used_recorded = label == "recorded arm hover"
@@ -889,6 +909,7 @@ class PartSession:
                     last_error = exc
                     print(f"NO-CV COARSE HOVER FAILED ({label}): {exc}", flush=True)
             raise last_error or RuntimeError("no reachable no-CV coarse hover")
+        self.remote_checkpoint("before_coarse_hover")
         self.move(coarse)
         if self.yaw:
             self.move(_yaw_pose(coarse, self.yaw), slow=True)
@@ -1052,6 +1073,7 @@ class PartSession:
             raise ValueError("A part may already be held; inspect it before another grab")
         hover = self.robot.get_tcp_pose()
         self.last_grasp_clearance = clearance
+        self.pickup_hover = hover
         # Snapshot the operator's actual current hover pose.  In particular,
         # preserve a deliberate manual ``back`` adjustment made after visual
         # centering; the grasp approach must not reconstruct an older goal or
@@ -1180,53 +1202,65 @@ class PartSession:
         self.remote_checkpoint("return_retreat_complete")
 
     def _place_visual_align(self, settings):
-        """Optionally align the held part to a taught release image.
-
-        Placement CV is deliberately a best-effort layer.  A missing/weak
-        template falls back to the operator-taught TCP release pose; it never
-        changes pickup calibration or turns a placement into an unbounded
-        search.
-        """
+        """Align at the taught hover; low confidence never authorizes release."""
+        from steadyhand.vision.placement import placement_digest, placement_tracker
         cv_settings = self.place_cv_settings
-        if not cv_settings or not cv_settings.get("enabled", True):
-            return None
-        template = _load_place_template(cv_settings)
-        goal = tuple(float(v) for v in cv_settings["goal_uv"])
-        feature_uv = cv_settings.get("feature_uv")
-        if feature_uv is not None:
-            feature_uv = tuple(float(v) for v in feature_uv)
+        origin = self.robot.get_tcp_pose()
         try:
+            if not cv_settings or not cv_settings.get("enabled", False):
+                raise ValueError("Placement feature reference is missing or disabled")
+            if cv_settings.get("placement_sha256") != placement_digest(settings):
+                raise ValueError("Placement feature reference belongs to different place settings")
+            clearance = origin.position_m[2] - self.surface(*origin.position_m[:2])
+            if abs(clearance - float(cv_settings.get("reference_clearance_m", -1))) > .008:
+                raise ValueError("Placement feature reference was taught at a different height")
+            template = _load_place_template(cv_settings)
+            goal = tuple(float(v) for v in cv_settings["goal_uv"])
+            self.remote_checkpoint("before_placement_centering")
             result = run_xy_servo(
-                self.robot,
-                self.capture,
-                floor_m=self.floor,
-                feature_uv=feature_uv,
-                goal_uv=goal,
-                probe_m=.006,
-                gain=.35,
-                max_step_m=.006,
-                max_radius_m=.030,
-                tolerance_px=14.0,
-                max_iterations=6,
-                speed_scale=.45,
-                event=self.event,
-                surface_z=self.surface,
-                reference_quaternion_wxyz=self.robot.get_tcp_pose().quaternion_wxyz,
-                tracker_factory=lambda rgb, _uv: TemplateTracker.from_saved_template(
-                    rgb, template, template_uv=cv_settings.get("template_uv"),
-                    initial_uv=feature_uv, search_radius=110,
-                ),
+                self.robot, self.capture, floor_m=self.floor, goal_uv=goal,
+                probe_m=.006, gain=.35, max_step_m=.006, max_radius_m=.030,
+                tolerance_px=8.0, max_iterations=8,
+                speed_scale=.18 if self.remote_safe else .45,
+                checkpoint=self.remote_checkpoint if self.remote_safe else None,
+                event=self.event, surface_z=self.surface,
+                reference_quaternion_wxyz=origin.quaternion_wxyz,
+                tracker_factory=lambda rgb, _uv: placement_tracker(rgb, template, cv_settings),
             )
+            if result.get("status") != "converged":
+                raise RuntimeError("Placement centering was not verified")
             self.event("place_cv_result", {"result": result, "goal_uv": goal})
-            print("PLACEMENT CV RESULT:", json.dumps(result, default=str), flush=True)
+            self.remote_checkpoint("after_placement_centering")
             return result
         except (RuntimeError, ValueError) as exc:
-            self.event("place_cv_fallback", {"reason": str(exc)})
-            print(
-                f"PLACEMENT CV FALLBACK: {exc}; using the taught release pose",
-                flush=True,
-            )
-            return None
+            # Hardware/motion failures always propagate. Only visual failures
+            # are eligible for an explicit operator-authorized saved-pose fallback.
+            if any(word in str(exc).lower() for word in ("ik ", "tcp", "joint", "camera", "estop", "timeout", "motor")):
+                raise
+            self.event("place_cv_low_confidence", {"reason": str(exc), "release_authorized": False})
+            print(f"PLACEMENT CV NOT VERIFIED: {exc}; no descent/release authorized.", flush=True)
+            if getattr(self.args, "competition", False) and not self.remote_safe:
+                # Competition has no operator at the terminal.  A visual-only
+                # failure must not strand a held part or abort the whole run:
+                # return to the previously verified release hover and use the
+                # saved physical placement pose.  The event is explicit so a
+                # later audit can distinguish CV success from this fallback.
+                self.event("place_cv_decision", {
+                    "decision": "saved_pose_auto_fallback",
+                    "reason": str(exc),
+                    "release_authorized": True,
+                })
+                print("PLACEMENT CV FALLBACK: returning to the taught release pose.", flush=True)
+                self.move(origin, slow=True)
+                return None
+            while True:
+                answer = input("Type saved to return to the taught hover and use its release pose, or abort: ").strip().lower()
+                if answer == "saved":
+                    self.event("place_cv_decision", {"decision": "saved_pose", "reason": str(exc)})
+                    self.move(origin, slow=True)
+                    return None
+                if answer in ("abort", "stop", "q", "exit"):
+                    raise KeyboardInterrupt()
 
     def place(self, settings, *, partial_release=False, use_place_cv=False):
         if not self.holding or settings is None:
@@ -1247,21 +1281,24 @@ class PartSession:
         self.move(hover)
         self.remote_checkpoint("place_hover")
         if use_place_cv:
-            self._place_visual_align(settings)
+            alignment = self._place_visual_align(settings)
             # Re-read the TCP after the bounded wrist alignment.  Preserve the
             # taught clearance and current orientation while using any small
             # verified XY correction.
-            aligned = self.robot.get_tcp_pose()
-            x, y = aligned.position_m[:2]
-            quat = aligned.quaternion_wxyz
-            hover = Pose((x, y, self.surface(x, y) + .100), quat)
-            release = Pose((x, y, self.surface(x, y) + settings["clearance_m"]), quat)
+            if alignment is not None:
+                aligned = self.robot.get_tcp_pose()
+                x, y = aligned.position_m[:2]
+                quat = aligned.quaternion_wxyz
+                hover = Pose((x, y, self.surface(x, y) + .100), quat)
+                release = Pose((x, y, self.surface(x, y) + settings["clearance_m"]), quat)
         self.remote_checkpoint("before_place_descent")
         self.move(release, slow=True)
         self.remote_checkpoint("place_release_height")
         self.remote_checkpoint("before_place_release")
+        self._capture_drop_evidence("competition_release_before")
         self.robot.release_gripper(self.part)
         self.holding = False
+        self._capture_drop_evidence("competition_release_after")
         self.remote_checkpoint("place_released")
         self.remote_checkpoint("before_place_retreat")
         self.move(hover, slow=True)
@@ -1293,7 +1330,10 @@ class PartSession:
 
     def _save_drop_profile(self, pose, settings, release_result):
         """Persist the operator-confirmed release immediately after release."""
-        profile = dict(self.profiles["parts"][self.part])
+        previous = self.profiles["parts"][self.part]
+        profile = dict(previous)
+        if previous.get("place") != settings:
+            profile.pop("place_cv", None)
         profile["place"] = settings
         profile["place_verified"] = True
         profile["place_release_tcp_m"] = list(pose.position_m)
@@ -1381,6 +1421,13 @@ class PartSession:
         self.remote_checkpoint("drop_pickup_complete")
 
         nominal = self.targets[f"task.{part}.place"]
+        saved_place = profile.get("place")
+        if saved_place:
+            _, ux, uy, _ = self.runtime[2]
+            dx, dy = saved_place["offset_board_xy_m"]
+            x = nominal.position_m[0] + ux[0] * dx + uy[0] * dy
+            y = nominal.position_m[1] + ux[1] * dx + uy[1] * dy
+            nominal = Pose((x, y, self.surface(x, y) + .100), nominal.quaternion_wxyz)
         hover = Pose(
             (nominal.position_m[0], nominal.position_m[1],
              self.surface(nominal.position_m[0], nominal.position_m[1]) + .100),
@@ -1418,10 +1465,7 @@ class PartSession:
                 continue
             command = raw[0]
             if command in ("abort", "exit", "q"):
-                if self.holding:
-                    print("A part is held; use return before aborting.", flush=True)
-                    continue
-                return 1
+                return 3 if self.holding else 1
             if command == "release":
                 try:
                     self.remote_checkpoint("before_drop_release")
@@ -1431,7 +1475,6 @@ class PartSession:
                     release_result = self.robot.release_gripper(self.part)
                     self.holding = False
                     self._capture_drop_evidence("release_after")
-                    self.remote_checkpoint("drop_released")
                     self.event("drop_release", {
                         "release_tcp": list(release_pose.position_m),
                         "place": settings,
@@ -1441,6 +1484,7 @@ class PartSession:
                     profile = self._save_drop_profile(
                         release_pose, settings, release_result
                     )
+                    self.remote_checkpoint("drop_released")
                     self.status = "drop_profile_saved"
                     print("DROP PROFILE SAVED AFTER RELEASE", flush=True)
                     print(json.dumps({
@@ -1465,6 +1509,10 @@ class PartSession:
                     continue
             if command == "return":
                 try:
+                    current = self.robot.get_tcp_pose()
+                    self.move(Pose((current.position_m[0], current.position_m[1],
+                                    self.surface(*current.position_m[:2]) + .100),
+                                   current.quaternion_wxyz), slow=True)
                     self.move(self.coarse, slow=True)
                     self.return_part(profile["grasp_clearance_m"])
                     self.status = "drop_cancelled_returned"
@@ -1547,6 +1595,7 @@ class PartSession:
         self.begin_part(part, old, initial_yaw=(old or {}).get("yaw_deg"))
         grasp = old.get("grasp_clearance_m") if old else None
         place = old.get("place") if old else None
+        place_changed = False
         self.gripper_open_fraction = old.get("gripper_open_fraction") if old else None
         if self.gripper_open_fraction is not None:
             self._set_gripper_fraction(self.gripper_open_fraction)
@@ -1607,7 +1656,7 @@ class PartSession:
                     if not cv2.imwrite(str(template_path), cv2.cvtColor(template, cv2.COLOR_RGB2BGR)):
                         raise RuntimeError("Failed to save wrist template")
                     cal = load_board_calibration(ROOT / "calibration/vega_board_manual.json", self.cfg)
-                    profile = {
+                    profile = {**(old or {}),
                         "part": part, "working_arm": WORKING_ARM, "tcp_frame": TCP_FRAME, "wrist_camera": WRIST_CAMERA,
                         "calibration_sha256": cal["sha256"], "coarse_xy_m": list(self.coarse.position_m[:2]),
                         "feature_uv": list(self.reference_feature), "goal_uv": list(self.goal),
@@ -1629,10 +1678,17 @@ class PartSession:
                         "image_shape": list(self.reference_rgb.shape[:2]),
                         "hover_clearance_m": .100, "grasp_clearance_m": grasp, "yaw_deg": self.yaw,
                         "gripper_open_fraction": self.gripper_open_fraction,
-                        "place": place, "grasp_verified": self.grasp_verified, "place_verified": False,
+                        "place": place, "grasp_verified": self.grasp_verified,
+                        "place_verified": False if place_changed else bool((old or {}).get("place_verified", False)),
                         "template": {"path": str(template_path.relative_to(ROOT)), "sha256": file_sha256(template_path), "template_uv": list(anchor)},
                         "localization_result": result, "created_at_utc": datetime.now(timezone.utc).isoformat(),
                     }
+                    if place_changed:
+                        # A new physical release pose invalidates any image
+                        # reference taught for the previous pose.  Keep the
+                        # pickup fields, but require menu 14 to teach a new
+                        # placement reference before CV can be enabled again.
+                        profile.pop("place_cv", None)
                     self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
                     handoff = self.output / f"{part}_handoff.json"
                     handoff.write_text(json.dumps(profile, indent=2, default=str)+"\n")
@@ -1781,6 +1837,7 @@ class PartSession:
                         depth = _number(raw[3], .001, 100.)
                         yaw = _number(raw[4], -45., 45.)
                         place = {"offset_board_xy_m": [dx, dy], "clearance_m": .100-depth/1000, "yaw_deg": yaw}
+                        place_changed = True
                         print("Place settings recorded; task test must validate them before competition.")
                         continue
                     current = self.robot.get_tcp_pose()
@@ -1861,19 +1918,18 @@ class PartSession:
         self.remote_checkpoint("place_cv_before_hover")
         self.move(hover, slow=True)
         self.remote_checkpoint("place_cv_hover")
-        self.move(release, slow=True)
-        self.remote_checkpoint("place_cv_release_height")
+        # Teach at exactly the same 100 mm hover used by runtime alignment.
+        # A release-height pixel cannot be reused at hover through this lens.
         self._capture_drop_evidence("place_cv_reference")
         while True:
             raw = input(
-                f"place-cv {part}> select u v | image | release | return | abort: "
+                f"place-cv {part}> select u v | image | verify | release | return | abort: "
             ).strip().lower().split()
             if not raw:
                 continue
             command = raw[0]
             if command in ("abort", "q", "exit"):
-                print("A part is held; use return before aborting.", flush=True)
-                continue
+                return 3 if self.holding else 1
             if command in ("image", "capture"):
                 self.frame("placement CV reference")
                 continue
@@ -1887,6 +1943,12 @@ class PartSession:
                             rgb, path, f"{part}: select the release hole/peg/slot feature"
                         )
                     template, anchor = _crop_template(rgb, selected)
+                    from steadyhand.vision.placement import placement_digest, placement_tracker
+                    reference = {
+                        "image_shape": list(rgb.shape[:2]), "goal_uv": list(selected),
+                        "template_uv": list(anchor),
+                    }
+                    placement_tracker(rgb, template, reference).locate(rgb)
                     import cv2
                     directory = ROOT / "calibration" / "place_templates"
                     directory.mkdir(parents=True, exist_ok=True)
@@ -1905,6 +1967,8 @@ class PartSession:
                         "goal_uv": [float(v) for v in selected],
                         "image_shape": list(rgb.shape[:2]),
                         "method": "saved_release_target_template",
+                        "reference_clearance_m": .100,
+                        "placement_sha256": placement_digest(profile["place"]),
                         "created_at_utc": datetime.now(timezone.utc).isoformat(),
                     }
                     profile_copy = dict(profile)
@@ -1918,16 +1982,27 @@ class PartSession:
                 except (ValueError, RuntimeError) as exc:
                     print(f"PLACEMENT CV BLOCKED: {exc}; choose another feature.", flush=True)
                 continue
+            if command == "verify":
+                self._place_visual_align(profile["place"])
+                continue
             if command == "release":
+                current = self.robot.get_tcp_pose()
+                release = Pose((current.position_m[0], current.position_m[1],
+                                self.surface(*current.position_m[:2]) + profile["place"]["clearance_m"]),
+                               current.quaternion_wxyz)
+                self.remote_checkpoint("place_cv_before_descent")
+                self.move(release, slow=True)
                 self.remote_checkpoint("place_cv_before_release")
+                self._capture_drop_evidence("place_cv_release_before")
                 self.robot.release_gripper(self.part)
                 self.holding = False
+                self._capture_drop_evidence("place_cv_release_after")
                 self.remote_checkpoint("place_cv_released")
                 self.move(hover, slow=True)
                 self.remote_checkpoint("place_cv_retreat_complete")
                 return 0
             if command == "return":
-                self.move(self.coarse, slow=True)
+                self.move(self.pickup_hover, slow=True)
                 self.return_part(profile["grasp_clearance_m"])
                 return 1
             print("Use select u v, image, release, return, or abort.", flush=True)

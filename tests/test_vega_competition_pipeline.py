@@ -12,6 +12,7 @@ from tools.vega_competition_pipeline import (
     _reload_operator_settings,
     _run_competition_action,
     _priority_competition_actions,
+    _all_calibrated_competition_run,
     _sequence_indices,
     _prompt_next_location,
 )
@@ -47,7 +48,13 @@ class CompetitionPipelineTests(unittest.TestCase):
         self.assertEqual(settings["max_attempts_per_action"], 3)
         self.assertEqual(settings["retries_per_action"], 2)
         self.assertTrue(settings["use_place_cv"])
-        self.assertTrue(all("use_place_cv" in entry for entry in settings["parts"].values()))
+        self.assertTrue(all(
+            all(field in entry for field in (
+                "enabled", "pick_enabled", "place_enabled",
+                "use_wrist_pick_cv", "use_place_cv", "max_attempts",
+            ))
+            for entry in settings["parts"].values()
+        ))
 
     def test_malformed_master_plan_is_rejected_before_reload(self):
         with tempfile.TemporaryDirectory() as td:
@@ -56,6 +63,23 @@ class CompetitionPipelineTests(unittest.TestCase):
             with mock.patch("tools.vega_competition_pipeline.COMPETITION_PLAN", path):
                 with self.assertRaises(ValueError):
                     _load_competition_plan()
+
+    def test_competition_action_booleans_and_attempts_are_strict(self):
+        source = json.loads(Path("configs/competition_actions.json").read_text())
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "competition_actions.json"
+            bad = json.loads(json.dumps(source))
+            bad["parts"]["battery_size1"]["enabled"] = "false"
+            path.write_text(json.dumps(bad))
+            with mock.patch("tools.vega_competition_pipeline.COMPETITION_ACTIONS", path):
+                with self.assertRaisesRegex(ValueError, "enabled"):
+                    _load_competition_actions()
+            bad = json.loads(json.dumps(source))
+            bad["parts"]["battery_size1"]["max_attempts"] = 1.5
+            path.write_text(json.dumps(bad))
+            with mock.patch("tools.vega_competition_pipeline.COMPETITION_ACTIONS", path):
+                with self.assertRaisesRegex(ValueError, "max_attempts"):
+                    _load_competition_actions()
 
     def test_menu_reload_applies_master_settings_without_hardware(self):
         args = type("Args", (), {
@@ -227,6 +251,18 @@ class CompetitionPipelineTests(unittest.TestCase):
              mock.patch("tools.vega_competition_pipeline._run_competition_action", side_effect=[-1, 0]) as runner:
             self.assertEqual(_priority_competition_actions(args), 0)
         self.assertEqual(runner.call_count, 2)
+
+    def test_all_calibrated_mode_ignores_config_disable_switches(self):
+        args = type("Args", (), {"speed_scale": 0.38, "check_only": True})()
+        settings = {
+            "order": ["battery_size1"],
+            "parts": {"battery_size1": {"enabled": False, "pick_enabled": False, "max_attempts": 1}},
+        }
+        profile = {"grasp_verified": True}
+        with mock.patch("tools.vega_competition_pipeline._load_competition_actions", return_value=settings), \
+             mock.patch("tools.vega_competition_pipeline.load_bundle", return_value={"robot": {}}), \
+             mock.patch("tools.vega_competition_pipeline.load_profiles", return_value={"parts": {"battery_size1": profile}}):
+            self.assertEqual(_all_calibrated_competition_run(args, place_cv=False), 0)
 
     def test_possible_held_part_is_never_retried(self):
         args = type("Args", (), {"speed_scale": 0.38})()

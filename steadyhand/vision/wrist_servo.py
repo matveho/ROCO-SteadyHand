@@ -137,6 +137,8 @@ class TemplateTracker:
     matches raise before the controller can command another correction.
     """
 
+    enable_edge_matching = False
+
     def __init__(self, rgb, feature_uv=None, *, patch_radius=20, search_radius=180,
                  min_score=0.75, min_margin=0.06):
         import cv2
@@ -338,7 +340,27 @@ class TemplateTracker:
             try:
                 return self._color_match(rgb)
             except (RuntimeError, ValueError):
-                raise grayscale_error
+                try:
+                    return self._edge_match(rgb)
+                except (RuntimeError, ValueError):
+                    raise grayscale_error
+
+    def _edge_match(self, rgb, *, x_offset=0, y_offset=0):
+        """Use Canny edge geometry as a final fallback for low-texture parts."""
+        if not self.enable_edge_matching:
+            raise RuntimeError("edge fallback is not enabled for this tracker")
+        gray = self._gray(rgb)
+        template_edges = self.cv2.Canny(self.template, 35, 110)
+        image_edges = self.cv2.Canny(gray, 35, 110)
+        if int((template_edges > 0).sum()) < 8:
+            raise RuntimeError("saved feature has insufficient edge structure")
+        scores = self.cv2.matchTemplate(image_edges, template_edges, self.cv2.TM_CCOEFF_NORMED)
+        return self._locate_from_map(
+            scores, x_offset=x_offset, y_offset=y_offset,
+            min_score=max(0.45, self.min_score - 0.25),
+            min_margin=max(0.010, self.min_margin * 0.25),
+            label="edge",
+        )
 
     def _gray(self, rgb):
         array = self.np.asarray(rgb)
@@ -375,7 +397,12 @@ class TemplateTracker:
                     rgb[y0:y1, x0:x1], x_offset=x0, y_offset=y0,
                 )
             except (RuntimeError, ValueError):
-                raise grayscale_error
+                try:
+                    return self._edge_match(
+                        rgb[y0:y1, x0:x1], x_offset=x0, y_offset=y0,
+                    )
+                except (RuntimeError, ValueError):
+                    raise grayscale_error
 
     def verify_selected(self, rgb, selected_uv, *, max_error_px=18.0):
         """Verify that an operator's second click is the original feature.
@@ -418,7 +445,7 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
                  probe_m=0.012, gain=0.65, max_step_m=0.015, max_radius_m=0.06,
                  tolerance_px=5.0, max_iterations=8, speed_scale=0.45,
                  tracker_factory=TemplateTracker, event=None,
-                 surface_z=None, reference_quaternion_wxyz=None):
+                 surface_z=None, reference_quaternion_wxyz=None, checkpoint=None):
     """Calibrate and center at the current hover pose; never descend or grip.
 
     capture_rgb must return a fresh post-motion image. Robot motion calls must
@@ -437,7 +464,7 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         raise ValueError("Servo settings must be finite")
     if not (0.006 <= probe_m <= 0.015 and 0 < max_step_m <= 0.02
             and probe_m <= max_radius_m <= 0.10 and 0 < gain <= 1
-            and 0.45 <= speed_scale <= 1 and 0 < tolerance_px
+            and (0.10 if checkpoint else 0.45) <= speed_scale <= 1 and 0 < tolerance_px
             and 1 <= max_iterations <= 20):
         raise ValueError("Invalid servo limits (probe 6–15 mm, step <=20 mm, radius <=100 mm)")
     origin = robot.get_tcp_pose()
@@ -473,8 +500,10 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         check_pose(before)
         if math.dist(pose.position_m[:2], origin.position_m[:2]) > max_radius_m + 1e-9:
             raise RuntimeError("Requested XY exceeds local servo radius; coarse approach needed")
+        if checkpoint:
+            checkpoint(f"before_servo_{label}")
         move_tcp_segmented(robot, pose, speed_scale=speed_scale,
-                           max_translation_step_m=0.02, max_orientation_step_rad=0.05,
+                           max_translation_step_m=0.008 if checkpoint else 0.02, max_orientation_step_rad=0.05,
                            min_tcp_z_m=None)
         actual = robot.get_tcp_pose()
         check_pose(actual)
@@ -494,6 +523,8 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         # only a materially missed local waypoint.
         if position_error > 0.008:
             raise RuntimeError("TCP missed servo waypoint by >8 mm")
+        if checkpoint:
+            checkpoint(f"after_servo_{label}")
         return actual
 
     rgb = capture_rgb()
