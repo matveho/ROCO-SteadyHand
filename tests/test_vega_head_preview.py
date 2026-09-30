@@ -36,6 +36,7 @@ class HeadPreviewTests(unittest.TestCase):
         obs = match_expected_parts(self.scene, self.runtime, self.targets, self.data)['battery_size1']
         self.assertEqual(obs['selection'], 'head_detection')
         self.assertEqual(obs['association_frame'], 'board')
+        self.assertEqual(obs['detection_index'], 1)  # image label, not list index 0
         np.testing.assert_allclose(obs['selected_xy_m'], [.5, -.0193])
 
     def test_manual_pixel_and_detection_produce_same_target(self):
@@ -73,7 +74,7 @@ class HeadPreviewTests(unittest.TestCase):
             preview.preview_target(self.runtime, 'battery_size1',
                 {'selection': 'expected_coordinate', 'selected_xy_m': [.5, 0.]}, .04)
 
-    def run_preview(self, *, review=False, abort=False):
+    def run_preview(self, *, review=False, abort=False, servo_failure=False):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             raw = root / 'head.png'
@@ -83,6 +84,7 @@ class HeadPreviewTests(unittest.TestCase):
             robot = SimpleNamespace(pose=self.ready, connect=mock.Mock(), close=mock.Mock(), moves=[])
             robot.get_tcp_pose = lambda: robot.pose
             robot._read_joint_positions = lambda: [0.] * 7
+            robot._kinematics = SimpleNamespace(solve=lambda pose, seed: seed)
             def move(p, speed_scale):
                 robot.pose = p
                 robot.moves.append(p)
@@ -110,19 +112,28 @@ class HeadPreviewTests(unittest.TestCase):
                 WristAOnlyCapture=capture_factory,
                 configured_right_preset=mock.Mock(return_value=([0.] * 7, self.ready)),
                 load_vega_skills=mock.Mock(return_value={'safety': {'min_tcp_z_m': .45}})), \
+                mock.patch.object(preview, 'run_xy_servo', side_effect=preview.ServoWaypointError('TCP missed servo waypoint by >8 mm')) as servo, \
                 mock.patch('builtins.input', side_effect=['abort' if abort else '1'] if review else
                            AssertionError('High preview must not ask for confirmation')) as prompt:
-                code = preview.main(['--part', 'battery_size1', '--remote-safe', '--output', str(root / 'out')])
+                code = preview.main(['--part', 'battery_size1', '--remote-safe', '--confirm-physical-motion',
+                                     '--output', str(root / 'out')] +
+                                    (['--center', '--feature', '130', '120', '--goal-pixel', '140', '120'] if servo_failure else []))
             report = json.loads((root / 'out' / 'preview.json').read_text())
             self.assertTrue((root / 'out' / 'HEAD_TARGET_REVIEW.png').is_file())
             if abort:
                 self.assertEqual(code, 1)
                 self.assertEqual(robot.moves, [])
                 robot.move_joints.assert_not_called()
+            elif servo_failure:
+                self.assertEqual(code, 2)
+                self.assertEqual(report['status'], 'head_target_reached_wrist_not_verified')
+                self.assertTrue(report['head_target_reached'])
+                self.assertAlmostEqual(robot.pose.position_m[2], .60)
+                servo.assert_called_once()
             else:
                 self.assertEqual(code, 0)
                 self.assertEqual(report['status'], 'completed_no_gripper_motion')
-                self.assertAlmostEqual(robot.pose.position_m[2], .54)
+                self.assertAlmostEqual(robot.pose.position_m[2], .60)
             self.assertEqual(prompt.call_count, int(review))
             return report
 
@@ -136,6 +147,15 @@ class HeadPreviewTests(unittest.TestCase):
 
     def test_review_abort_never_approaches_target(self):
         self.run_preview(review=True, abort=True)
+
+    def test_servo_miss_preserves_head_success_without_claiming_center_success(self):
+        self.run_preview(servo_failure=True)
+
+    def test_physical_motion_flag_required_before_hardware(self):
+        with mock.patch.object(preview, 'VegaAdapter') as adapter:
+            with self.assertRaises(SystemExit):
+                preview.main(['--part', 'battery_size1'])
+            adapter.assert_not_called()
 
 
 if __name__ == '__main__':

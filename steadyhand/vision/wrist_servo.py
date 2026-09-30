@@ -13,6 +13,11 @@ is incomplete.
 
 from dataclasses import dataclass
 import math
+import time
+
+
+class ServoWaypointError(RuntimeError):
+    """The commanded local waypoint was not reached; no further move is safe."""
 
 
 @dataclass(frozen=True)
@@ -510,6 +515,16 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         actual = robot.get_tcp_pose()
         check_pose(actual)
         position_error = math.dist(actual.position_m, pose.position_m)
+        # Let delayed measured state settle without issuing another command.
+        # Keep the existing 8 mm guard; never turn a failed probe into a blind
+        # correction or silently pretend it reached the requested position.
+        for _ in range(3):
+            if position_error <= .008:
+                break
+            time.sleep(.1)
+            actual = robot.get_tcp_pose()
+            check_pose(actual)
+            position_error = math.dist(actual.position_m, pose.position_m)
         orientation_error = quaternion_angle(actual.quaternion_wxyz, pose.quaternion_wxyz)
         report(
             "motion",
@@ -524,7 +539,10 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         # the measured Jacobian.  The actual pose is used below, so reject
         # only a materially missed local waypoint.
         if position_error > 0.008:
-            raise RuntimeError("TCP missed servo waypoint by >8 mm")
+            raise ServoWaypointError(
+                f"TCP missed servo waypoint by >8 mm ({label}: {position_error * 1000:.2f} mm "
+                "after read-only settling); centering stopped at the measured pose"
+            )
         if checkpoint:
             checkpoint(f"after_servo_{label}")
         return actual

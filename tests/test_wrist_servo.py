@@ -11,7 +11,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from steadyhand.models import Pose
 from steadyhand.vision.wrist_servo import (
-    PixelJacobian, TemplateTracker, jacobian_from_measured_probes,
+    PixelJacobian, TemplateTracker, ServoWaypointError, jacobian_from_measured_probes,
     jacobian_from_probes, run_xy_servo,
 )
 from tools.vega_wrist_servo import WristCapture, main
@@ -147,6 +147,38 @@ class ImageServoTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'drifted'):
             self.run_servo()
         self.assertEqual(len(self.robot.moves), 1)
+
+    def test_delayed_tcp_readback_settles_without_extra_motion_command(self):
+        original_move = self.robot.move_tcp
+        desired = [None]
+        reads = [0]
+        def move(pose, *, speed_scale):
+            original_move(pose, speed_scale=speed_scale)
+            if len(self.robot.moves) == 1:
+                desired[0] = pose
+                self.robot.pose = Pose((pose.position_m[0] + .009, *pose.position_m[1:]), pose.quaternion_wxyz)
+        def read():
+            if desired[0] is not None:
+                reads[0] += 1
+                if reads[0] == 2:
+                    self.robot.pose = desired[0]
+                    desired[0] = None
+            return self.robot.pose
+        self.robot.move_tcp = move
+        self.robot.get_tcp_pose = read
+        with patch('steadyhand.vision.wrist_servo.time.sleep') as sleep:
+            result = self.run_servo(tolerance_px=1000)
+        self.assertEqual(result['status'], 'converged')
+        self.assertEqual(len(self.robot.moves), 4)  # two probes and returns
+        sleep.assert_called_once_with(.1)
+
+    def test_persistent_servo_waypoint_miss_reports_details_and_issues_no_retry_motion(self):
+        self.robot.bias = (.009, 0.)
+        with patch('steadyhand.vision.wrist_servo.time.sleep') as sleep:
+            with self.assertRaisesRegex(ServoWaypointError, 'probe_x: 9.00 mm'):
+                self.run_servo()
+        self.assertEqual(len(self.robot.moves), 1)
+        self.assertEqual(sleep.call_count, 3)
 
     def test_correction_rejected_outside_local_radius(self):
         self.feature = np.array([350., 180.])

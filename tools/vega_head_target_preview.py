@@ -1,7 +1,7 @@
 """Supervised head target + optional wrist XY preview. Never commands a jaw.
 
-At the default 40 mm clearance, a fresh feature/goal annotation is used for the
-wrist preview: 100 mm pickup pixels cannot be transferred to a different height.
+The default 100 mm clearance keeps more of the part visible above the jaws.
+At 40 mm, 100 mm pickup pixels cannot be transferred to the different height.
 No annotations from this preview overwrite a pickup or placement profile.
 """
 from __future__ import annotations
@@ -19,11 +19,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.adapters.vega import VegaAdapter
 from steadyhand.cameras.vega import VegaWristCameras
-from steadyhand.executor import move_tcp_segmented
+from steadyhand.executor import move_tcp_segmented, preflight_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
-from steadyhand.vision.wrist_servo import TemplateTracker, run_xy_servo
+from steadyhand.vision.wrist_servo import ServoWaypointError, run_xy_servo
+from steadyhand.operator_input import clean_choice
 from steadyhand.vision.wrist_review import select_pixel
 from tools.vega_competition_pipeline import (
     ROOT, _capture_downward_head_frame, _load_runtime, _runtime_from_board_scene, _task_targets,
@@ -84,12 +85,14 @@ def main(argv=None):
     parser.add_argument("--center", action="store_true", help="annotate and test wrist centering at this preview height")
     parser.add_argument("--feature", type=float, nargs=2, metavar=("U", "V"))
     parser.add_argument("--goal-pixel", type=float, nargs=2, metavar=("U", "V"))
-    parser.add_argument("--hover-clearance-mm", type=float, default=40.0)
+    parser.add_argument("--hover-clearance-mm", type=float, default=100.0)
     parser.add_argument("--remote-safe", action="store_true")
     parser.add_argument("--confirm-head-motion", action="store_true")
     parser.add_argument("--confirm-physical-motion", action="store_true")
     parser.add_argument("--output")
     args = parser.parse_args(argv)
+    if not args.confirm_physical_motion:
+        parser.error("requires --confirm-physical-motion")
     if not 20.0 <= args.hover_clearance_mm <= 100.0:
         parser.error("--hover-clearance-mm must be 20..100")
     runtime = _load_runtime()
@@ -113,6 +116,12 @@ def main(argv=None):
     def event(kind, fields):
         with (output / "events.jsonl").open("a") as stream:
             stream.write(json.dumps({"event": kind, **fields}, default=str) + "\n")
+        if kind == "motion":
+            print(f"WRIST {fields['label']}: measured error "
+                  f"{fields['position_error_m'] * 1000:.2f} mm", flush=True)
+        elif kind == "error":
+            print(f"WRIST centering step {fields['iteration']}: "
+                  f"{fields['error_px']:.1f} pixels from goal", flush=True)
 
     def image(label):
         rgb = capture()
@@ -163,13 +172,18 @@ def main(argv=None):
             checkpoint("before_low_waypoint", target)
 
     def move(target):
+        steps = dict(max_translation_step_m=.008, max_orientation_step_rad=.08)
+        preflight_tcp_segmented(robot._kinematics, robot._read_joint_positions(),
+                                robot.get_tcp_pose(), target, **steps)
         move_tcp_segmented(robot, target, speed_scale=.16, max_translation_step_m=.008,
                            max_orientation_step_rad=.08,
-                           waypoint_guard=waypoint_guard,
-                           after_waypoint=(lambda: checkpoint("waypoint")) if args.remote_safe else None)
+                           waypoint_guard=waypoint_guard)
 
     persist()
     try:
+        print(f"PREVIEW {args.part}: {args.hover_clearance_mm:g} mm hover, "
+              f"wrist centering {'ON' if args.center else 'OFF'}. Jaws never move; profiles are not changed.", flush=True)
+        print("[1/5] Clear the arm, look down, capture the board.", flush=True)
         robot.connect()
         cameras.connect()
         floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
@@ -192,6 +206,12 @@ def main(argv=None):
         from steadyhand.vision.scene import render_scene_overlay
         rgb = cv2.cvtColor(cv2.imread(scene["head_image_path"]), cv2.COLOR_BGR2RGB)
         overlay = render_scene_overlay(rgb, scene)
+        chosen = next((p for p in scene["parts"] if p["index"] == observation.get("detection_index")), None)
+        if observation.get("selection") == "head_detection" and chosen is not None:
+            uv = tuple(int(round(v)) for v in chosen["center_image_px"])
+            cv2.circle(overlay, uv, 30, (255, 0, 255), 4)
+            cv2.putText(overlay, f"{args.part}  #{chosen['index']}", (max(0, uv[0]-80), max(30, uv[1]-38)),
+                        cv2.FONT_HERSHEY_SIMPLEX, .8, (255, 0, 255), 2, cv2.LINE_AA)
         overlay_path = output / "HEAD_TARGET_REVIEW.png"
         cv2.imwrite(str(overlay_path), cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
         live = ROOT / "runs" / "wrist_live"
@@ -203,18 +223,32 @@ def main(argv=None):
             "part": args.part, "stage": "HEAD_TARGET_REVIEW", "camera": "head_camera",
             "source_run": str(overlay_path), "created_at_utc": datetime.now(timezone.utc).isoformat(),
         }) + "\n")
-        print("HEAD ASSOCIATION:", json.dumps(observation), flush=True)
+        event("head_association", observation)
+        print("[2/5] Head target association (full diagnostics saved in preview.json).", flush=True)
+        if observation.get("selection") == "head_detection":
+            expected = observation["expected_xy_m"]
+            selected = observation["selected_xy_m"]
+            print(f"Selected image detection #{observation['detection_index']} for {args.part}; "
+                  f"correction from task map: forward {(selected[0]-expected[0])*1000:+.1f} mm, "
+                  f"right {-(selected[1]-expected[1])*1000:+.1f} mm.", flush=True)
         print("HEAD TARGET REVIEW IMAGE:", overlay_path, flush=True)
         if not fresh_registration or observation.get("selection") != "head_detection":
             print("Target review needed: " + ("board geometry changed" if not fresh_registration else
                   str(observation.get("rejection_reason"))) + ". No target approach has started.", flush=True)
-            print("Use the laptop image helper. Green outline must match the board. "
-                  "Select the part's center: detection NUMBER or pixel U V. "
-                  "Type abort if the outline is wrong; no recalibration files will be changed.", flush=True)
+            print("This is an image review, not recalibration. Open the latest laptop image: "
+                  "check that the GREEN outline matches all four board corners.\n"
+                  "Enter the NUMBER printed next to your part in that image (not its menu number), "
+                  "or its center pixel U V. 'show' resends the image; 'abort' cancels.\n"
+                  "If the outline is wrong, abort. No approach starts until you choose a target.", flush=True)
             while True:
-                answer = input("HEAD TARGET> ").strip().lower()
+                answer = clean_choice(input("HEAD TARGET [image number / U V / show / abort]> ")).lower()
                 if answer in ("abort", "q", "exit", "stop"):
                     raise KeyboardInterrupt()
+                if answer == "show":
+                    shutil.copyfile(overlay_path, temporary)
+                    temporary.replace(live / "latest_wrist_a.png")
+                    print("Head review image resent to the laptop helper.", flush=True)
+                    continue
                 try:
                     values = answer.split()
                     if len(values) == 1:
@@ -238,16 +272,24 @@ def main(argv=None):
         persist()
         print("HEAD TARGET", json.dumps({"part": args.part, "source": observation["selection"],
               "xyz_m": list(hover.position_m)}), flush=True)
+        print("[3/5] Move through RIGHT_READY to the head target at 100 mm clearance.", flush=True)
         checkpoint("before_ready")
         ready_q, _ = configured_right_preset(cfg, "right_ready")
         robot.move_joints(ready_q, speed_scale=.16)
         checkpoint("before_coarse_hover")
         high = preview_target(runtime, args.part, observation, .100)
         move(high)
-        checkpoint("before_preview_height")
-        move(hover)
+        print(f"[4/5] Preview at {args.hover_clearance_mm:g} mm clearance.", flush=True)
+        if args.hover_clearance_mm != 100.0:
+            checkpoint("before_preview_height")
+            move(hover)
         checkpoint("coarse_hover")
+        result["head_target_reached"] = True
+        persist()
         if args.center:
+            print("[5/5] Wrist XY centering only: select a feature ON the part, then where that SAME "
+                  "feature should appear in a correctly aligned grasp at this height. "
+                  "The image center is not automatically the grasp point. Type abort to stop.", flush=True)
             rgb, raw = image("wrist preview reference")
             feature = args.feature or select_pixel(rgb, raw, "Select a distinctive feature on the selected part", use_viewer=False)
             goal = args.goal_pixel or select_pixel(rgb, raw, "Select desired feature pixel at THIS preview height (not a saved 100 mm pixel)", use_viewer=False)
@@ -264,8 +306,21 @@ def main(argv=None):
                 reference_quaternion_wxyz=hover.quaternion_wxyz,
             )
             checkpoint("after_wrist_centering")
+        else:
+            print("[5/5] Head target reached. Wrist centering was OFF; inspect the latest wrist image.", flush=True)
         result["status"] = "completed_no_gripper_motion"
+        print("PREVIEW COMPLETE: no pickup/release was attempted.", flush=True)
         return 0
+    except ServoWaypointError as exc:
+        result.update(status="head_target_reached_wrist_not_verified", error=str(exc))
+        try:
+            image("wrist_center_stopped")
+        except Exception as image_exc:
+            event("stopped_image_unavailable", {"error": str(image_exc)})
+        print(f"HEAD APPROACH COMPLETED; WRIST CENTERING NOT VERIFIED: {exc}. "
+              "No further movement or jaw command will be issued. "
+              "Use the latest wrist image and send preview.json/events.jsonl; do not recalibrate the board for this error.", flush=True)
+        return 2
     except (KeyboardInterrupt, EOFError):
         result["status"] = "aborted"
         return 1
@@ -279,6 +334,7 @@ def main(argv=None):
         except Exception as exc:
             result["state_error"] = str(exc)
         persist()
+        print("Closing the preview connections. The following sensor/robot shutdown lines are session cleanup.", flush=True)
         try:
             cameras.close()
         finally:

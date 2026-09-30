@@ -36,7 +36,7 @@ class ExecutionOffsetTests(unittest.TestCase):
         surface = mock.Mock(side_effect=AssertionError("unneeded surface read"))
         self.assertIs(DirectionOffset().hover(pose, surface), pose)
         self.assertEqual(DirectionOffset().clearance(.008), .008)
-        self.assertIsInstance(load_offsets(), ExecutionOffsets())
+        self.assertIsInstance(load_offsets(), ExecutionOffsets)
 
     def test_reject_invalid_edits_and_accept_windows_bom(self):
         data = ExecutionOffsets().as_dict()

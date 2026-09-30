@@ -75,6 +75,25 @@ def object_pose_to_tcp(object_pose: Pose, skill: dict) -> Pose:
     )
 
 
+def cartesian_waypoints(current, target, *, max_translation_step_m, max_orientation_step_rad):
+    """The same bounded Cartesian path for dry-run IK and execution."""
+    for label, value in (("max_translation_step_m", max_translation_step_m),
+                         ("max_orientation_step_rad", max_orientation_step_rad)):
+        if not math.isfinite(float(value)) or float(value) <= 0:
+            raise ValueError(f"{label} must be finite and positive")
+    dist, angle = pose_distance(current, target)
+    n = max(1, int(math.ceil(dist / float(max_translation_step_m))),
+            int(math.ceil(angle / float(max_orientation_step_rad))))
+    return [interpolate_pose(current, target, index / n) for index in range(1, n + 1)]
+
+
+def preflight_tcp_segmented(kinematics, seed, current, target, **step_limits):
+    """Check every local IK seed delta without commanding any movement."""
+    for waypoint in cartesian_waypoints(current, target, **step_limits):
+        seed = kinematics.solve(waypoint, seed)
+    return seed
+
+
 def move_tcp_segmented(
     robot,
     target: Pose,
@@ -89,10 +108,6 @@ def move_tcp_segmented(
     min_tcp_z_m=None,
 ):
     """Move through short Cartesian targets, reseeding IK from live state."""
-    for label, value in (("max_translation_step_m", max_translation_step_m),
-                         ("max_orientation_step_rad", max_orientation_step_rad)):
-        if not math.isfinite(float(value)) or float(value) <= 0:
-            raise ValueError(f"{label} must be finite and positive")
     if not math.isfinite(float(speed_scale)) or not 0 < float(speed_scale) <= 1:
         raise ValueError("speed_scale must be in (0, 1]")
     # ``min_tcp_z_m`` is retained in the public signature for compatibility
@@ -104,16 +119,13 @@ def move_tcp_segmented(
     if current is None:
         raise ExecutionError("Robot adapter cannot provide current TCP pose")
 
-    dist, angle = pose_distance(current, target)
-    n = max(
-        1,
-        int(math.ceil(dist / float(max_translation_step_m))),
-        int(math.ceil(angle / float(max_orientation_step_rad))),
+    waypoints = cartesian_waypoints(
+        current, target, max_translation_step_m=max_translation_step_m,
+        max_orientation_step_rad=max_orientation_step_rad,
     )
-    for index in range(1, n + 1):
+    for index, waypoint in enumerate(waypoints, 1):
         if before_waypoint is not None:
             before_waypoint()
-        waypoint = interpolate_pose(current, target, index / n)
         if waypoint_guard is not None:
             waypoint_guard(waypoint)
         robot.move_tcp(waypoint, speed_scale=speed_scale)
@@ -126,7 +138,7 @@ def move_tcp_segmented(
                 "completed",
                 {
                     "index": index,
-                    "count": n,
+                    "count": len(waypoints),
                     "target_position_m": waypoint.position_m,
                 },
             )

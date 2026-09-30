@@ -152,7 +152,12 @@ def _detection_positions(scene, runtime):
                 board_xy = _finite_pair(board_xy[:2], "scene board-relative part center")
             except (TypeError, ValueError):
                 board_xy = None
-            result.append({"index": index, "xy_m": xy, "board_xy_m": board_xy})
+            # Preserve the detector's printed image label even after filtering
+            # or reordering detections; list position is not a stable label.
+            label = item.get("index", index)
+            if type(label) is not int or label < 0:
+                continue
+            result.append({"index": label, "xy_m": xy, "board_xy_m": board_xy})
     return result
 
 

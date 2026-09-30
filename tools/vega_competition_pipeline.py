@@ -8,6 +8,7 @@ file before any arm motion is planned.
 from collections import OrderedDict
 import argparse
 import json
+import math
 from pathlib import Path
 import sys
 import time
@@ -27,7 +28,9 @@ from steadyhand.board_calibration import (
     compare_board_geometry,
     orthonormalize_xy_axes,
 )
-from steadyhand.executor import move_tcp_segmented
+from steadyhand.executor import move_tcp_segmented, preflight_tcp_segmented
+from steadyhand.kinematics import IKError
+from steadyhand.operator_input import clean_choice
 from steadyhand.execution_offsets import load_offsets, describe_offsets
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
@@ -375,7 +378,7 @@ def _choose(items, title, *, allow_all=False):
         description = items[name] if isinstance(items, dict) else ""
         print(f"  {index}. {name}{(': ' + description) if description else ''}")
     print("  0. back")
-    raw = input("Type a number or name (comma-separated for tests): ").strip()
+    raw = clean_choice(input("Type a number or name (comma-separated for tests): "))
     if raw in ("0", "b", "back", ""):
         return []
     values = [part.strip() for part in raw.split(",")]
@@ -436,7 +439,9 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle, speed_scale=None,
             handle = move_head(head_q, velocity_scale=.45 if speed_scale is None else speed_scale)
             wait_fn = getattr(handle, "wait", None)
             if callable(wait_fn):
-                wait_fn(timeout=5.0)
+                state = wait_fn(timeout=5.0)
+                if state not in (None, "finished"):
+                    raise RuntimeError(f"head motion ended in state {state!r}")
             else:
                 time.sleep(1.5)
             moved_head = True
@@ -452,12 +457,16 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle, speed_scale=None,
         )
     measured_head_q = list(robot._robot.head.get_joint_pos())
     print("HEAD AFTER  =", measured_head_q, flush=True)
-    if len(measured_head_q) < len(head_q) or max(
+    if len(measured_head_q) != len(head_q) or not all(
+        math.isfinite(float(q)) for q in measured_head_q
+    ) or max(
         abs(float(measured_head_q[i]) - head_q[i]) for i in range(len(head_q))
     ) > 0.03:
         raise RuntimeError(
             f"downward head view was not reached: target={head_q} "
-            f"measured={measured_head_q}"
+            f"measured={measured_head_q}. The head did not follow its command; "
+            "no board image will be used. Check head motor/E-stop status before retrying; "
+            "this is not a board-calibration error"
         )
     time.sleep(0.5)
     camera = VegaHeadCamera()
@@ -611,7 +620,8 @@ def _prompt_next_location(current_name, available_targets):
     print("  r. retake board image (board may have moved)", flush=True)
     print("  e. exit location testing", flush=True)
     while True:
-        raw = input("Next location [number/name/r/e]: ").strip()
+        received = input("Next location [number/name/r/e]: ")
+        raw = clean_choice(received)
         lowered = raw.lower()
         if lowered in ("e", "exit", "q", "quit", "0", "back"):
             return "exit"
@@ -625,7 +635,7 @@ def _prompt_next_location(current_name, available_targets):
             pass
         if raw in available_targets:
             return raw
-        print("Choose a listed location, r to retake the board image, or e for exit.", flush=True)
+        print(f"Unrecognized input {received!r}. Choose 1..{len(names)}, a location name, r, or e.", flush=True)
 
 
 def _run_motion_targets(
@@ -698,11 +708,14 @@ def _run_motion_targets(
                 refresh_board_image()
 
             ready_q, ready_pose = configured_right_preset(cfg, "right_ready")
-            for name, target in targets.items():
-                robot._kinematics.solve(target, ready_q)
-                print(name, "TARGET =", tuple(round(float(v), 6) for v in target.position_m), flush=True)
-            print("ALL SELECTED TARGETS PREFLIGHTED", flush=True)
+            steps = dict(max_translation_step_m=.020, max_orientation_step_rad=.10)
             if check_only:
+                seed, start = ready_q, ready_pose
+                for name, target in targets.items():
+                    seed = preflight_tcp_segmented(robot._kinematics, seed, start, target, **steps)
+                    start = target
+                    print(name, "TARGET =", tuple(round(float(v), 6) for v in target.position_m), flush=True)
+                print("ALL SELECTED PATHS PREFLIGHTED", flush=True)
                 return 0
             print("MOVING TO RIGHT_READY", flush=True)
             if remote_safe:
@@ -722,10 +735,32 @@ def _run_motion_targets(
 
             while pending:
                 name, target = pending.pop(0)
-                robot._kinematics.solve(target, robot._read_joint_positions())
+                print(f"GO TO {name}: checking the segmented path from the measured pose", flush=True)
+                try:
+                    preflight_tcp_segmented(robot._kinematics, robot._read_joint_positions(),
+                                            robot.get_tcp_pose(), target, **steps)
+                except IKError as exc:
+                    print(f"TARGET BLOCKED BEFORE MOTION: {exc}. Arm remains at its current pose.", flush=True)
+                    if not interactive_next:
+                        return 2
+                    action = _prompt_next_location("CURRENT POSE (requested target not reached)", available_targets)
+                    if action == "exit":
+                        return 0
+                    if action == "retake_image":
+                        refresh_board_image()
+                        robot.move_joints(ready_q, speed_scale=float(speed_scale))
+                        action = _prompt_next_location("BOARD IMAGE", available_targets)
+                        while action == "retake_image":
+                            refresh_board_image()
+                            robot.move_joints(ready_q, speed_scale=float(speed_scale))
+                            action = _prompt_next_location("BOARD IMAGE", available_targets)
+                        if action == "exit":
+                            return 0
+                    pending = [(action, available_targets[action])]
+                    continue
                 move_tcp_segmented(
                     robot, target, speed_scale=float(speed_scale),
-                    max_translation_step_m=0.06, max_orientation_step_rad=0.20,
+                    **steps,
                     min_tcp_z_m=None,
                     waypoint_guard=guard if remote_safe else None,
                 )
@@ -742,7 +777,6 @@ def _run_motion_targets(
                     if action == "exit":
                         return 0
                     next_target = available_targets[action]
-                    robot._kinematics.solve(next_target, robot._read_joint_positions())
                     pending = [(action, next_target)]
             return 0
         except Exception as exc:
@@ -871,18 +905,32 @@ def _run_head_preview_menu(args):
         print("Head target preview requires physical motion; remove --check-only.")
         return 2
     selected = _choose(
-        OrderedDict((part, "head-camera target, 40 mm hover, no grip") for part in PART_NAMES),
+        OrderedDict((part, "preview head-camera target; jaws never move") for part in PART_NAMES),
         "HEAD-CAMERA TARGET PREVIEW",
     )
-    center = input(
-        "Run bounded wrist centering after reaching the 40 mm hover? [y/N]: "
-    ).strip().lower() in ("y", "yes")
+    if not selected:
+        return 0
+    print("\nPREVIEW MODE — no pickup, release, or calibration changes")
+    print("  1. Head target only, 100 mm hover (default; best wrist visibility)")
+    print("  2. Head target + wrist centering, 100 mm hover")
+    print("  3. Head target only, 40 mm hover (closer view; jaws may obscure the part)")
+    print("  4. Head target + wrist centering, 40 mm hover (needs new pixels for this height)")
+    print("  0. Back")
+    while True:
+        mode = clean_choice(input("Preview mode [1/2/3/4, Enter=1, 0=back]: ")).lower()
+        if mode in ("0", "e", "abort", "back"):
+            return 0
+        if mode in ("", "1", "2", "3", "4"):
+            break
+        print("Choose a displayed mode; Enter selects 1.", flush=True)
+    center = mode in ("2", "4")
+    height = "40" if mode in ("3", "4") else "100"
     from tools.vega_head_target_preview import main as run_head_target_preview
     for part in selected:
         result = run_head_target_preview([
             "--part", part,
             "--confirm-head-motion", "--confirm-physical-motion",
-            "--hover-clearance-mm", "40",
+            "--hover-clearance-mm", height,
         ] + (["--center"] if center else []) + (
             ["--remote-safe"] if getattr(args, "remote_safe", False) else []
         ))
