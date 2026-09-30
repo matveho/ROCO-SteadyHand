@@ -50,10 +50,11 @@ class PreviewMotionTests(unittest.TestCase):
             with mock.patch.object(pipeline, "_choose", return_value=["gear_60teeth"]), \
                  mock.patch('builtins.input', return_value=choice), \
                  mock.patch('tools.vega_head_target_preview.main', return_value=0) as run:
-                self.assertEqual(pipeline._run_head_preview_menu(SimpleNamespace(check_only=False, remote_safe=True)), 0)
+                self.assertEqual(pipeline._run_head_preview_menu(SimpleNamespace(check_only=False, remote_safe=True, speed_scale=.38)), 0)
             command = run.call_args.args[0]
             self.assertEqual(command[command.index('--hover-clearance-mm') + 1], height)
             self.assertEqual('--center' in command, center)
+            self.assertEqual(command[command.index('--speed-scale') + 1], '0.38')
 
     def test_blocked_segment_reprompts_without_motion_or_limit_bypass(self):
         robot = SimpleNamespace(

@@ -190,17 +190,12 @@ class PartSession:
         self.board_scene_paths = []
         self.drop_evidence_photos = []
         self.remote_safe = bool(getattr(args, "remote_safe", False))
-        self.remote_step_mm = 2.0
         self.remote_checkpoint_index = 0
         self.place_cv_settings = None
-        if self.remote_safe:
-            self.step_mm = self.remote_step_mm
 
     def start(self):
         self.status = "starting"
         self.robot.connect()
-        if self.remote_safe:
-            self.cameras.connect()
         self.retake()
         # Drop teaching deliberately reuses the saved pickup hover/grasp and
         # does not need a wrist frame.  Avoid making the procedure depend on a
@@ -252,7 +247,6 @@ class PartSession:
         self.runtime = runtime  # Clearance model is needed before camera-clear.
         scene = _capture_downward_head_frame(
             self.robot, floor_m=self.floor, bundle=runtime[0], output=self.output,
-            speed_scale=min(.18, self.args.speed_scale) if self.remote_safe else None,
             checkpoint=self.remote_checkpoint if self.remote_safe else None,
         )
         self.runtime = _runtime_from_board_scene(runtime, scene)
@@ -341,17 +335,23 @@ class PartSession:
         # Check the complete Cartesian segment before issuing its first waypoint.
         before = self.robot.get_tcp_pose()
         distance, angle = pose_distance(before, target)
-        step_m = .008 if self.remote_safe else .020
+        step_m = .020
         count = max(1, math.ceil(distance/step_m), math.ceil(angle/.08))
         seed = self.robot._read_joint_positions()
         for i in range(1, count + 1):
             pose = interpolate_pose(before, target, i/count)
             seed = self.robot._kinematics.solve(pose, seed)
-        speed = min(.18, self.args.speed_scale) if self.remote_safe else (.25 if slow else self.args.speed_scale)
+        # Remote supervision changes confirmation/evidence only, not the
+        # established trajectory, speed or manual jog size.
+        if self.remote_safe:
+            start_clearance = before.position_m[2] - self.surface(*before.position_m[:2])
+            end_clearance = target.position_m[2] - self.surface(*target.position_m[:2])
+            if end_clearance < start_clearance - .0005:
+                self.remote_checkpoint("before_lowering", capture=True, target=target)
+        speed = .25 if slow else self.args.speed_scale
         move_tcp_segmented(self.robot, target, speed_scale=speed,
                            max_translation_step_m=step_m, max_orientation_step_rad=.08,
                            waypoint_guard=self.remote_waypoint if self.remote_safe else None,
-                           after_waypoint=(lambda: self.remote_checkpoint("cartesian_waypoint")) if self.remote_safe else None,
                            min_tcp_z_m=None)
 
     def remote_waypoint(self, target):
@@ -359,8 +359,8 @@ class PartSession:
         if needs_low_clearance_confirmation(self.robot.get_tcp_pose(), target, self.surface):
             self.remote_checkpoint("before_low_waypoint", target=target)
 
-    def remote_checkpoint(self, label, *, capture=True, target=None):
-        """Keep evidence; pause for arm stages below 40 mm, not head/camera work."""
+    def remote_checkpoint(self, label, *, capture=False, target=None):
+        """Confirm low arm stages; only capture when explicitly requested."""
         if not getattr(self, "remote_safe", False):
             return
         self.remote_checkpoint_index += 1
@@ -709,7 +709,7 @@ class PartSession:
                 self.remote_checkpoint("before_wrist_centering")
                 result = run_xy_servo(
                     self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
-                    max_radius_m=.060, speed_scale=min(.18, self.args.speed_scale) if self.remote_safe else .45, event=self.event,
+                    max_radius_m=.060, speed_scale=.45, event=self.event,
                     checkpoint=self.remote_checkpoint if self.remote_safe else None,
                     waypoint_guard=self.remote_waypoint if self.remote_safe else None,
                     tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
@@ -1251,7 +1251,7 @@ class PartSession:
                 self.robot, self.capture, floor_m=self.floor, goal_uv=goal,
                 probe_m=.006, gain=.35, max_step_m=.006, max_radius_m=.030,
                 tolerance_px=8.0, max_iterations=8,
-                speed_scale=min(.18, self.args.speed_scale) if self.remote_safe else .45,
+                speed_scale=.45,
                 checkpoint=self.remote_checkpoint if self.remote_safe else None,
                 waypoint_guard=self.remote_waypoint if self.remote_safe else None,
                 event=self.event, surface_z=self.surface,
@@ -1966,6 +1966,7 @@ class PartSession:
         if not profile.get("place") or not profile.get("place_verified"):
             raise ValueError("Teach and verify the physical place position first")
         self.part, self.action = part, "place_cv"
+        print("PLACEMENT CV PICKUP: using saved pickup coordinates and depth, without wrist centering.", flush=True)
         self.begin_part(part, profile, competition=True, no_cv=True)
         self.grasp_verified = True
         self.grab(profile["grasp_clearance_m"], allow_unverified=True)
@@ -2254,7 +2255,7 @@ def main(argv=None):
     parser.add_argument("--speed-scale", type=float, default=.38)
     parser.add_argument(
         "--remote-safe", action="store_true",
-        help="slow movement; confirm arm waypoints below 40 mm and retain stage images",
+        help="normal motion settings; confirm below 40 mm and capture once before lowering",
     )
     args = parser.parse_args(argv)
     if not args.confirm_physical_motion:
@@ -2262,8 +2263,6 @@ def main(argv=None):
     minimum_speed = .10 if args.remote_safe else .25
     if not minimum_speed <= args.speed_scale <= .70:
         parser.error("--speed-scale must be .10..70 in remote-safe mode, otherwise .25..70")
-    if args.remote_safe:
-        args.speed_scale = min(float(args.speed_scale), .20)
     args.execution_offsets = _session_execution_offsets(args)
     if args.execution_offsets is not None:
         describe_offsets(args.execution_offsets)

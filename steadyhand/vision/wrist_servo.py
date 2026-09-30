@@ -509,7 +509,7 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         if checkpoint:
             checkpoint(f"before_servo_{label}")
         move_tcp_segmented(robot, pose, speed_scale=speed_scale,
-                           max_translation_step_m=0.008 if checkpoint else 0.02, max_orientation_step_rad=0.05,
+                           max_translation_step_m=0.02, max_orientation_step_rad=0.05,
                            waypoint_guard=waypoint_guard,
                            min_tcp_z_m=None)
         actual = robot.get_tcp_pose()

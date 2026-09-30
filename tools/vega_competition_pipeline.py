@@ -684,7 +684,6 @@ def _run_motion_targets(
                     nonlocal runtime, available_targets, targets
                     scene = _capture_downward_head_frame(
                         robot, floor_m=floor, bundle=bundle,
-                        speed_scale=speed_scale if remote_safe else None,
                         checkpoint=(lambda label: guard(None) if label == "before_camera_clear" else None) if remote_safe else None,
                     )
                     if runtime is None or task_data is None or clearance_m is None:
@@ -931,6 +930,7 @@ def _run_head_preview_menu(args):
             "--part", part,
             "--confirm-head-motion", "--confirm-physical-motion",
             "--hover-clearance-mm", height,
+            "--speed-scale", str(getattr(args, "speed_scale", DEFAULT_PIPELINE_SPEED_SCALE)),
         ] + (["--center"] if center else []) + (
             ["--remote-safe"] if getattr(args, "remote_safe", False) else []
         ))
@@ -1344,7 +1344,7 @@ def main(argv=None):
     p.add_argument("--speed-scale", type=float, default=None)
     p.add_argument(
         "--remote-safe", action="store_true",
-        help="slow physical teaching; confirm arm motion below 40 mm clearance",
+        help="normal motion settings; confirm arm motion below 40 mm clearance",
     )
     p.add_argument(
         "--clearance-mm", type=float, default=None,
@@ -1398,8 +1398,6 @@ def main(argv=None):
     operator_plan = _load_competition_plan()
     if args.speed_scale is None:
         args.speed_scale = operator_plan["pipeline_speed_scale"]
-    if args.remote_safe:
-        args.speed_scale = min(float(args.speed_scale), 0.20)
     if args.clearance_mm is None:
         args.clearance_mm = operator_plan["task_clearance_mm"]
     if args.versions or args.list_versions:
@@ -1526,9 +1524,9 @@ def main(argv=None):
         print("  8. Reload operator settings / show readiness")
         print("  9. Legacy competition task versions")
         print(" 10. Calibrate drop-off position (saved pickup -> 40 mm descent -> release/save)")
-        print(" 11. Remote-safe pickup calibration (slow; confirm below 40 mm)")
-        print(" 12. Remote-safe drop calibration (slow; confirm below 40 mm)")
-        print(" 13. Head-camera target preview (40 mm hover, never grabs)")
+        print(" 11. Remote-safe pickup calibration (confirm below 40 mm)")
+        print(" 12. Remote-safe drop calibration (confirm below 40 mm)")
+        print(" 13. Head-camera target preview (100 or 40 mm hover, never grabs)")
         print(" 14. Teach placement CV target (held part; no automatic release)")
         print(" 15. Launch an archived rollback version")
         print("  0. Exit")

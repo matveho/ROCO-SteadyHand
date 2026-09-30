@@ -105,6 +105,17 @@ class ImageServoTests(unittest.TestCase):
             self.assertEqual(move.position_m[2], .64)
             self.assertLessEqual(math.dist(move.position_m[:2], self.origin), .06)
 
+    def test_supervision_does_not_change_servo_trajectory_or_image_count(self):
+        self.run_servo()
+        normal_moves, normal_frames = self.robot.moves[:], self.frames
+        self.robot, self.frames = FakeRobot(), 0
+        checkpoints = []
+        result = self.run_servo(checkpoint=checkpoints.append)
+        self.assertEqual(result['status'], 'converged')
+        self.assertEqual(self.robot.moves, normal_moves)
+        self.assertEqual(self.frames, normal_frames)
+        self.assertTrue(checkpoints)
+
     def test_automatic_feature_selection(self):
         result = run_xy_servo(self.robot, self.capture, floor_m=.456)
         self.assertEqual(result['status'], 'converged')

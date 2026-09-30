@@ -87,6 +87,7 @@ def main(argv=None):
     parser.add_argument("--goal-pixel", type=float, nargs=2, metavar=("U", "V"))
     parser.add_argument("--hover-clearance-mm", type=float, default=100.0)
     parser.add_argument("--remote-safe", action="store_true")
+    parser.add_argument("--speed-scale", type=float, default=.38)
     parser.add_argument("--confirm-head-motion", action="store_true")
     parser.add_argument("--confirm-physical-motion", action="store_true")
     parser.add_argument("--output")
@@ -95,6 +96,8 @@ def main(argv=None):
         parser.error("requires --confirm-physical-motion")
     if not 20.0 <= args.hover_clearance_mm <= 100.0:
         parser.error("--hover-clearance-mm must be 20..100")
+    if not .10 <= args.speed_scale <= .70:
+        parser.error("--speed-scale must be .10..70")
     runtime = _load_runtime()
     bundle, task_data, _, _ = runtime
     cfg = bundle["robot"]
@@ -141,17 +144,18 @@ def main(argv=None):
     def surface(x, y):
         return calibrated_surface_z(x, y, runtime[2][3])
 
-    def checkpoint(label, target=None):
+    def checkpoint(label, target=None, *, capture_image=False):
         pose = robot.get_tcp_pose()
         record = {"label": label, "tcp": pose.position_m, "quaternion_wxyz": pose.quaternion_wxyz,
                   "joints": [float(v) for v in robot._read_joint_positions()],
                   "timestamp": datetime.now(timezone.utc).isoformat()}
-        try:
-            _, raw = image(label)
-            record["wrist_image"] = str(raw)
-        except Exception as exc:
-            record["image_error"] = str(exc)
-            print(f"CHECKPOINT IMAGE UNAVAILABLE: {exc}", flush=True)
+        if capture_image:
+            try:
+                _, raw = image(label)
+                record["wrist_image"] = str(raw)
+            except Exception as exc:
+                record["image_error"] = str(exc)
+                print(f"CHECKPOINT IMAGE UNAVAILABLE: {exc}", flush=True)
         event("checkpoint", record)
         if label == "before_head_down" or not needs_low_clearance_confirmation(pose, target, surface):
             event("decision", {"label": label, "decision": "auto_continue"})
@@ -172,11 +176,15 @@ def main(argv=None):
             checkpoint("before_low_waypoint", target)
 
     def move(target):
-        steps = dict(max_translation_step_m=.008, max_orientation_step_rad=.08)
+        before = robot.get_tcp_pose()
+        steps = dict(max_translation_step_m=.020, max_orientation_step_rad=.08)
         preflight_tcp_segmented(robot._kinematics, robot._read_joint_positions(),
-                                robot.get_tcp_pose(), target, **steps)
-        move_tcp_segmented(robot, target, speed_scale=.16, max_translation_step_m=.008,
-                           max_orientation_step_rad=.08,
+                                before, target, **steps)
+        start_clearance = before.position_m[2] - surface(*before.position_m[:2])
+        end_clearance = target.position_m[2] - surface(*target.position_m[:2])
+        if end_clearance < start_clearance - .0005:
+            checkpoint("before_lowering", target, capture_image=True)
+        move_tcp_segmented(robot, target, speed_scale=args.speed_scale, **steps,
                            waypoint_guard=waypoint_guard)
 
     persist()
@@ -188,7 +196,7 @@ def main(argv=None):
         cameras.connect()
         floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
         scene = _capture_downward_head_frame(robot, floor_m=floor, bundle=bundle,
-            speed_scale=.16, checkpoint=checkpoint, output=output)
+            checkpoint=checkpoint, output=output)
         updated = _runtime_from_board_scene(runtime, scene)
         fresh_registration = updated is not runtime
         runtime = updated
@@ -275,7 +283,7 @@ def main(argv=None):
         print("[3/5] Move through RIGHT_READY to the head target at 100 mm clearance.", flush=True)
         checkpoint("before_ready")
         ready_q, _ = configured_right_preset(cfg, "right_ready")
-        robot.move_joints(ready_q, speed_scale=.16)
+        robot.move_joints(ready_q, speed_scale=args.speed_scale)
         checkpoint("before_coarse_hover")
         high = preview_target(runtime, args.part, observation, .100)
         move(high)
@@ -299,7 +307,7 @@ def main(argv=None):
             result["wrist_center"] = run_xy_servo(
                 robot, lambda: image("servo")[0], floor_m=floor, feature_uv=feature, goal_uv=goal,
                 max_radius_m=.060, probe_m=.008, gain=.45, max_step_m=.008,
-                tolerance_px=8., max_iterations=12, speed_scale=.16,
+                tolerance_px=8., max_iterations=12, speed_scale=.45,
                 checkpoint=checkpoint, event=event,
                 waypoint_guard=waypoint_guard,
                 surface_z=lambda x, y: calibrated_surface_z(x, y, runtime[2][3]),
@@ -307,6 +315,7 @@ def main(argv=None):
             )
             checkpoint("after_wrist_centering")
         else:
+            image("head target reached")
             print("[5/5] Head target reached. Wrist centering was OFF; inspect the latest wrist image.", flush=True)
         result["status"] = "completed_no_gripper_motion"
         print("PREVIEW COMPLETE: no pickup/release was attempted.", flush=True)
