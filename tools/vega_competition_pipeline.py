@@ -959,13 +959,27 @@ def _run_head_preview_menu(args):
     return 0
 
 
+def _run_rollback_menu(args):
+    from tools.vega_version_menu import main as run_version_menu
+    if args.check_only:
+        return run_version_menu(["--list"])
+    print("Rollback launches the selected archive with its saved code and calibration.", flush=True)
+    return run_version_menu(["--confirm-head-motion", "--confirm-physical-motion"])
+
+
 def _run_task_tests_menu(args):
     if args.check_only:
         print("Task tests require physical motion; remove --check-only.")
         return 2
-    selected = _choose(TASK_ACTIONS, "TASK TESTS (PICK / PICK-PLACE)")
+    actions = OrderedDict(
+        (f"{verb}_{part}", f"{description}; uses saved calibration and competition settings")
+        for part in PART_NAMES
+        for verb, description in (("grab", "pick up the part"), ("place", "pick up then place the part"))
+    )
+    selected = _choose(actions, "TEST ANY ACTION (supervised)")
     for name in selected:
-        part, action = name.split(".", 1)
+        verb, part = name.split("_", 1)
+        action = "pick" if verb == "grab" else "pick_place"
         result = run_wrist_part_calibration(_task_test_command(args, part, action))
         if result:
             return result
@@ -1603,47 +1617,26 @@ def main(argv=None):
 
     while True:
         print("\n=== VEGA COMPETITION PIPELINE ===")
-        print("  1. Full board calibration (only if board geometry/height needs re-teaching)")
-        print("  2. Test calibrated board/task positions")
-        print("  3. Wrist camera calibration (per-part feature / yaw / grasp depth)")
-        print("  4. Supervised task tests (same pickup/place settings as competition)")
-        print("  5. Run configured competition routine (configs/competition_actions.json)")
-        print("  6. Run all calibrated (with placement CV where taught)")
-        print("  7. Run all calibrated (without placement CV)")
-        print("  8. Reload operator settings / show readiness")
-        print(" 10. Calibrate drop-off position (saved pickup -> 40 mm descent -> release/save)")
-        print(" 13. Head-camera target preview (100 or 40 mm hover, never grabs)")
-        print(" 14. Teach placement CV target (held part; no automatic release)")
-        print("  0. Exit")
-        choice = input("Select an option: ").strip()
-        if choice in ("0", "q", "quit", "exit"):
-            return 0
-        if choice == "1":
-            if args.check_only:
-                print("--check-only does not run physical recalibration.")
-                continue
-            try:
-                _recalibrate()
-            except (KeyboardInterrupt, EOFError):
-                print("Calibration cancelled.")
-            except Exception as exc:
-                print(f"Calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice == "8":
-            try:
-                _reload_operator_settings(args)
-            except Exception as exc:
-                print(f"Operator settings rejected: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
+        print("  1. Board calibration")
+        print("  2. Position testing")
+        print("  3. Head-camera target preview")
+        print("  4. Run all calibrated with placement CV")
+        print("  5. Run all calibrated without placement CV")
+        print("  6. Run competition routine (configs/competition_actions.json)")
+        print("  7. Reload settings")
+        print("  8. Rollback versions")
+        print("  9. EXIT")
+        print(" 10. Test any action (grab_<item> / place_<item>)")
         try:
-            runtime = _load_runtime()
-            task_data = runtime[1]
-        except Exception as exc:
-            print(f"No usable five-point calibration: {exc}")
-            print("Choose recalibrate first.")
-            continue
+            choice = clean_choice(input("Select an option: "))
+        except (KeyboardInterrupt, EOFError):
+            return 0
+        if choice in ("9", "0", "q", "quit", "exit"):
+            return 0
         if choice == "2":
             try:
+                runtime = _load_runtime()
+                task_data = runtime[1]
                 available = _available_position_names(runtime, task_data, args.clearance_m)
                 all_targets = _make_test_targets(
                     list(available), runtime, task_data, args.clearance_m
@@ -1671,77 +1664,34 @@ def main(argv=None):
             except Exception as exc:
                 print(f"Position test failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
-        if choice == "3":
-            try:
-                _run_wrist_calibration_menu(args)
-            except (KeyboardInterrupt, EOFError):
-                print("Wrist calibration cancelled.")
-            except Exception as exc:
-                print(f"Wrist calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        handlers = {
+            "1": ("Board calibration", _recalibrate),
+            "3": ("Head-camera target preview", lambda: _run_head_preview_menu(args)),
+            "4": ("All calibrated with placement CV", lambda: _all_calibrated_competition_run(args, place_cv=True)),
+            "5": ("All calibrated without placement CV", lambda: _all_calibrated_competition_run(args, place_cv=False)),
+            "6": ("Competition routine", lambda: _configured_competition_run(args)),
+            "7": ("Reload settings", lambda: _reload_operator_settings(args)),
+            "8": ("Rollback versions", lambda: _run_rollback_menu(args)),
+            "10": ("Action test", lambda: _run_task_tests_menu(args)),
+        }
+        if choice not in handlers:
+            print("Unknown menu option. Choose 1–10.")
             continue
-        if choice == "4":
-            try:
-                _run_task_tests_menu(args)
-            except (KeyboardInterrupt, EOFError):
-                print("Task test cancelled.")
-            except Exception as exc:
-                print(f"Task test failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+        if choice == "1" and args.check_only:
+            print("--check-only does not run physical recalibration.")
             continue
-        if choice == "5":
-            try:
-                _configured_competition_run(args)
-            except (KeyboardInterrupt, EOFError):
-                print("Competition sequence cancelled.")
-            except Exception as exc:
-                print(f"Competition sequence failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice == "6":
-            try:
-                _all_calibrated_competition_run(args, place_cv=True)
-            except (KeyboardInterrupt, EOFError):
-                print("All-calibrated competition run cancelled.")
-            except Exception as exc:
-                print(f"All-calibrated competition run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice == "7":
-            try:
-                _all_calibrated_competition_run(args, place_cv=False)
-            except (KeyboardInterrupt, EOFError):
-                print("All-calibrated no-place-CV run cancelled.")
-            except Exception as exc:
-                print(f"All-calibrated no-place-CV run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice == "10":
-            try:
-                _run_drop_calibration_menu(args)
-            except (KeyboardInterrupt, EOFError):
-                print("Drop calibration cancelled.")
-            except Exception as exc:
-                print(f"Drop calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice in ("11", "12"):
-            print("Remote-only menu options removed. Use 3 for pickup or 10 for drop teaching.")
-            continue
-        if choice == "13":
-            try:
-                _run_head_preview_menu(args)
-            except (KeyboardInterrupt, EOFError):
-                print("Head target preview cancelled.")
-            except Exception as exc:
-                print(f"Head target preview failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice == "14":
-            try:
-                _run_place_cv_menu(args)
-            except (KeyboardInterrupt, EOFError):
-                print("Placement CV teaching cancelled.")
-            except Exception as exc:
-                print(f"Placement CV teaching failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
-        if choice in ("9", "15"):
-            print("Archived workflows are available via --versions or --competition-task; use 5 for competition.")
-            continue
-        print("Unknown menu option.")
+        label, handler = handlers[choice]
+        try:
+            result = handler()
+            if result == 3:
+                print("A part may still be held. Menu stopped; recover the held part before starting another action.", flush=True)
+                return 3
+        except (KeyboardInterrupt, EOFError):
+            print(f"{label} interrupted. Inspect the robot before restarting.", flush=True)
+            return 2
+        except Exception as exc:
+            print(f"{label} failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+
 
 
 if __name__ == "__main__":

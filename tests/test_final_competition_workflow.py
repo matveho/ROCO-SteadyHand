@@ -379,16 +379,16 @@ class FinalWorkflowTests(unittest.TestCase):
         self.assertNotIn("COMMAND BLOCKED", self.output.getvalue())
         self.assertEqual(s.status, "drop_cancelled_returned")
 
-    def test_minimal_menu_keeps_known_numbers_without_remote_variants(self):
+    def test_competition_menu_uses_requested_numbers(self):
         with mock.patch("builtins.input", return_value="0"):
             self.assertEqual(pipeline.main(["--check-only"]), 0)
         output = self.output.getvalue()
-        self.assertIn("  3. Wrist", output)
-        self.assertIn(" 10. Calibrate drop", output)
+        self.assertIn("  3. Head-camera target preview", output)
+        self.assertIn(" 10. Test any action", output)
         self.assertNotIn("Remote-safe", output)
         self.assertNotIn(" 11.", output)
         self.assertNotIn(" 12.", output)
-        self.assertNotIn("  9.", output)
+        self.assertIn("  9. EXIT", output)
 
     def test_test_command_uses_part_competition_cv_and_speed_settings(self):
         settings = pipeline._load_competition_actions()
