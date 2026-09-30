@@ -1676,6 +1676,253 @@ class PartSession:
         self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
         return profile
 
+        servo = CornerServo(self.robot, self._move_place_corner,
+                    self._placement_corner_frame, self.surface, self.event)
+                result = servo.align(reference)
+                # A correction is useful only if the corrected descent and
+                # retreat are reachable. Check before accepting its XY.
+                aligned = self.robot.stationary_tcp_pose(settle_timeout_s=2.)
+                release = Pose((*aligned.position_m[:2],
+                    self.surface(*aligned.position_m[:2]) + settings["clearance_m"]), aligned.quaternion_wxyz)
+                try:
+                    seed = preflight_tcp_segmented(self.robot._kinematics, self.robot._read_joint_positions(),
+                                                   aligned, release, **MOTION_STEPS)
+                    preflight_tcp_segmented(self.robot._kinematics, seed, release, aligned, **MOTION_STEPS)
+                except IKError as exc:
+                    raise CornerVisualError(f"Corrected placement is unreachable: {exc}") from exc
+                self.event("place_cv_result", {"method": METHOD, "result": result})
+                self.remote_checkpoint("after_placement_centering")
+                return result
+            template = _load_place_template(cv_settings)
+            goal = tuple(float(v) for v in cv_settings["goal_uv"])
+            self.remote_checkpoint("before_placement_centering")
+            result = run_xy_servo(
+                self.robot, self.capture, floor_m=self.floor, goal_uv=goal,
+                probe_m=.006, gain=.35, max_step_m=.006, max_radius_m=.030,
+                tolerance_px=8.0, max_iterations=DEFAULT_CENTERING_ITERATIONS,
+                speed_scale=.66,
+                checkpoint=self.remote_checkpoint if self.remote_safe else None,
+                waypoint_guard=self.remote_waypoint if self.remote_safe else None,
+                event=self.event, surface_z=self.surface,
+                reference_quaternion_wxyz=origin.quaternion_wxyz,
+                tracker_factory=lambda rgb, _uv: placement_tracker(rgb, template, cv_settings),
+            )
+            if result.get("status") != "converged":
+                raise RuntimeError("Placement centering was not verified")
+            self.event("place_cv_result", {"result": result, "goal_uv": goal})
+            self.remote_checkpoint("after_placement_centering")
+            return result
+        except (RuntimeError, ValueError) as exc:
+            if using_corners and not isinstance(exc, CornerVisualError):
+                raise
+            # Hardware/motion failures always propagate. Only visual failures
+            # are eligible for an explicit operator-authorized saved-pose fallback.
+            if not using_corners and any(word in str(exc).lower() for word in ("ik ", "tcp", "joint", "camera", "estop", "e-stop", "timeout", "motor")):
+                raise
+            self.event("place_cv_low_confidence", {"reason": str(exc), "release_authorized": False})
+            print(f"PLACEMENT CV NOT VERIFIED: {exc}; no descent/release authorized.", flush=True)
+            if getattr(self.args, "competition", False) and not self.remote_safe:
+                # Competition has no operator at the terminal.  A visual-only
+                # failure must not strand a held part or abort the whole run:
+                # return to the previously verified release hover and use the
+                # saved physical placement pose.  The event is explicit so a
+                # later audit can distinguish CV success from this fallback.
+                self.event("place_cv_decision", {
+                    "decision": "saved_pose_auto_fallback",
+                    "reason": str(exc),
+                    "release_authorized": True,
+                })
+                print("PLACEMENT CV FALLBACK: returning to the taught release pose.", flush=True)
+                self.move(origin, slow=True)
+                return None
+            while True:
+                answer = input("Type saved to return to the taught hover and use its release pose, or abort: ").strip().lower()
+                if answer == "saved":
+                    self.event("place_cv_decision", {"decision": "saved_pose", "reason": str(exc)})
+                    self.move(origin, slow=True)
+                    return None
+                if answer in ("abort", "stop", "q", "exit"):
+                    raise KeyboardInterrupt()
+
+    def _execution_target(self, kind, hover, clearance):
+        """Apply a run's correction once, after CV, without modifying teaching."""
+        offsets = getattr(self, "execution_offsets", None)
+        if offsets is None:
+            return hover, clearance
+        offset = getattr(offsets, kind)
+        corrected = offset.hover(hover, self.surface)
+        depth = offset.clearance(clearance)
+        if corrected != hover or depth != clearance:
+            self.event("execution_offset", {
+                "stage": kind,
+                "offset_mm": offsets.as_dict()[kind],
+                "original_hover_tcp": list(hover.position_m),
+                "corrected_hover_tcp": list(corrected.position_m),
+                "taught_clearance_m": clearance,
+                "execution_clearance_m": depth,
+            })
+            # Reject an unreachable corrected descent before shifting the arm.
+            # move() and grab() also preflight their entire segmented paths.
+            x, y = corrected.position_m[:2]
+            descent = Pose((x, y, self.surface(x, y) + depth), corrected.quaternion_wxyz)
+            seed = self.robot._read_joint_positions()
+            seed = preflight_tcp_segmented(self.robot._kinematics, seed,
+                                           self.robot.get_tcp_pose(), corrected, **MOTION_STEPS)
+            preflight_tcp_segmented(self.robot._kinematics, seed, corrected, descent, **MOTION_STEPS)
+            if corrected != hover:
+                self.move(corrected, slow=True)
+        return corrected, depth
+
+    def _wiggle_before_release(self):
+        settings = self.release_wiggles.get(self.part, {})
+        if not settings.get("enabled", False):
+            return
+        if not self.holding or self.motion_faulted:
+            raise RuntimeError("Release wiggle needs a held part and healthy motion state")
+        original = None
+        try:
+            self.robot.stationary_tcp_pose(settle_timeout_s=1.0)
+            original = tuple(self.robot._read_joint_positions())
+            angle = math.radians(settings["angle_deg"])
+            targets = []
+            for _ in range(settings["cycles"]):
+                for delta in (angle, -angle):
+                    target = list(original)
+                    target[-1] += delta
+                    targets.append(tuple(target))
+            targets.append(original)
+            for target in targets:
+                self.robot._check_joint_limits(target)
+            self.event("release_wiggle_start", {
+                "part": self.part, "settings": settings, "original_joints_rad": list(original),
+            })
+            print(f"RELEASE WIGGLE {self.part}: joint 7 +/-{settings['angle_deg']:g} deg, "
+                  f"{settings['cycles']} cycles; restore original angle before release", flush=True)
+            for target in targets:
+                self.robot.move_joints(target, speed_scale=min(.15, self.args.speed_scale))
+            self.robot.stationary_tcp_pose(settle_timeout_s=1.0)
+            measured = tuple(self.robot._read_joint_positions())
+            error = abs(measured[-1] - original[-1])
+            if error > .005:
+                raise RuntimeError(f"Release wiggle joint 7 restoration error {math.degrees(error):.3f} deg; jaws remain closed")
+            self.event("release_wiggle_restored", {
+                "original_joints_rad": list(original), "measured_joints_rad": list(measured),
+                "last_joint_error_deg": math.degrees(error),
+            })
+            print("RELEASE WIGGLE: original joint 7 angle restored and verified", flush=True)
+        except BaseException:
+            self.motion_faulted = True
+            self.automatic_continuation_safe = False
+            # Do not command a blind restoration through an E-stop or failed
+            # motion. Keep the holding state and prohibit release/next action.
+            self.robot.stop()
+            raise
+
+    def place(self, settings, *, partial_release=False, use_place_cv=False):
+        if not self.holding or settings is None:
+            raise ValueError("Place needs a verified held part and taught place settings")
+        profile = dict(self.profiles["parts"][self.part], place=settings)
+        from steadyhand.vision.placement import placement_digest
+        previous_place = self.profiles["parts"][self.part].get("place")
+        if previous_place and placement_digest(previous_place) != placement_digest(settings):
+            profile.pop("placement_board", None)
+            profile.pop("place_release_tcp_m", None)
+        corner_settings = getattr(self, "place_cv_settings", None) or {}
+        cv_clearance = (.100 if not use_place_cv or corner_settings.get("method") != "white_board_corners_v1"
+                        else float(corner_settings["reference_clearance_m"]))
+        if not .060 <= cv_clearance <= .150:
+            raise ValueError("Invalid placement corner hover clearance")
+        hover = self.profile_pose(profile, "place", clearance=cv_clearance)
+        x, y = hover.position_m[:2]
+        quat = hover.quaternion_wxyz
+        release = Pose((x, y, self.surface(x, y)+settings["clearance_m"]), quat)
+        # Validate placement descent before transporting the held part.
+        seed = self.robot._read_joint_positions()
+        try:
+            seed = preflight_tcp_segmented(self.robot._kinematics, seed,
+                                           self.robot.get_tcp_pose(), hover, **MOTION_STEPS)
+            seed = preflight_tcp_segmented(self.robot._kinematics, seed, hover, release, **MOTION_STEPS)
+            preflight_tcp_segmented(self.robot._kinematics, seed, release, hover, **MOTION_STEPS)
+        except IKError as exc:
+            raise PlacementPreflightError(str(exc)) from exc
+        self.remote_checkpoint("before_place_hover")
+        self.move(hover)
+        self.remote_checkpoint("place_hover")
+        if use_place_cv:
+            alignment = self._place_visual_align(settings)
+            # Re-read the TCP after the bounded wrist alignment.  Preserve the
+            # taught clearance and current orientation while using any small
+            # verified XY correction.
+            if alignment is not None:
+                aligned = self.robot.get_tcp_pose()
+                x, y = aligned.position_m[:2]
+                quat = aligned.quaternion_wxyz
+                hover = Pose((x, y, self.surface(x, y) + cv_clearance), quat)
+                release = Pose((x, y, self.surface(x, y) + settings["clearance_m"]), quat)
+        # Placement has its own independent correction, after visual alignment
+        # (or saved-pose fallback), so neither pickup nor CV can erase/double it.
+        hover, clearance = self._execution_target("placement", hover, settings["clearance_m"])
+        x, y = hover.position_m[:2]
+        release = Pose((x, y, self.surface(x, y) + clearance), hover.quaternion_wxyz)
+        self.remote_checkpoint("before_place_descent")
+        self.move(release, slow=True)
+        self.remote_checkpoint("place_release_height")
+        self.remote_checkpoint("before_place_release")
+        self._capture_drop_evidence("competition_release_before")
+        self._wiggle_before_release()
+        self.robot.release_gripper(self.part)
+        self.holding = False
+        self._capture_drop_evidence("competition_release_after")
+        self.remote_checkpoint("place_released")
+        self.remote_checkpoint("before_place_retreat")
+        self.move(hover, slow=True)
+        self.remote_checkpoint("place_retreat_complete")
+        print("Placement release completed; insertion/assembly is not inferred.")
+
+    def _drop_settings_from_pose(self, pose):
+        """Convert the measured drop TCP pose to the profile's board offset."""
+        target = self.targets[f"task.{self.part}.place"]
+        _, ux, uy, _ = self.runtime[2]
+        dx = float(pose.position_m[0]) - float(target.position_m[0])
+        dy = float(pose.position_m[1]) - float(target.position_m[1])
+        clearance = float(pose.position_m[2]) - self.surface(
+            pose.position_m[0], pose.position_m[1]
+        )
+        if not math.isfinite(clearance):
+            raise ValueError("drop clearance must be finite")
+        if clearance > .100:
+            raise ValueError("Release must be at or below the return hover so retreat moves upward")
+        return {
+            "offset_board_xy_m": [
+                dx * float(ux[0]) + dy * float(ux[1]),
+                dx * float(uy[0]) + dy * float(uy[1]),
+            ],
+            "clearance_m": clearance,
+            "yaw_deg": float(self.yaw),
+        }
+
+    def _save_drop_profile(self, pose, settings, release_result):
+        """Persist the operator-confirmed release immediately after release."""
+        previous = self.profiles["parts"][self.part]
+        profile = dict(previous)
+        if previous.get("place") != settings:
+            profile.pop("place_cv", None)
+        profile["place"] = settings
+        profile["place_verified"] = True
+        profile["place_release_tcp_m"] = list(pose.position_m)
+        from steadyhand.board_relative import snapshot, make_record, record_target
+        reference = snapshot(self.runtime[2])
+        profile["placement_board"] = make_record(reference,
+            release=record_target(reference, pose, source="measured_release_TCP"))
+        profile["place_release_gripper"] = release_result
+        if getattr(self, "drop_release_photo", None):
+            profile["place_release_photo"] = self.drop_release_photo
+        if getattr(self, "drop_evidence_photos", None):
+            profile["place_evidence_photos"] = list(self.drop_evidence_photos)
+        profile["place_taught_at_utc"] = datetime.now(timezone.utc).isoformat()
+        self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
+        return profile
+
     def _placement_corner_frame(self):
         rgb, path = self.frame("placement board corners")
         self.place_corner_image_path = path
