@@ -445,7 +445,8 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
                  probe_m=0.012, gain=0.65, max_step_m=0.015, max_radius_m=0.06,
                  tolerance_px=5.0, max_iterations=8, speed_scale=0.45,
                  tracker_factory=TemplateTracker, event=None,
-                 surface_z=None, reference_quaternion_wxyz=None, checkpoint=None):
+                 surface_z=None, reference_quaternion_wxyz=None, checkpoint=None,
+                 waypoint_guard=None):
     """Calibrate and center at the current hover pose; never descend or grip.
 
     capture_rgb must return a fresh post-motion image. Robot motion calls must
@@ -504,6 +505,7 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
             checkpoint(f"before_servo_{label}")
         move_tcp_segmented(robot, pose, speed_scale=speed_scale,
                            max_translation_step_m=0.008 if checkpoint else 0.02, max_orientation_step_rad=0.05,
+                           waypoint_guard=waypoint_guard,
                            min_tcp_z_m=None)
         actual = robot.get_tcp_pose()
         check_pose(actual)

@@ -236,9 +236,10 @@ class PartSession:
             raise RuntimeError("Retake blocked while a part may be held")
         from tools.vega_competition_pipeline import _capture_downward_head_frame, _load_runtime, _runtime_from_board_scene, _task_targets
         runtime = _load_runtime()
+        self.runtime = runtime  # Clearance model is needed before camera-clear.
         scene = _capture_downward_head_frame(
             self.robot, floor_m=self.floor, bundle=runtime[0], output=self.output,
-            speed_scale=.18 if self.remote_safe else None,
+            speed_scale=min(.18, self.args.speed_scale) if self.remote_safe else None,
             checkpoint=self.remote_checkpoint if self.remote_safe else None,
         )
         self.runtime = _runtime_from_board_scene(runtime, scene)
@@ -280,7 +281,7 @@ class PartSession:
             try:
                 from tools.vega_head_fallback import match_expected_parts
                 self.head_observations = match_expected_parts(
-                    scene, self.runtime, self.targets
+                    scene, self.runtime, self.targets, task_data=teaching_task_data
                 )
             except Exception as exc:
                 self.head_observations = {}
@@ -333,14 +334,20 @@ class PartSession:
         for i in range(1, count + 1):
             pose = interpolate_pose(before, target, i/count)
             seed = self.robot._kinematics.solve(pose, seed)
-        speed = .18 if self.remote_safe else (.25 if slow else self.args.speed_scale)
+        speed = min(.18, self.args.speed_scale) if self.remote_safe else (.25 if slow else self.args.speed_scale)
         move_tcp_segmented(self.robot, target, speed_scale=speed,
                            max_translation_step_m=step_m, max_orientation_step_rad=.08,
+                           waypoint_guard=self.remote_waypoint if self.remote_safe else None,
                            after_waypoint=(lambda: self.remote_checkpoint("cartesian_waypoint")) if self.remote_safe else None,
                            min_tcp_z_m=None)
 
-    def remote_checkpoint(self, label, *, capture=True):
-        """Pause at a recoverable physical stage in remote-safe mode."""
+    def remote_waypoint(self, target):
+        from steadyhand.remote_motion import needs_low_clearance_confirmation
+        if needs_low_clearance_confirmation(self.robot.get_tcp_pose(), target, self.surface):
+            self.remote_checkpoint("before_low_waypoint", target=target)
+
+    def remote_checkpoint(self, label, *, capture=True, target=None):
+        """Keep evidence; pause for arm stages below 40 mm, not head/camera work."""
         if not getattr(self, "remote_safe", False):
             return
         self.remote_checkpoint_index += 1
@@ -361,6 +368,15 @@ class PartSession:
                 record["wrist_image_error"] = f"{type(exc).__name__}: {exc}"
                 print(f"REMOTE CHECKPOINT IMAGE WARNING: {exc}", flush=True)
         self.event("remote_checkpoint", record)
+        from steadyhand.remote_motion import needs_low_clearance_confirmation
+        needs_prompt = label != "before_head_down" and needs_low_clearance_confirmation(
+            pose, target, self.surface
+        )
+        if not needs_prompt:
+            self.event("checkpoint_decision", {"checkpoint": label, "decision": "auto_continue"})
+            return
+        if target is not None:
+            print("NEXT ARM TARGET =", target.position_m, flush=True)
         print(
             f"REMOTE-SAFE CHECKPOINT {self.remote_checkpoint_index}: {label}\n"
             f"  TCP={tuple(round(float(v), 6) for v in pose.position_m)}\n"
@@ -680,8 +696,9 @@ class PartSession:
                 self.remote_checkpoint("before_wrist_centering")
                 result = run_xy_servo(
                     self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
-                    max_radius_m=.060, speed_scale=.18 if self.remote_safe else .45, event=self.event,
+                    max_radius_m=.060, speed_scale=min(.18, self.args.speed_scale) if self.remote_safe else .45, event=self.event,
                     checkpoint=self.remote_checkpoint if self.remote_safe else None,
+                    waypoint_guard=self.remote_waypoint if self.remote_safe else None,
                     tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
                     reference_quaternion_wxyz=reference, **values,
                 )
@@ -1221,8 +1238,9 @@ class PartSession:
                 self.robot, self.capture, floor_m=self.floor, goal_uv=goal,
                 probe_m=.006, gain=.35, max_step_m=.006, max_radius_m=.030,
                 tolerance_px=8.0, max_iterations=8,
-                speed_scale=.18 if self.remote_safe else .45,
+                speed_scale=min(.18, self.args.speed_scale) if self.remote_safe else .45,
                 checkpoint=self.remote_checkpoint if self.remote_safe else None,
+                waypoint_guard=self.remote_waypoint if self.remote_safe else None,
                 event=self.event, surface_z=self.surface,
                 reference_quaternion_wxyz=origin.quaternion_wxyz,
                 tracker_factory=lambda rgb, _uv: placement_tracker(rgb, template, cv_settings),
@@ -2183,11 +2201,11 @@ def main(argv=None):
     parser.add_argument("--speed-scale", type=float, default=.38)
     parser.add_argument(
         "--remote-safe", action="store_true",
-        help="slow movement and pause at every recorded physical checkpoint",
+        help="slow movement; confirm arm waypoints below 40 mm and retain stage images",
     )
     args = parser.parse_args(argv)
-    if not args.confirm_head_motion or not args.confirm_physical_motion:
-        parser.error("requires --confirm-head-motion and --confirm-physical-motion")
+    if not args.confirm_physical_motion:
+        parser.error("requires --confirm-physical-motion")
     minimum_speed = .10 if args.remote_safe else .25
     if not minimum_speed <= args.speed_scale <= .70:
         parser.error("--speed-scale must be .10..70 in remote-safe mode, otherwise .25..70")

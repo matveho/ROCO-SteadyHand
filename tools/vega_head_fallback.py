@@ -203,21 +203,38 @@ def match_expected_parts(scene, runtime, expected_targets, task_data=None):
             else:
                 distance = math.dist(item["xy_m"], expected_xy)
             scored.append((distance, item))
-        candidates = sorted(scored)
+        candidates = sorted(scored, key=lambda entry: (entry[0], entry[1]["index"]))
         selected = None
         reason = "expected_coordinate"
+        rejection = "no_detections" if not candidates else "outside_radius"
         if candidates and candidates[0][0] <= DETECTION_RADIUS_M:
+            rejection = "ambiguous_candidates"
             if len(candidates) == 1 or candidates[1][0] - candidates[0][0] >= 0.015:
                 selected = candidates[0][1]
                 used.add(selected["index"])
                 reason = "head_detection"
+                rejection = None
+        selected_xy = list(selected["xy_m"]) if selected else list(expected_xy)
+        # With board coordinates available, apply the observed displacement
+        # to the calibrated task target.  Do not combine a corrected board
+        # center with the uncalibrated camera extrinsic's part axes/scale.
+        if selected and expected_board_xy is not None and selected.get("board_xy_m") is not None:
+            dx = selected["board_xy_m"][0] - expected_board_xy[0]
+            dy = selected["board_xy_m"][1] - expected_board_xy[1]
+            _, ux, uy, _ = runtime[2]
+            selected_xy = [expected_xy[i] + dx * ux[i] + dy * uy[i] for i in range(2)]
         observations[part] = {
             "expected_xy_m": list(expected_xy),
             "detected_xy_m": list(selected["xy_m"]) if selected else None,
-            "selected_xy_m": list(selected["xy_m"]) if selected else list(expected_xy),
+            "selected_xy_m": selected_xy,
             "selection": reason,
             "distance_to_expected_m": candidates[0][0] if candidates else None,
             "detection_index": selected["index"] if selected else None,
+            "rejection_reason": rejection,
+            "association_frame": "board" if expected_board_xy is not None else "coarse_base",
+            "expected_board_xy_m": list(expected_board_xy) if expected_board_xy is not None else None,
+            "candidates": [{"detection_index": item["index"], "distance_m": distance}
+                           for distance, item in candidates],
         }
     return observations
 

@@ -631,6 +631,7 @@ def _run_motion_targets(
     targets, bundle, *, confirm_physical, check_only, speed_scale,
     available_targets=None, interactive_next=False, runtime=None,
     task_data=None, clearance_m=None, prompt_after_capture=False,
+    remote_safe=False,
 ):
     if not targets and not prompt_after_capture:
         return 0
@@ -655,6 +656,14 @@ def _run_motion_targets(
         attempt += 1
         robot = VegaAdapter(cfg)
         try:
+            def guard(target):
+                from steadyhand.remote_motion import confirm_low_clearance
+                def surface(x, y):
+                    if runtime is None:
+                        raise ValueError("no board clearance model")
+                    return calibrated_surface_z(x, y, runtime[2][3])
+                confirm_low_clearance(robot.get_tcp_pose(), target, surface)
+
             if check_only:
                 robot.prepare()
             else:
@@ -663,7 +672,9 @@ def _run_motion_targets(
                 def refresh_board_image():
                     nonlocal runtime, available_targets, targets
                     scene = _capture_downward_head_frame(
-                        robot, floor_m=floor, bundle=bundle
+                        robot, floor_m=floor, bundle=bundle,
+                        speed_scale=speed_scale if remote_safe else None,
+                        checkpoint=(lambda label: guard(None) if label == "before_camera_clear" else None) if remote_safe else None,
                     )
                     if runtime is None or task_data is None or clearance_m is None:
                         return
@@ -685,7 +696,7 @@ def _run_motion_targets(
                 # image, then automatically returns to the known RIGHT_READY.
                 refresh_board_image()
 
-            ready_q, _ = configured_right_preset(cfg, "right_ready")
+            ready_q, ready_pose = configured_right_preset(cfg, "right_ready")
             for name, target in targets.items():
                 robot._kinematics.solve(target, ready_q)
                 print(name, "TARGET =", tuple(round(float(v), 6) for v in target.position_m), flush=True)
@@ -693,6 +704,8 @@ def _run_motion_targets(
             if check_only:
                 return 0
             print("MOVING TO RIGHT_READY", flush=True)
+            if remote_safe:
+                guard(ready_pose)
             robot.move_joints(ready_q, speed_scale=float(speed_scale))
 
             pending = list(targets.items())
@@ -713,6 +726,7 @@ def _run_motion_targets(
                     robot, target, speed_scale=float(speed_scale),
                     max_translation_step_m=0.06, max_orientation_step_rad=0.20,
                     min_tcp_z_m=None,
+                    waypoint_guard=guard if remote_safe else None,
                 )
                 actual = robot.get_tcp_pose()
                 print(name, "MEASURED TIP_R =", tuple(round(float(v), 6) for v in actual.position_m), flush=True)
@@ -890,7 +904,7 @@ def _run_task_tests_menu(args):
             "--confirm-head-motion",
             "--confirm-physical-motion",
             "--speed-scale", str(args.speed_scale),
-        ])
+        ] + (["--remote-safe"] if getattr(args, "remote_safe", False) else []))
         if result:
             return result
     return 0
@@ -1268,7 +1282,7 @@ def main(argv=None):
     p.add_argument("--speed-scale", type=float, default=None)
     p.add_argument(
         "--remote-safe", action="store_true",
-        help="slow physical teaching and pause at every recorded checkpoint",
+        help="slow physical teaching; confirm arm motion below 40 mm clearance",
     )
     p.add_argument(
         "--clearance-mm", type=float, default=None,
@@ -1329,8 +1343,8 @@ def main(argv=None):
     if args.versions or args.list_versions:
         from tools.vega_version_menu import main as run_version_menu
         return run_version_menu(["--list"] if args.list_versions else [])
-    if not args.check_only and (not args.confirm_head_motion or not args.confirm_physical_motion):
-        p.error("physical pipeline requires --confirm-head-motion and --confirm-physical-motion")
+    if not args.check_only and not args.confirm_physical_motion:
+        p.error("physical pipeline requires --confirm-physical-motion")
     if not 20.0 <= args.clearance_mm <= 100.0:
         p.error("--clearance-mm must be 20..100")
     args.clearance_m = float(args.clearance_mm) / 1000.0
@@ -1385,7 +1399,7 @@ def main(argv=None):
             "--part", part, "--mode", "test", "--action", action,
             "--confirm-head-motion", "--confirm-physical-motion",
             "--speed-scale", str(args.speed_scale),
-        ])
+        ] + (["--remote-safe"] if args.remote_safe else []))
 
     if args.competition_sequence is not None:
         return _run_competition_sequence(args, args.competition_sequence)
@@ -1424,6 +1438,7 @@ def main(argv=None):
             return _run_motion_targets(
                 targets, runtime[0], confirm_physical=args.confirm_physical_motion,
                 check_only=args.check_only, speed_scale=args.speed_scale,
+                runtime=runtime, remote_safe=args.remote_safe,
             )
         selected = _flatten_action_names(args.competition_task)
         unknown = [name for name in selected if name not in COMPETITION_TASKS]
@@ -1449,8 +1464,8 @@ def main(argv=None):
         print("  8. Reload operator settings / show readiness")
         print("  9. Legacy competition task versions")
         print(" 10. Calibrate drop-off position (saved pickup -> 40 mm descent -> release/save)")
-        print(" 11. Remote-safe pickup calibration (slow + pause at every stage)")
-        print(" 12. Remote-safe drop calibration (slow + pause at every stage)")
+        print(" 11. Remote-safe pickup calibration (slow; confirm below 40 mm)")
+        print(" 12. Remote-safe drop calibration (slow; confirm below 40 mm)")
         print(" 13. Head-camera target preview (40 mm hover, never grabs)")
         print(" 14. Teach placement CV target (held part; no automatic release)")
         print(" 15. Launch an archived rollback version")
@@ -1506,6 +1521,7 @@ def main(argv=None):
                         available_targets=all_targets, interactive_next=True,
                         runtime=runtime, task_data=task_data,
                         clearance_m=args.clearance_m, prompt_after_capture=True,
+                        remote_safe=args.remote_safe,
                     )
             except Exception as exc:
                 print(f"Position test failed: {type(exc).__name__}: {exc}", file=sys.stderr)

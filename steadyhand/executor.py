@@ -84,6 +84,7 @@ def move_tcp_segmented(
     max_orientation_step_rad: float,
     after_waypoint=None,
     before_waypoint=None,
+    waypoint_guard=None,
     event=None,
     min_tcp_z_m=None,
 ):
@@ -113,6 +114,8 @@ def move_tcp_segmented(
         if before_waypoint is not None:
             before_waypoint()
         waypoint = interpolate_pose(current, target, index / n)
+        if waypoint_guard is not None:
+            waypoint_guard(waypoint)
         robot.move_tcp(waypoint, speed_scale=speed_scale)
         # Check contact before logging: slow/failing storage must not delay it.
         if after_waypoint is not None:
