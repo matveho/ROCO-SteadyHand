@@ -19,7 +19,7 @@ from steadyhand.cameras.vega import VegaWristCameras
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
 from steadyhand.skill_config import load_vega_skills
-from steadyhand.vision.wrist_servo import run_xy_servo
+from steadyhand.vision.wrist_servo import run_xy_servo, DEFAULT_CENTERING_ITERATIONS, MAX_CENTERING_ITERATIONS
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -109,7 +109,7 @@ def main(argv=None):
     p.add_argument("--max-step-m", type=float, default=0.015)
     p.add_argument("--max-radius-m", type=float, default=0.06)
     p.add_argument("--tolerance-px", type=float, default=5)
-    p.add_argument("--max-iterations", type=int, default=8)
+    p.add_argument("--max-iterations", type=int, default=DEFAULT_CENTERING_ITERATIONS)
     p.add_argument("--speed-scale", type=float, default=0.45)
     p.add_argument("--output", help="new run directory; default runs/wrist_servo_<UTC>")
     args = p.parse_args(argv)
@@ -127,7 +127,7 @@ def main(argv=None):
             p.error("XY and pixel coordinates must be finite")
     if not (0.006 <= args.probe_m <= 0.015 and 0 < args.gain <= 1
             and 0 < args.max_step_m <= 0.02 and args.probe_m <= args.max_radius_m <= 0.10
-            and args.tolerance_px > 0 and 1 <= args.max_iterations <= 20
+            and args.tolerance_px > 0 and 1 <= args.max_iterations <= MAX_CENTERING_ITERATIONS
             and 0.45 <= args.speed_scale <= 1):
         p.error("invalid servo limits; see --help")
     import cv2  # Fail on missing image dependency before any robot motion.

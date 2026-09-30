@@ -94,6 +94,41 @@ class FinalWorkflowTests(unittest.TestCase):
         np.testing.assert_allclose(s.robot.pose.position_m, s.coarse.position_m)
         self.assertIn("Arm left at its current hover", self.output.getvalue())
 
+    def test_pickup_hover_settles_delayed_readback_without_commanding_more_motion(self):
+        s, profile = self.session()
+        target = s.profile_pose(profile, "pick")
+        s.coarse = s.grasp_target = target
+        delayed = Pose((target.position_m[0] + .006, *target.position_m[1:]),
+                       target.quaternion_wxyz)
+        with mock.patch.object(s.robot, 'get_tcp_pose', side_effect=[delayed, target, target, target]), \
+                mock.patch.object(wrist.time, 'sleep') as sleep:
+            s._settle_pickup_hover(target)
+        self.assertEqual(sleep.call_count, 3)
+        self.assertEqual(s.robot.trace, [])
+        self.assertEqual(s.event.call_args.args[0], 'pickup_hover_reached')
+        self.assertEqual(s.event.call_args.args[1]['position_error_m'], 0.)
+
+    def test_pickup_hover_reports_persistent_error_without_blind_retry(self):
+        s, profile = self.session()
+        target = s.profile_pose(profile, "pick")
+        s.coarse = s.grasp_target = target
+        s.robot.pose = Pose((target.position_m[0] + .006, *target.position_m[1:]),
+                            target.quaternion_wxyz)
+        with mock.patch.object(wrist.time, 'sleep'):
+            s._settle_pickup_hover(target)
+        self.assertEqual(s.robot.trace, [])
+        self.assertAlmostEqual(s.event.call_args.args[1]['position_error_m'], .006)
+
+    def test_localization_uses_forty_corrections_for_both_controller_attempts(self):
+        s, _ = self.session(mode='calibrate')
+        s.tracker = mock.Mock()
+        s.reference_feature = (100, 100)
+        s.goal = (110, 110)
+        with mock.patch.object(wrist, 'run_xy_servo', side_effect=[
+                RuntimeError('Feature lost/ambiguous'), {'status': 'converged'}]) as servo:
+            self.assertEqual(s.localize()['status'], 'converged')
+        self.assertEqual([call.kwargs['max_iterations'] for call in servo.call_args_list], [40, 40])
+
     def test_no_cv_inspection_starts_camera_and_camera_failure_keeps_prompt(self):
         s, _ = self.session(mode="drop")
         s.capture.return_value = np.zeros((8, 8, 3), np.uint8)

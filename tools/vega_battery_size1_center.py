@@ -29,7 +29,7 @@ from steadyhand.cameras.vega import VegaWristCameras
 from steadyhand.config import load_bundle
 from steadyhand.geometry import quaternion_angle
 from steadyhand.skill_config import load_vega_skills
-from steadyhand.vision.wrist_servo import run_xy_servo
+from steadyhand.vision.wrist_servo import run_xy_servo, DEFAULT_CENTERING_ITERATIONS, MAX_CENTERING_ITERATIONS
 from tools.vega_wrist_fine_center import WristAOnlyCapture
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +52,7 @@ def main(argv=None):
     p.add_argument("--max-step-m", type=float, default=0.010)
     p.add_argument("--max-radius-m", type=float, default=0.040)
     p.add_argument("--tolerance-px", type=float, default=5.0)
-    p.add_argument("--max-iterations", type=int, default=6)
+    p.add_argument("--max-iterations", type=int, default=DEFAULT_CENTERING_ITERATIONS)
     p.add_argument("--speed-scale", type=float, default=0.45)
     p.add_argument("--start-xy-tolerance-m", type=float, default=0.015)
     p.add_argument("--output")
@@ -74,7 +74,7 @@ def main(argv=None):
         and 0 < args.max_step_m <= 0.015
         and args.probe_m <= args.max_radius_m <= 0.060
         and args.tolerance_px > 0
-        and 1 <= args.max_iterations <= 12
+        and 1 <= args.max_iterations <= MAX_CENTERING_ITERATIONS
         and 0.45 <= args.speed_scale <= 0.70
         and 0.003 <= args.start_xy_tolerance_m <= 0.030
     ):

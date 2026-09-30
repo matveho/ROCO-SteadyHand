@@ -116,6 +116,22 @@ class ImageServoTests(unittest.TestCase):
         self.assertEqual(self.frames, normal_frames)
         self.assertTrue(checkpoints)
 
+    def test_small_corrections_can_converge_after_thirty_iterations(self):
+        self.feature = np.array([330., 180.])
+        result = self.run_servo(max_step_m=.00125)
+        self.assertEqual(result['status'], 'converged')
+        self.assertGreaterEqual(result['iterations'], 30)
+        self.assertLessEqual(result['iterations'], 40)
+        self.assertLessEqual(result['error_px'], 5)
+        for move in self.robot.moves:
+            self.assertLessEqual(math.dist(move.position_m[:2], self.origin), .06)
+
+    def test_iteration_limit_rejects_unbounded_or_noninteger_values_before_motion(self):
+        for limit in (0, 61, 40.5, True):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                self.run_servo(max_iterations=limit)
+        self.assertEqual(self.robot.moves, [])
+
     def test_automatic_feature_selection(self):
         result = run_xy_servo(self.robot, self.capture, floor_m=.456)
         self.assertEqual(result['status'], 'converged')

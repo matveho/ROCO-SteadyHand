@@ -23,7 +23,7 @@ from steadyhand.executor import move_tcp_segmented, preflight_tcp_segmented
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
-from steadyhand.vision.wrist_servo import ServoWaypointError, run_xy_servo
+from steadyhand.vision.wrist_servo import ServoWaypointError, run_xy_servo, DEFAULT_CENTERING_ITERATIONS
 from steadyhand.operator_input import clean_choice
 from steadyhand.vision.wrist_review import select_pixel
 from tools.vega_competition_pipeline import (
@@ -315,7 +315,7 @@ def main(argv=None):
             result["wrist_center"] = run_xy_servo(
                 robot, lambda: image("servo")[0], floor_m=floor, feature_uv=feature, goal_uv=goal,
                 max_radius_m=.060, probe_m=.008, gain=.45, max_step_m=.008,
-                tolerance_px=8., max_iterations=12, speed_scale=.45,
+                tolerance_px=8., max_iterations=DEFAULT_CENTERING_ITERATIONS, speed_scale=.45,
                 checkpoint=checkpoint, event=event,
                 waypoint_guard=waypoint_guard,
                 surface_z=lambda x, y: calibrated_surface_z(x, y, runtime[2][3]),

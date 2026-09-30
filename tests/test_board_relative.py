@@ -59,6 +59,19 @@ class BoardRelativeTests(unittest.TestCase):
         np.testing.assert_allclose(xy, self.pose.position_m[:2], atol=1e-12)
         np.testing.assert_allclose(quat, Q, atol=1e-12)
 
+    def test_cv_approach_and_final_grasp_both_follow_shifted_board(self):
+        live, rotation = self.shifted(.01, -.01, 3.)
+        frame = (live['center_base_xy_m'], live['board_x_unit_base_xy'],
+                 live['board_y_unit_base_xy'], self.frame[3])
+        before = copy.deepcopy(self.profile)
+        for no_cv, kind in ((False, 'approach'), (True, 'grasp')):
+            xy, _ = resolve_profile_target(self.profile, frame, self.ready, self.pose,
+                                            action='pick', no_cv=no_cv)
+            old_xy = self.record[kind]['tcp_pose']['position_m'][:2]
+            expected = np.array(live['center_base_xy_m']) + rotation @ (np.array(old_xy) - self.frame[0])
+            np.testing.assert_allclose(xy, expected, atol=1e-12)
+        self.assertEqual(self.profile, before)
+
     def test_translation_grid_and_rotation_preserve_hand_and_distances(self):
         for dx in (-.01, 0., .01):
             for dy in (-.01, 0., .01):
@@ -270,7 +283,8 @@ class BoardRelativeTests(unittest.TestCase):
         session.event = session.move = session.remote_checkpoint = mock.Mock()
         session._set_gripper_fraction = mock.Mock()
         session.holding = False
-        session.begin_part(session.part, profile, competition=True, no_cv=True)
+        with mock.patch.object(session, '_settle_pickup_hover'):
+            session.begin_part(session.part, profile, competition=True, no_cv=True)
         np.testing.assert_allclose(session.grasp_target.position_m[:2],
             np.array(baseline.position_m[:2]) + [.01, .005])
 

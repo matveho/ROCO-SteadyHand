@@ -33,7 +33,7 @@ from steadyhand.board_relative import snapshot
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
-from steadyhand.vision.wrist_servo import TemplateTracker, ServoWaypointError, run_xy_servo
+from steadyhand.vision.wrist_servo import TemplateTracker, ServoWaypointError, run_xy_servo, DEFAULT_CENTERING_ITERATIONS
 from steadyhand.wrist_part_profiles import (
     PART_NAMES,
     WORKING_ARM,
@@ -759,11 +759,11 @@ class PartSession:
         settings = (
             {
                 "probe_m": .010, "gain": .45, "max_step_m": .008,
-                "tolerance_px": 8., "max_iterations": 12,
+                "tolerance_px": 8., "max_iterations": DEFAULT_CENTERING_ITERATIONS,
             },
             {
                 "probe_m": .008, "gain": .30, "max_step_m": .006,
-                "tolerance_px": 12., "max_iterations": 16,
+                "tolerance_px": 12., "max_iterations": DEFAULT_CENTERING_ITERATIONS,
             },
         )
         last_error = None
@@ -952,6 +952,35 @@ class PartSession:
             approach=record_target(reference, approach, source="feature_image_TCP"),
             grasp=record_target(reference, grasp, source="confirmed_grasp_hover_TCP"))
 
+    def _settle_pickup_hover(self, target):
+        """Let endpoint readback settle before capturing the reference image."""
+        previous = self.robot.get_tcp_pose()
+        stable_reads = 0
+        for _ in range(5):
+            time.sleep(.1)
+            actual = self.robot.get_tcp_pose()
+            stable = (math.dist(previous.position_m, actual.position_m) <= .0005
+                      and quaternion_angle(previous.quaternion_wxyz,
+                                           actual.quaternion_wxyz) <= .002)
+            stable_reads = stable_reads + 1 if stable else 0
+            previous = actual
+            if stable_reads >= 2:
+                break
+        error = math.dist(actual.position_m, target.position_m)
+        registration = self.runtime[2][3].get("registration", {})
+        self.event("pickup_hover_reached", {
+            "requested_tcp": list(target.position_m),
+            "measured_tcp": list(actual.position_m),
+            "position_error_m": error,
+            "orientation_error_rad": quaternion_angle(actual.quaternion_wxyz,
+                                                       target.quaternion_wxyz),
+            "approach_to_grasp_xy_m": math.dist(self.coarse.position_m[:2],
+                                                self.grasp_target.position_m[:2]),
+            "board_registration": registration,
+        })
+        print(f"PICKUP HOVER: measured error {error * 1000:.1f} mm; "
+              f"board frame {registration.get('status', 'reference')}", flush=True)
+
     def begin_part(self, part, profile=None, *, initial_yaw=None, competition=False,
                    no_cv=False):
         if self.holding or getattr(self, "motion_faulted", False):
@@ -1038,6 +1067,7 @@ class PartSession:
         if no_cv:
             self.remote_checkpoint("before_coarse_hover")
             self.move(self.grasp_target)
+            self._settle_pickup_hover(self.grasp_target)
             self.coarse = self.grasp_target
             self.no_cv_used_recorded = bool(profile)
             print("NO-CV COARSE HOVER: projected taught grasp", flush=True)
@@ -1045,6 +1075,7 @@ class PartSession:
             return None
         self.remote_checkpoint("before_coarse_hover")
         self.move(coarse)
+        self._settle_pickup_hover(coarse)
         self.coarse = coarse
         self.remote_checkpoint("coarse_hover")
         if profile:
@@ -1335,7 +1366,7 @@ class PartSession:
             result = run_xy_servo(
                 self.robot, self.capture, floor_m=self.floor, goal_uv=goal,
                 probe_m=.006, gain=.35, max_step_m=.006, max_radius_m=.030,
-                tolerance_px=8.0, max_iterations=8,
+                tolerance_px=8.0, max_iterations=DEFAULT_CENTERING_ITERATIONS,
                 speed_scale=.45,
                 checkpoint=self.remote_checkpoint if self.remote_safe else None,
                 waypoint_guard=self.remote_waypoint if self.remote_safe else None,

@@ -16,6 +16,10 @@ import math
 import time
 
 
+DEFAULT_CENTERING_ITERATIONS = 40
+MAX_CENTERING_ITERATIONS = 60
+
+
 class ServoWaypointError(RuntimeError):
     """Stop visual servoing; a caller may separately validate a new plan."""
 
@@ -453,7 +457,7 @@ class TemplateTracker:
 
 def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
                  probe_m=0.012, gain=0.65, max_step_m=0.015, max_radius_m=0.06,
-                 tolerance_px=5.0, max_iterations=8, speed_scale=0.45,
+                 tolerance_px=5.0, max_iterations=DEFAULT_CENTERING_ITERATIONS, speed_scale=0.45,
                  tracker_factory=TemplateTracker, event=None,
                  surface_z=None, reference_quaternion_wxyz=None, checkpoint=None,
                  waypoint_guard=None):
@@ -476,7 +480,8 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
     if not (0.006 <= probe_m <= 0.015 and 0 < max_step_m <= 0.02
             and probe_m <= max_radius_m <= 0.10 and 0 < gain <= 1
             and (0.10 if checkpoint else 0.45) <= speed_scale <= 1 and 0 < tolerance_px
-            and 1 <= max_iterations <= 20):
+            and isinstance(max_iterations, int) and not isinstance(max_iterations, bool)
+            and 1 <= max_iterations <= MAX_CENTERING_ITERATIONS):
         raise ValueError("Invalid servo limits (probe 6–15 mm, step <=20 mm, radius <=100 mm)")
     origin = robot.get_tcp_pose()
     z = float(origin.position_m[2])
@@ -566,6 +571,7 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         feature_uv=uv0,
         goal_uv=goal,
         tcp=origin.position_m,
+        max_iterations=max_iterations,
         tracking_mode=getattr(tracker, "last_tracking_mode", "grayscale"),
     )
 
