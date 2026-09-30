@@ -37,6 +37,7 @@ class VegaCanGripper:
         self.config = dict(config)
         self._driver = None
         self._last_grip_result = None
+        self._cache_trusted = True
 
     @property
     def scope(self):
@@ -90,6 +91,9 @@ class VegaCanGripper:
                     )
             if self.config.get("home_on_connect", True):
                 if not self._restore_cached_calibration():
+                    if self.config.get("require_cached_calibration", False):
+                        self._cache_trusted = False
+                        raise RuntimeError("Recovery cannot home a possibly occupied gripper; valid cached calibration required")
                     if self.scope == "both":
                         self._driver.home(require_all=True)
                     else:
@@ -226,7 +230,8 @@ class VegaCanGripper:
         if self._driver is None:
             return
         try:
-            self._persist_cached_calibration()
+            if self._cache_trusted:
+                self._persist_cached_calibration()
             self.halt()
         finally:
             try:

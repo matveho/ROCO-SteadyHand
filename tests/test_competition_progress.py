@@ -18,15 +18,20 @@ class ProgressTests(unittest.TestCase):
     def start(self, **kwargs):
         return CompetitionProgress(self.path, 'configured', self.plan, **kwargs)
 
+    @staticmethod
+    def verified_recovery(*args):
+        return {'recovery_state_verified': True, 'holding_may_be_true': False,
+                'automatic_continuation_safe': True, 'pickup_completed': False}
+
     def test_stopped_run_preserves_completed_actions_and_attempt_budget(self):
         p = self.start()
         p.begin_attempt(*self.plan[0], self.path.parent / 'first')
         p.finish(*self.plan[0], 0)
         p.begin_attempt(*self.plan[1], self.path.parent / 'second')
         p.finish(*self.plan[1], 2)
-        with self.assertRaisesRegex(ValueError, 'gripper is empty'):
+        with self.assertRaisesRegex(ValueError, 'fresh stopped-arm'):
             self.start()
-        p = self.start(recovered_empty=True)
+        p = self.start(recover=self.verified_recovery)
         self.assertEqual(p.entry(*self.plan[0])['status'], 'completed')
         self.assertEqual(p.entry(*self.plan[1])['status'], 'pending')
         self.assertEqual(p.entry(*self.plan[1])['attempts'], 1)
@@ -95,7 +100,7 @@ class ProgressTests(unittest.TestCase):
                 pipeline._run_competition_action(args, *self.plan[1], retries=2)
             with self.assertRaises(ValueError):
                 self.start()
-            progress = self.start(recovered_empty=True)
+            progress = self.start(recover=self.verified_recovery)
             args.competition_progress = progress
             self.assertEqual(pipeline._run_competition_action(args, *self.plan[0], retries=2), 0)
             self.assertEqual(pipeline._run_competition_action(args, *self.plan[1], retries=2), 0)
@@ -115,6 +120,61 @@ class ProgressTests(unittest.TestCase):
         self.assertEqual(resumed.data['status'], 'finished')
         self.assertEqual(resumed.entry(*self.plan[1])['status'], 'completed')
         self.assertEqual(self.start().entry(*self.plan[1])['status'], 'pending')
+
+    def test_recovery_without_complete_machine_evidence_cannot_clear_checkpoint(self):
+        p = self.start()
+        p.begin_attempt(*self.plan[0], self.path.parent / 'failed')
+        for field in ('recovery_state_verified', 'holding_may_be_true', 'automatic_continuation_safe'):
+            with self.subTest(field=field):
+                bad = self.verified_recovery()
+                del bad[field]
+                with self.assertRaises(ValueError):
+                    self.start(recover=lambda *_: bad)
+        bad = dict(self.verified_recovery(), cleanup_error='shutdown failed')
+        with self.assertRaises(ValueError):
+            self.start(recover=lambda *_: bad)
+
+    def test_pickup_earned_before_release_failure_is_not_repeated_after_recovery(self):
+        p = self.start()
+        p.begin_attempt(*self.plan[0], self.path.parent / 'failed')
+        p.finish(*self.plan[0], 3)
+        recovered = dict(self.verified_recovery(), pickup_completed=True)
+        resumed = self.start(recover=lambda *_: recovered)
+        self.assertEqual(resumed.entry(*self.plan[0])['status'], 'completed')
+        self.assertEqual(resumed.entry(*self.plan[0])['attempts'], 1)
+
+    def test_cleanup_failure_is_not_mistaken_for_success_on_resume(self):
+        p = self.start()
+        output = self.path.parent / 'child'
+        output.mkdir()
+        p.begin_attempt(*self.plan[0], output)
+        (output / 'run_summary.json').write_text(json.dumps({
+            'status': 'completed', 'holding_may_be_true': False,
+            'cleanup_error': 'state uncertain'}))
+        with self.assertRaises(ValueError):
+            self.start()
+
+    def test_changed_plan_does_not_start_any_recovery_motion(self):
+        p = self.start()
+        p.begin_attempt(*self.plan[0], self.path.parent / 'failed')
+        recover = mock.Mock()
+        with self.assertRaisesRegex(ValueError, 'differs'):
+            CompetitionProgress(self.path, 'other', self.plan, recover=recover)
+        recover.assert_not_called()
+
+    def test_crash_during_recovery_keeps_new_output_not_old_holding_assumptions(self):
+        p = self.start()
+        p.begin_attempt(*self.plan[0], self.path.parent / 'failed')
+        def recover(key, entry, save):
+            entry['output'] = str(self.path.parent / 'recovery')
+            save()
+            raise KeyboardInterrupt()
+        with self.assertRaises(KeyboardInterrupt):
+            self.start(recover=recover)
+        saved = json.loads(self.path.read_text())
+        self.assertEqual(saved['actions']['battery_size1.pick_place']['output'], str(self.path.parent / 'recovery'))
+        with self.assertRaises(ValueError):
+            self.start()
 
 
 if __name__ == '__main__':

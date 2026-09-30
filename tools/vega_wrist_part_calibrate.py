@@ -17,6 +17,7 @@ from pathlib import Path
 import shutil
 import sys
 import time
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -211,6 +212,10 @@ class PartSession:
         self.successful_pickup_pose = None
         self.motion_faulted = False
         self.automatic_continuation_safe = False
+        self.pickup_completed = False
+        self.recovery_state_verified = False
+        self.recovery_release_attempted = False
+        self.recovery_blocked = False
 
     def start(self):
         self.status = "starting"
@@ -228,11 +233,17 @@ class PartSession:
         self.status = "ready"
 
     def close(self):
+        cleanup_error = None
         try:
             try:
                 self.cameras.close()
             finally:
                 self.robot.close()
+        except BaseException as exc:
+            cleanup_error = f"{type(exc).__name__}: {exc}"
+            self.automatic_continuation_safe = False
+            self.recovery_state_verified = False
+            raise
         finally:
             summary = {
                 "schema_version": 1,
@@ -240,6 +251,12 @@ class PartSession:
                 "part": self.part,
                 "action": self.action,
                 "holding_may_be_true": bool(self.holding),
+                "pickup_completed": bool(getattr(self, "pickup_completed", False)),
+                "recovery_state_verified": bool(getattr(self, "recovery_state_verified", False)),
+                "recovery_release_attempted": bool(getattr(self, "recovery_release_attempted", False)),
+                "recovery_blocked": bool(getattr(self, "recovery_blocked", False)),
+                "motion_faulted": bool(getattr(self, "motion_faulted", False)),
+                "cleanup_error": cleanup_error,
                 "automatic_continuation_safe": bool(getattr(self, "automatic_continuation_safe", False)
                                                      and not getattr(self, "motion_faulted", False)
                                                      and not self.holding),
@@ -986,6 +1003,11 @@ class PartSession:
         if self.holding or getattr(self, "motion_faulted", False):
             raise RuntimeError("Next part blocked: holding or motion fault requires inspection")
         self.part, self.history = part, []
+        self.pickup_completed = False
+        self.recovery_state_verified = False
+        self.automatic_continuation_safe = False
+        self.recovery_blocked = False
+        self.recovery_release_attempted = False
         self.tracker = None
         self.goal = self.goal_match = None
         self.reference_feature = None
@@ -1299,6 +1321,7 @@ class PartSession:
         self.move(hover, slow=True)
         self.remote_checkpoint("lifted_with_part")
         self.successful_pickup_pose = hover
+        self.pickup_completed = True
         self.event("successful_pickup_pose", {"hover_tcp": list(hover.position_m),
             "quaternion_wxyz": list(hover.quaternion_wxyz)})
         return result
@@ -2243,7 +2266,89 @@ class PartSession:
                 return 1
             print("Use select u v, image, release, return, or abort.", flush=True)
 
+    def recover_action(self, reason):
+        """Dispose of a possible hold only from a freshly verified stopped pose.
+
+        No E-stop is cleared and no stale motion command is replayed. A failed
+        gate leaves the holding/fault state latched for the next verification.
+        """
+        self.automatic_continuation_safe = False
+        self.recovery_state_verified = False
+        self.last_error = str(reason)
+        current = self.robot.stationary_tcp_pose()
+        self.event("recovery_stationary", {"tcp_position_m": current.position_m,
+                                          "reason": str(reason), "holding": self.holding})
+        # A prior missed target may be abandoned only after the adapter has
+        # independently checked fresh state, joint limits, velocity and E-stop.
+        self.motion_faulted = False
+        if self.holding:
+            from steadyhand.board_relative import local_xy
+            reference = snapshot(self.runtime[2])
+            x, y, z = current.position_m
+            if max(abs(v) for v in local_xy(reference, (x, y))) > reference["board_size_m"] / 2:
+                raise RuntimeError("Recovery release blocked: TCP is outside the board")
+            clearance = z - self.surface(x, y)
+            if not -.005 <= clearance <= .150:
+                raise RuntimeError("Recovery release blocked: current height is outside the local board envelope")
+            current_axis = [row[2] for row in quaternion_to_matrix(current.quaternion_wxyz)]
+            ready_axis = [row[2] for row in quaternion_to_matrix(self.runtime[3].quaternion_wxyz)]
+            tilt = math.acos(max(-1., min(1., sum(a*b for a, b in zip(current_axis, ready_axis)))))
+            if tilt > .20:
+                raise RuntimeError("Recovery release blocked: TCP tilt is not the taught downward orientation")
+            release = Pose((x, y, self.surface(x, y) + .040), current.quaternion_wxyz)
+            retreat = Pose((x, y, self.surface(x, y) + .100), current.quaternion_wxyz)
+            seed = self.robot._read_joint_positions()
+            seed = preflight_tcp_segmented(self.robot._kinematics, seed, current, release, **MOTION_STEPS)
+            preflight_tcp_segmented(self.robot._kinematics, seed, release, retreat, **MOTION_STEPS)
+            print("AUTOMATIC RECOVERY: vertical 40 mm release, small jaw opening, then hover.", flush=True)
+            self.move(release, slow=True)
+            measured = self.robot.stationary_tcp_pose()
+            if (math.dist(measured.position_m, release.position_m) > .005 or
+                    quaternion_angle(measured.quaternion_wxyz, release.quaternion_wxyz) > .03):
+                self.motion_faulted = True
+                raise RuntimeError("Recovery release waypoint was not reached; jaws remain unchanged")
+            self.robot.connect_gripper()
+            self.recovery_release_attempted = True
+            result = self.robot.release_gripper(self.part)
+            if not isinstance(result, dict):
+                raise RuntimeError("Recovery release has no measured gripper result")
+            before, target = float(result["from_fraction"]), float(result["to_fraction"])
+            if not (math.isfinite(before) and math.isfinite(target) and
+                    0 <= before < target <= 1 and .001 <= target - before <= .050001):
+                raise RuntimeError("Recovery release did not request a bounded small opening")
+            actual = float(self.robot.gripper_position())
+            if not math.isfinite(actual) or abs(actual - target) > .01 or actual <= before + .001:
+                raise RuntimeError("Recovery jaw opening was not confirmed; possible hold retained")
+            self.holding = False
+            self.recovery_release_attempted = False
+            self.event("recovery_release", {"tcp_position_m": measured.position_m,
+                "gripper_release": result, "measured_fraction": actual})
+            self.move(retreat, slow=True)
+        self.robot.stationary_tcp_pose()
+        self.recovery_state_verified = True
+        self.automatic_continuation_safe = True
+        self.status = "pick_complete_recovery_released" if self.pickup_completed else "failed_recovered_empty"
+        self.event("recovery_complete", {"status": self.status,
+            "pickup_completed": self.pickup_completed, "holding_may_be_true": self.holding})
+        return 0 if self.pickup_completed else 2
+
     def test(self, part, action, *, competition=False, no_cv=False, place_cv=False):
+        try:
+            return self._test_action(part, action, competition=competition,
+                                     no_cv=no_cv, place_cv=place_cv)
+        except (RuntimeError, ValueError, OSError) as exc:
+            if getattr(self.args, "mode", None) != "test":
+                raise
+            try:
+                return self.recover_action(exc)
+            except (RuntimeError, ValueError, OSError, KeyError, TypeError) as recovery_exc:
+                self.automatic_continuation_safe = False
+                self.recovery_blocked = True
+                self.last_error = f"{exc}; recovery blocked: {recovery_exc}"
+                print(f"RECOVERY BLOCKED: {recovery_exc}. No blind restart or E-stop reset.", flush=True)
+                raise exc from recovery_exc
+
+    def _test_action(self, part, action, *, competition=False, no_cv=False, place_cv=False):
         self.part, self.action = part, action
         self.status = f"running:{part}.{action}"
         profile = self.profiles.get("parts", {}).get(part)
@@ -2322,7 +2427,7 @@ class PartSession:
                         file=sys.stderr,
                         flush=True,
                     )
-                    return 3
+                    raise
                 self.status = "pick_failed_returned"
                 self.automatic_continuation_safe = True
                 return 2
@@ -2361,7 +2466,7 @@ class PartSession:
                         file=sys.stderr,
                         flush=True,
                     )
-                    return 3
+                    raise
                 self.status = "pick_complete_returned"
                 return 0
             print("Pick complete. Part is held; next actions are blocked until it is returned.")
@@ -2399,6 +2504,53 @@ def _number(value, low, high):
     if not math.isfinite(result) or not low <= result <= high:
         raise ValueError(f"Value must be finite and in {low}..{high}")
     return result
+
+
+def recover_competition_checkpoint(part, action, previous_output, output, *, speed_scale):
+    """Reconnect for measured recovery, without camera-clear, ready or centering."""
+    from tools.vega_competition_pipeline import _load_runtime
+    output = Path(output)
+    output.mkdir(parents=True, exist_ok=False)
+    prior = json.loads((Path(previous_output) / "run_summary.json").read_text())
+    if prior.get("part") != part or prior.get("action") != action:
+        raise ValueError("Checkpoint summary does not identify this part/action; cannot infer a recovery")
+    cfg = load_bundle("vega")["robot"]
+    cfg["allow_robot_init_head_motion"] = True
+    cfg["auto_clear_software_estop_on_connect"] = False
+    cfg["gripper"] = {**cfg.get("gripper", {}), "require_cached_calibration": True}
+    args = SimpleNamespace(mode="test", competition=True, remote_safe=False,
+                           speed_scale=speed_scale, execution_offsets=None,
+                           profiles="calibration/wrist_part_profiles.json")
+    session = PartSession(args, output, cfg, {})
+    session.part, session.action = part, action
+    session.holding = prior.get("holding_may_be_true") is not False
+    session.pickup_completed = prior.get("pickup_completed") is True
+    session.recovery_release_attempted = bool(prior.get("recovery_release_attempted"))
+    session.status = "checkpoint_recovery"
+    try:
+        session.runtime = _load_runtime()
+        reference = prior.get("board_reference")
+        if session.holding:
+            if prior.get("recovery_release_attempted"):
+                raise ValueError("A recovery opening was already attempted without confirmation; refusing to widen jaws again")
+            if not isinstance(reference, dict):
+                raise ValueError("Held-part recovery requires the interrupted run's board reference")
+            plane = session.runtime[2][3]
+            if (not reference.get("calibration_sha256") or
+                    reference["calibration_sha256"] != plane.get("calibration_sha256")):
+                raise ValueError("Board calibration changed since interruption; recovery release blocked")
+            frame = (reference["center_base_xy_m"], reference["board_x_unit_base_xy"],
+                     reference["board_y_unit_base_xy"], plane)
+            snapshot(frame)  # validate the saved rigid frame before any connection
+            session.runtime = (*session.runtime[:2], frame, session.runtime[3])
+        session.robot.connect()
+        session.recover_action(prior.get("last_error") or "interrupted competition action")
+    except Exception as exc:
+        session.last_error = f"{type(exc).__name__}: {exc}"
+        raise
+    finally:
+        session.close()
+    return json.loads((output / "run_summary.json").read_text())
 
 
 def _load_template(profile):
@@ -2524,6 +2676,10 @@ def main(argv=None):
     output = _resolve(args.output) if args.output else ROOT / "runs" / datetime.now(timezone.utc).strftime("wrist_parts_%Y%m%dT%H%M%S_%fZ")
     output.mkdir(parents=True, exist_ok=False)
     session = PartSession(args, output, cfg, profiles)
+    if actions and len(actions) == 1:
+        # Startup faults still need an attributable checkpoint, even if the
+        # SDK or board camera fails before test() can identify the action.
+        session.part, session.action = actions[0].split(".", 1)
     try:
         session.start()
         if args.mode == "drop":
@@ -2578,7 +2734,7 @@ def main(argv=None):
         session.status = "failed"
         session.last_error = f"{type(exc).__name__}: {exc}"
         session.automatic_continuation_safe = bool(
-            not session.holding and not session.motion_faulted
+            not session.holding and not session.motion_faulted and not session.recovery_blocked
             and (isinstance(exc, (IKError, ValueError)) or _is_visual_alignment_failure(exc))
             and "tcp missed servo waypoint" not in str(exc).lower())
         print(f"Session stopped: {type(exc).__name__}: {exc}. Inspect before retrying.", flush=True)

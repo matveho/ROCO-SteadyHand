@@ -34,7 +34,7 @@ from steadyhand.vega_camera_clear import move_camera_clear_for_image
 from steadyhand.vision.scene import detect_head_task_scene
 from steadyhand.wrist_part_profiles import PART_NAMES, load_profiles
 from tools.vega_board_five_point_calibrate import main as run_five_point_calibration
-from tools.vega_wrist_part_calibrate import main as run_wrist_part_calibration
+from tools.vega_wrist_part_calibrate import main as run_wrist_part_calibration, recover_competition_checkpoint
 from tools.vega_task_coordinate_reachability import (
     _finite_vector,
     calibrated_surface_z,
@@ -1058,30 +1058,6 @@ def _show_menu_readiness(args):
     return 0
 
 
-def _task_test_command(args, part, action):
-    """Exercise competition's part settings, but retain supervised grasp gates."""
-    settings = _load_competition_actions()
-    entry = settings["parts"][part]
-    speed = args.speed_scale if getattr(args, "speed_scale_cli", False) else settings["pipeline_speed_scale"]
-    profiles = load_profiles(ROOT / "calibration/wrist_part_profiles.json", load_bundle("vega")["robot"])
-    profile = profiles.get("parts", {}).get(part) or {}
-    pick_cv = entry["use_wrist_pick_cv"]
-    place_cv = bool(action == "pick_place" and settings["use_place_cv"]
-                    and entry["use_place_cv"] and profile.get("place_cv", {}).get("enabled", False))
-    print(f"TASK TEST {part}.{action}: pickup CV={'on' if pick_cv else 'off'}, "
-          f"placement CV={'on' if place_cv else 'off'}, speed={speed:g}; "
-          "competition settings with operator approval before grasp.", flush=True)
-    command = ["--part", part, "--mode", "test", "--action", action,
-               "--confirm-head-motion", "--confirm-physical-motion", "--speed-scale", str(speed)]
-    if not pick_cv:
-        command.append("--no-cv")
-    if place_cv:
-        command.append("--place-cv")
-    if getattr(args, "remote_safe", False):
-        command.append("--remote-safe")
-    return command
-
-
 def _sequence_indices(raw, available=None):
     available = available or COMPETITION_SEQUENCE_ACTIONS
     selected = []
@@ -1106,14 +1082,23 @@ def _snapshot_execution_offsets(args):
 
 def _start_competition_progress(args, mode, actions):
     from steadyhand.competition_progress import CompetitionProgress
+    def recover(key, entry, save):
+        part, action = key.split(".")
+        previous = entry.get("output")
+        if not previous:
+            raise ValueError("Checkpoint lacks its interrupted run artifact")
+        output = ROOT / "runs" / "competition_recoveries" / f"{time.time_ns()}_{part}_{action}"
+        entry.update(output=str(output), recovery_from_output=previous)
+        save()  # A crash during recovery must not replay an older physical state.
+        print(f"AUTOMATIC CHECKPOINT VERIFICATION: {part}.{action}", flush=True)
+        return recover_competition_checkpoint(part, action, previous, output,
+                                               speed_scale=args.speed_scale)
     try:
         args.competition_progress = CompetitionProgress(
             ROOT / "runs" / "competition_progress.json", mode, actions,
-            recovered_empty=getattr(args, "resume_after_inspection", False),
+            recover=recover,
             new_run=getattr(args, "new_competition_run", False),
         )
-        # An acknowledgement is for this launch, never later menu selections.
-        args.resume_after_inspection = False
         args.new_competition_run = False
         return True
     except (OSError, ValueError, KeyError, TypeError) as exc:
@@ -1128,8 +1113,8 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
     Competition execution is deliberately non-interactive after launch: a
     transient visual/IK setup failure is retried automatically, then the part
     is recorded as skipped so the next eligible part can be attempted.  A
-    run that may still be holding a part remains a hard stop because issuing
-    another grasp would be unsafe.
+    child resolves a possible hold through measured release recovery before
+    marking continuation safe. Unverified physical state remains blocked.
     """
     if isinstance(retries, bool) or not isinstance(retries, int) or not 0 <= retries <= 2:
         raise ValueError("competition retries must be an integer 0..2 (maximum three attempts)")
@@ -1195,13 +1180,21 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
             except (OSError, ValueError):
                 summary = {"status": "malformed"}
         print(f"COMPETITION RUN ARTIFACT = {output}", flush=True)
-        if summary.get("holding_may_be_true"):
+        if summary.get("cleanup_error"):
+            print("ROBOT CLEANUP FAILED: checkpoint retained for fresh state verification on resume.", flush=True)
+            return finish(2, summary)
+        if summary.get("holding_may_be_true") is not False:
             print(
                 "RUN SUMMARY SAYS A PART MAY BE HELD; refusing all automatic retries.",
                 file=sys.stderr, flush=True,
             )
-            return finish(3, summary)
+            return finish(3 if result == 3 or summary.get("holding_may_be_true") is True else 2, summary)
         if result == 0:
+            if summary.get("status") == "pick_complete_recovery_released" and (
+                    summary.get("recovery_state_verified") is not True or
+                    summary.get("automatic_continuation_safe") is not True):
+                print("Recovery completion lacks verified state; checkpoint retained.", flush=True)
+                return finish(2, summary)
             if not summary_path.is_file():
                 print(
                     "Action returned success without run_summary.json; stopping for inspection.",
@@ -1212,7 +1205,8 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
             # its source so the next part can be attempted.  That path has a
             # distinct successful terminal status; treating it as an error
             # made option 6 stop after the first successful pickup.
-            successful_statuses = {"completed", "pick_complete_place_blocked_returned"}
+            successful_statuses = {"completed", "pick_complete_place_blocked_returned",
+                                   "pick_complete_recovery_released"}
             if action == "pick":
                 successful_statuses.add("pick_complete_returned")
             if summary.get("status") not in successful_statuses:
@@ -1221,8 +1215,8 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
                     file=sys.stderr, flush=True,
                 )
                 return finish(2, summary)
-            if summary.get("status") == "pick_complete_place_blocked_returned":
-                print(f"PICKUP COMPLETE {part}; placement skipped (unreachable plan).", flush=True)
+            if summary.get("status") in ("pick_complete_place_blocked_returned", "pick_complete_recovery_released"):
+                print(f"PICKUP COMPLETE {part}; recovery released the part; placement not credited.", flush=True)
             else:
                 print(f"COMPLETE {part}.{action}", flush=True)
             return finish(0, summary)
@@ -1327,7 +1321,7 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
     return 0
 
 
-def _configured_competition_run(args, *, selected_parts=None):
+def _configured_competition_run(args, *, selected_parts=None, action_override=None):
     """Run the single JSON-configured, calibration-gated competition routine."""
     _snapshot_execution_offsets(args)
     settings = _load_competition_actions()
@@ -1355,7 +1349,7 @@ def _configured_competition_run(args, *, selected_parts=None):
         if not isinstance(profile, dict) or not profile.get("grasp_verified"):
             skipped.append((part, "no verified pickup calibration"))
             continue
-        mode = entry["mode"]
+        mode = action_override or entry["mode"]
         if mode == "auto":
             mode = "pick_place" if (
                 entry["place_enabled"] and profile.get("place") and profile.get("place_verified")
@@ -1596,8 +1590,6 @@ def main(argv=None):
         "--clearance-mm", type=float, default=None,
         help="TCP clearance above the calibrated board surface (default: configs/competition_plan.json)",
     )
-    p.add_argument("--resume-after-inspection", action="store_true",
-                   help="resume interrupted competition only after verifying arm stopped, faults resolved, and gripper empty")
     p.add_argument("--new-competition-run", action="store_true",
                    help="start a new trial instead of resuming pending actions; archives previous progress")
     actions = p.add_mutually_exclusive_group()
@@ -1705,7 +1697,7 @@ def main(argv=None):
 
     if args.task_test is not None:
         part, action = args.task_test.split(".", 1)
-        return run_wrist_part_calibration(_task_test_command(args, part, action))
+        return _configured_competition_run(args, selected_parts=[part], action_override=action)
 
     if args.competition_sequence is not None:
         return _run_competition_sequence(args, args.competition_sequence)

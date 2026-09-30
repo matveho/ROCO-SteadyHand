@@ -304,6 +304,10 @@ class VegaAdapter(RobotAdapter):
 
     def stationary_tcp_pose(self):
         """Read-only recovery gate: advancing state, stopped joints, clear E-stop."""
+        self._require_robot()
+        handle = self._active_motion_handle
+        if handle is not None and handle.is_done is not True:
+            raise RuntimeError("Recovery blocked: motion handle is still active")
         stamp = self._state_timestamp()
         previous = self._read_joint_positions()
         for _ in range(3):

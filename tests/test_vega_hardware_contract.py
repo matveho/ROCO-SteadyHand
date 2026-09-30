@@ -156,6 +156,13 @@ class FakeKinematics:
 
 
 class AdapterContractTests(unittest.TestCase):
+    def test_recovery_rejects_an_active_handle_even_when_readback_is_stationary(self):
+        adapter = self.connect()
+        adapter._active_motion_handle = types.SimpleNamespace(is_done=False)
+        with self.assertRaisesRegex(RuntimeError, 'handle is still active'):
+            adapter.stationary_tcp_pose()
+        self.assertFalse(any(e[0] == 'move_to_joint_pos' for e in self.events))
+
     def test_stationary_recovery_checks_fresh_state_velocity_and_estop_without_motion(self):
         adapter = self.connect()
         with patch("steadyhand.adapters.vega.time.sleep"):
@@ -479,6 +486,19 @@ class GripperContractTests(unittest.TestCase):
                 gripper.connect()
         self.assertEqual(driver.calls, [("right", "halt"), ("close_bus",)])
         self.assertIsNone(gripper._driver)
+
+    def test_recovery_connection_never_homes_when_cache_is_missing(self):
+        gripper = VegaCanGripper(dict(self.cfg, require_cached_calibration=True))
+        module = _load_gripper_module(str(self.path))
+        driver = module.Grippers()
+        with patch.object(module, 'Grippers', return_value=driver), \
+                patch('steadyhand.grippers.vega._load_gripper_module', return_value=module), \
+                patch.object(gripper, '_persist_cached_calibration') as persist:
+            with self.assertRaisesRegex(RuntimeError, 'cannot home a possibly occupied gripper'):
+                gripper.connect()
+        persist.assert_not_called()
+        self.assertNotIn(('right', 'home'), driver.calls)
+        self.assertIn(('close_bus',), driver.calls)
 
     def test_invalid_current_never_reaches_driver(self):
         gripper = VegaCanGripper(self.cfg)

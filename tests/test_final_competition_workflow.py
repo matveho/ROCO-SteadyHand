@@ -29,6 +29,9 @@ class Robot:
     def get_tcp_pose(self):
         return self.pose
 
+    def stationary_tcp_pose(self):
+        return self.pose
+
     def _read_joint_positions(self):
         return [0.] * 7
 
@@ -52,7 +55,10 @@ class Robot:
 
     def release_gripper(self, part):
         self.trace.append(("release", self.pose, part))
-        return {"delta_fraction": .05}
+        before = self.opening
+        self.opening = min(1., before + .04)
+        return {"from_fraction": before, "to_fraction": self.opening,
+                "delta_fraction": self.opening - before}
 
 
 class FinalWorkflowTests(unittest.TestCase):
@@ -447,6 +453,7 @@ class FinalWorkflowTests(unittest.TestCase):
         s._load_saved_feature = lambda _: (setattr(s, "tracker", mock.Mock()),
             setattr(s, "reference_feature", tuple(profile["feature_uv"])),
             setattr(s, "goal", tuple(profile["goal_uv"])))
+        s.robot.stationary_tcp_pose = mock.Mock(side_effect=RuntimeError("Software E-stop active"))
         with mock.patch.object(wrist, "run_xy_servo", side_effect=RuntimeError("TCP missed servo waypoint by >8 mm")):
             with self.assertRaisesRegex(RuntimeError, "TCP missed"):
                 s.test(s.part, "pick", competition=True)
@@ -484,14 +491,159 @@ class FinalWorkflowTests(unittest.TestCase):
         self.assertEqual(s.robot.pose, s.pickup_hover)
         self.assertEqual(s.status, "pick_failed_returned")
 
-    def test_unknown_gripper_result_is_not_released_or_retried(self):
+    def test_unknown_gripper_result_is_released_only_after_stationary_verification(self):
         s, profile = self.session(competition=True)
         s.robot.result = None
-        with self.assertRaisesRegex(RuntimeError, "unknown"):
-            s.test(s.part, "pick", competition=True, no_cv=True)
+        with mock.patch("builtins.input", side_effect=AssertionError("competition prompted")):
+            self.assertEqual(s.test(s.part, "pick", competition=True, no_cv=True), 2)
+        self.assertFalse(s.holding)
+        self.assertTrue(s.automatic_continuation_safe)
+        release = next(v[1] for v in s.robot.trace if v[0] == "release")
+        self.assertAlmostEqual(release.position_m[2] - s.surface(*release.position_m[:2]), .040)
+        self.assertFalse(s.pickup_completed)
+
+    def test_failed_return_or_placement_recovers_at_40mm_and_keeps_pickup_credit(self):
+        for action, failed_stage in (("pick", "return_part"), ("pick_place", "place")):
+            with self.subTest(action=action):
+                s, _ = self.session(competition=True)
+                setattr(s, failed_stage, mock.Mock(side_effect=RuntimeError("operation failed")))
+                with mock.patch("builtins.input", side_effect=AssertionError("competition prompted")):
+                    self.assertEqual(s.test(s.part, action, competition=True, no_cv=True), 0)
+                self.assertEqual(s.status, "pick_complete_recovery_released")
+                self.assertTrue(s.pickup_completed)
+                self.assertTrue(s.automatic_continuation_safe)
+                self.assertFalse(s.holding)
+                releases = [v[1] for v in s.robot.trace if v[0] == "release"]
+                self.assertEqual(len(releases), 1)
+                self.assertAlmostEqual(releases[0].position_m[2] - s.surface(*releases[0].position_m[:2]), .04)
+                self.assertEqual(sum(v[0] == "grip" for v in s.robot.trace), 1)
+                self.assertAlmostEqual(s.robot.pose.position_m[2] - s.surface(*s.robot.pose.position_m[:2]), .1)
+
+    def test_failed_empty_pickup_return_uses_same_recovery_before_retry(self):
+        s, _ = self.session(competition=True)
+        s.robot.result = {"gripped": False}
+        s.return_part = mock.Mock(side_effect=RuntimeError("return failed"))
+        self.assertEqual(s.test(s.part, "pick", competition=True, no_cv=True), 2)
+        self.assertEqual(s.status, "failed_recovered_empty")
+        self.assertTrue(s.automatic_continuation_safe)
+        self.assertFalse(s.holding)
+        self.assertFalse(s.pickup_completed)
+
+    def test_recovery_never_moves_or_opens_with_stale_moving_or_estop_state(self):
+        for reason in ("stale state", "arm moving", "Physical E-stop active", "Software E-stop active",
+                       "joint outside limits", "motion handle active", "communication unavailable"):
+            with self.subTest(reason=reason):
+                s, _ = self.session(competition=True)
+                s.robot.result = None
+                s.robot.stationary_tcp_pose = mock.Mock(side_effect=RuntimeError(reason))
+                with self.assertRaisesRegex(RuntimeError, "unknown"):
+                    s.test(s.part, "pick", competition=True, no_cv=True)
+                # The only grip is the original attempt. There is no recovery
+                # motion after that grip, and no clearing E-stop or retry.
+                index = next(i for i, v in enumerate(s.robot.trace) if v[0] == "grip")
+                self.assertEqual(s.robot.trace[index + 1:], [])
+                self.assertTrue(s.holding)
+                self.assertTrue(s.recovery_blocked)
+                self.assertFalse(s.automatic_continuation_safe)
+
+    def test_recovery_refuses_outside_board_and_unreachable_release_before_motion(self):
+        s, profile = self.session(competition=True)
+        s.holding = True
+        s.robot.pose = Pose((2., 2., .6), s.runtime[3].quaternion_wxyz)
+        with self.assertRaisesRegex(RuntimeError, "outside the board"):
+            s.recover_action("failed return")
+        self.assertEqual(s.robot.trace, [])
+        s.robot.pose = s.profile_pose(profile, "pick", no_cv=True)
+        s.robot._kinematics.solve = mock.Mock(side_effect=wrist.IKError("unreachable release"))
+        with self.assertRaisesRegex(wrist.IKError, "unreachable release"):
+            s.recover_action("failed return")
+        self.assertEqual(s.robot.trace, [])
         self.assertTrue(s.holding)
+
+    def test_unconfirmed_recovery_opening_preserves_hold_and_prevents_retreat(self):
+        s, profile = self.session(competition=True)
+        s.robot.pose = s.profile_pose(profile, "pick", no_cv=True)
+        s.holding = True
+        s.robot.release_gripper = mock.Mock(return_value={"from_fraction": .2, "to_fraction": .24})
+        with self.assertRaisesRegex(RuntimeError, "opening was not confirmed"):
+            s.recover_action("release failure")
+        s.robot.release_gripper.assert_called_once()
+        self.assertTrue(s.holding)
+        self.assertTrue(s.recovery_release_attempted)
         self.assertFalse(s.automatic_continuation_safe)
-        self.assertNotIn("release", [v[0] for v in s.robot.trace])
+        self.assertAlmostEqual(s.robot.pose.position_m[2] - s.surface(*s.robot.pose.position_m[:2]), .04)
+
+    def test_checkpoint_recovery_skips_camera_clear_and_ready_and_never_clears_estop(self):
+        s, profile = self.session(competition=True)
+        s.robot.pose = s.profile_pose(profile, "pick", no_cv=True)
+        s.robot.connect = mock.Mock()
+        s.robot.close = mock.Mock()
+        previous = Path(self.temp.name) / "previous"
+        previous.mkdir()
+        (previous / "run_summary.json").write_text(json.dumps({
+            "part": s.part, "action": "pick_place", "holding_may_be_true": True,
+            "pickup_completed": True, "board_reference": snapshot(s.runtime[2])}))
+        s.output = Path(self.temp.name) / "recovery"
+        with mock.patch.object(wrist, "PartSession", return_value=s) as factory:
+            summary = wrist.recover_competition_checkpoint(s.part, "pick_place", previous, s.output,
+                                                            speed_scale=.38)
+        self.assertFalse(factory.call_args.args[2]["auto_clear_software_estop_on_connect"])
+        self.assertTrue(factory.call_args.args[2]["gripper"]["require_cached_calibration"])
+        s.robot.connect.assert_called_once()
+        s.robot.close.assert_called_once()
+        self.assertTrue(summary["automatic_continuation_safe"])
+        self.assertTrue(summary["recovery_state_verified"])
+        self.assertFalse(summary["holding_may_be_true"])
+        self.assertTrue(summary["pickup_completed"])
+        # Recovery retains XY throughout and never commands the ready preset.
+        for entry in s.robot.trace:
+            if entry[0] == "move":
+                np.testing.assert_allclose(entry[1].position_m[:2], profile["coarse_xy_m"])
+        s.frame.assert_not_called()
+
+    def test_shutdown_error_invalidates_safe_summary_even_after_completed_recovery(self):
+        s, _ = self.session(competition=True)
+        s.status = "pick_complete_recovery_released"
+        s.automatic_continuation_safe = s.recovery_state_verified = s.pickup_completed = True
+        s.robot.close = mock.Mock(side_effect=RuntimeError("shutdown unavailable"))
+        with self.assertRaisesRegex(RuntimeError, "shutdown unavailable"):
+            s.close()
+        summary = json.loads((s.output / "run_summary.json").read_text())
+        self.assertIn("shutdown unavailable", summary["cleanup_error"])
+        self.assertFalse(summary["automatic_continuation_safe"])
+        self.assertFalse(summary["recovery_state_verified"])
+        self.assertTrue(summary["pickup_completed"])
+
+    def test_material_servo_miss_restarts_action_only_after_fresh_stationary_checks(self):
+        sessions = []
+        def child(command):
+            s, profile = self.session(competition=True)
+            s.output = Path(command[command.index("--output") + 1])
+            s.output.mkdir(parents=True)
+            s.robot.close = mock.Mock()
+            s._load_saved_feature = lambda _: (setattr(s, "tracker", mock.Mock()),
+                setattr(s, "reference_feature", tuple(profile["feature_uv"])),
+                setattr(s, "goal", tuple(profile["goal_uv"])))
+            sessions.append(s)
+            try:
+                return s.test(s.part, "pick", competition=True, no_cv="--no-cv" in command)
+            finally:
+                s.close()
+        error = wrist.ServoWaypointError("TCP missed servo waypoint by >8 mm",
+                                        position_error_m=.014, measured_pose=self.runtime[3])
+        with mock.patch.object(pipeline, "ROOT", Path(self.temp.name)), \
+                mock.patch.object(pipeline, "run_wrist_part_calibration", side_effect=child) as runner, \
+                mock.patch.object(wrist, "run_xy_servo", side_effect=error), \
+                mock.patch.object(wrist.time, "sleep"), \
+                mock.patch("builtins.input", side_effect=AssertionError("automatic run prompted")):
+            self.assertEqual(pipeline._run_competition_action(SimpleNamespace(speed_scale=.38),
+                             "battery_size1", "pick", retries=1), 0)
+        self.assertEqual(runner.call_count, 2)
+        self.assertNotIn("grip", [v[0] for v in sessions[0].robot.trace])
+        self.assertTrue(sessions[0].recovery_state_verified)
+        self.assertFalse(sessions[0].motion_faulted)
+        self.assertIn("--no-cv", runner.call_args.args[0])
+        self.assertEqual(sum(v[0] == "grip" for v in sessions[1].robot.trace), 1)
 
     def test_missing_template_offers_saved_pickup_instead_of_blocking_before_connection(self):
         s, profile = self.session()
@@ -625,12 +777,16 @@ class FinalWorkflowTests(unittest.TestCase):
         settings = pipeline._load_competition_actions()
         settings["parts"]["battery_size1"]["use_wrist_pick_cv"] = False
         settings["pipeline_speed_scale"] = .31
-        with mock.patch.object(pipeline, "_load_competition_actions", return_value=settings):
-            command = pipeline._task_test_command(SimpleNamespace(speed_scale=.38), "battery_size1", "pick")
-        self.assertIn("--no-cv", command)
-        self.assertNotIn("--competition", command)
-        self.assertNotIn("--remote-safe", command)
-        self.assertEqual(command[command.index("--speed-scale") + 1], "0.31")
+        args = SimpleNamespace(speed_scale=.38, check_only=False)
+        with mock.patch.object(pipeline, "_load_competition_actions", return_value=settings), \
+                mock.patch.object(pipeline, "_start_competition_progress", return_value=True), \
+                mock.patch.object(pipeline, "_run_competition_action", return_value=0) as run:
+            self.assertEqual(pipeline._configured_competition_run(
+                args, selected_parts=["battery_size1"], action_override="pick"), 0)
+        self.assertEqual(run.call_args.args[1:], ("battery_size1", "pick"))
+        self.assertTrue(run.call_args.kwargs["no_cv"])
+        self.assertEqual(run.call_args.kwargs["retries"], settings["parts"]["battery_size1"]["max_attempts"] - 1)
+        self.assertEqual(args.speed_scale, .31)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 class CompetitionProgress:
-    def __init__(self, path, mode, actions, *, recovered_empty=False, new_run=False):
+    def __init__(self, path, mode, actions, *, recover=None, new_run=False):
         self.path = Path(path)
         keys = [f"{part}.{action}" for part, action in actions]
         if len(keys) != len(set(keys)):
@@ -14,27 +14,39 @@ class CompetitionProgress:
         old = json.loads(self.path.read_text()) if self.path.exists() else None
         if old and old.get("status") != "finished":
             self.data = old
+            if not new_run and (old["mode"] != mode or list(old["actions"]) != keys):
+                raise ValueError("Unfinished competition plan differs. Resume the original menu/config, "
+                                 "or use --new-competition-run for a deliberately new plan.")
             # A process may have stopped after its child saved a terminal
             # summary but before the outer loop recorded the result.
             for entry in old["actions"].values():
-                if entry["status"] == "running":
+                if entry["status"] in ("running", "blocked"):
                     self._recover_artifact(entry)
             if all(e["status"] in ("completed", "skipped") for e in old["actions"].values()):
                 old["status"] = "finished"
-            blocked = any(e["status"] in ("running", "blocked") for e in old["actions"].values())
-            if blocked and not recovered_empty:
-                self.save()
-                raise ValueError("Previous run stopped with unknown motion/holding state. "
-                    "After inspecting the robot, recovering any held part, and verifying the gripper is empty, "
-                    "rerun with --resume-after-inspection. Completed actions remain saved.")
+            for key, entry in old["actions"].items():
+                if entry["status"] not in ("running", "blocked"):
+                    continue
+                try:
+                    summary = recover(key, entry, self.save) if recover is not None else None
+                    if (not isinstance(summary, dict) or
+                            summary.get("recovery_state_verified") is not True or
+                            summary.get("holding_may_be_true") is not False or
+                            summary.get("automatic_continuation_safe") is not True or
+                            summary.get("cleanup_error")):
+                        raise ValueError("fresh stopped-arm and released-gripper checks have not passed")
+                except Exception as exc:
+                    entry["status"] = "blocked"
+                    entry["recovery_error"] = str(exc)
+                    self.save()
+                    raise ValueError(f"Automatic checkpoint recovery blocked for {key}: {exc}. "
+                        "Resolve the reported hardware/state fault and rerun the same command; "
+                        "completed actions remain saved. No acknowledgement flag is required.") from exc
+                entry.update(status="completed" if summary.get("pickup_completed") is True else "pending",
+                             machine_recovered_at_ns=time.time_ns(), recovery_summary=summary)
+            if all(e["status"] in ("completed", "skipped") for e in old["actions"].values()):
+                old["status"] = "finished"
             if not new_run:
-                if old["mode"] != mode or list(old["actions"]) != keys:
-                    raise ValueError("Unfinished competition plan differs. Resume the original menu/config, "
-                                     "or use --new-competition-run for a deliberately new plan.")
-                for entry in old["actions"].values():
-                    if entry["status"] in ("running", "blocked"):
-                        entry["status"] = "pending"
-                        entry["operator_recovered_empty_at_ns"] = time.time_ns()
                 self.save()
                 print(f"RESUMING COMPETITION: {self.path}", flush=True)
                 return
@@ -53,9 +65,14 @@ class CompetitionProgress:
         except (OSError, ValueError, KeyError):
             return
         entry["summary_status"] = summary.get("status")
-        if summary.get("holding_may_be_true") is not False:
+        if summary.get("holding_may_be_true") is not False or summary.get("cleanup_error"):
             return
-        if summary.get("status") in ("completed", "pick_complete_returned", "pick_complete_place_blocked_returned"):
+        if summary.get("status") == "pick_complete_recovery_released" and (
+                summary.get("recovery_state_verified") is not True or
+                summary.get("automatic_continuation_safe") is not True):
+            return
+        if summary.get("status") in ("completed", "pick_complete_returned", "pick_complete_place_blocked_returned",
+                                     "pick_complete_recovery_released"):
             entry["status"] = "completed"
         elif summary.get("automatic_continuation_safe") is True:
             entry["status"] = "pending"

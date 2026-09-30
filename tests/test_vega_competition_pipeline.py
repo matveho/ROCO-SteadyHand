@@ -179,6 +179,16 @@ class CompetitionPipelineTests(unittest.TestCase):
                 2,
             )
 
+    def test_success_summary_must_explicitly_confirm_no_possible_hold(self):
+        args = type("Args", (), {"speed_scale": 0.38})()
+        def run(command):
+            output = Path(command[command.index("--output") + 1])
+            output.mkdir(parents=True)
+            (output / "run_summary.json").write_text(json.dumps({"status": "completed"}))
+            return 0
+        with mock.patch("tools.vega_competition_pipeline.run_wrist_part_calibration", side_effect=run):
+            self.assertEqual(_run_competition_action(args, "battery_size1", "pick_place"), 2)
+
     def test_priority_check_only_lists_only_verified_actions_without_motion(self):
         args = type("Args", (), {"speed_scale": 0.38, "check_only": True})()
         plan = {

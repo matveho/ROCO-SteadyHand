@@ -227,10 +227,10 @@ class CompetitionMenuTests(unittest.TestCase):
         with mock.patch.object(pipeline, '_configured_competition_run', return_value=0) as run:
             self.assertEqual(pipeline.main(['--competition-run', '--check-only']), 0)
             run.assert_called_once()
-        with mock.patch.object(pipeline, '_task_test_command', return_value=['unchanged']), \
-                mock.patch.object(pipeline, 'run_wrist_part_calibration', return_value=0) as run:
+        with mock.patch.object(pipeline, '_configured_competition_run', return_value=0) as run:
             self.assertEqual(pipeline.main(['--task-test', 'battery_size1.pick', '--confirm-physical-motion']), 0)
-            run.assert_called_once_with(['unchanged'])
+            self.assertEqual(run.call_args.kwargs,
+                             {'selected_parts': ['battery_size1'], 'action_override': 'pick'})
 
 
 if __name__ == '__main__':
