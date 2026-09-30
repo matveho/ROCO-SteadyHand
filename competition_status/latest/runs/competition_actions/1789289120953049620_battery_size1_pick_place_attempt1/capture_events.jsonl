@@ -1,6 +1,0 @@
-{"accepted": true, "attempt": 1, "frame_id": 30, "timestamp_ns": 5823931194, "received_monotonic_ns": 60688780833030, "shape": [1536, 1920, 3], "mean": 85.15510694715712, "std": 50.768639334899284, "file": "000_wrist_a.png"}
-{"accepted": true, "attempt": 1, "frame_id": 39, "timestamp_ns": 7670960181, "received_monotonic_ns": 60690627737053, "shape": [1536, 1920, 3], "mean": 84.32905454282407, "std": 51.170789991231025, "file": "001_wrist_a.png"}
-{"accepted": true, "attempt": 1, "frame_id": 46, "timestamp_ns": 9006823435, "received_monotonic_ns": 60691961413295, "shape": [1536, 1920, 3], "mean": 85.20575098108363, "std": 52.374651843892856, "file": "002_wrist_a.png"}
-{"accepted": true, "attempt": 1, "frame_id": 53, "timestamp_ns": 10341189202, "received_monotonic_ns": 60693295229158, "shape": [1536, 1920, 3], "mean": 85.06517684371383, "std": 51.91256608654541, "file": "003_wrist_a.png"}
-{"accepted": true, "attempt": 1, "frame_id": 139, "timestamp_ns": 26820188211, "received_monotonic_ns": 60709774032724, "shape": [1536, 1920, 3], "mean": 89.0653987178096, "std": 47.602103023938874, "file": "004_wrist_a.png"}
-{"accepted": true, "attempt": 1, "frame_id": 145, "timestamp_ns": 27961172416, "received_monotonic_ns": 60710918084738, "shape": [1536, 1920, 3], "mean": 86.32748650444879, "std": 46.36251938651808, "file": "005_wrist_a.png"}

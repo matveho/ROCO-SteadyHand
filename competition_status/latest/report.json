@@ -1,519 +1,13 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-09-13T08:57:04.349804+00:00",
+  "generated_at_utc": "2026-09-13T09:08:14.926165+00:00",
   "source_root": "/home/dexmate/ROCO-SteadyHand-live",
   "python": "/home/dexmate/miniconda3/bin/python3",
   "collector_sha256": "d21b0b0b3ed30125f9cf18d1385ece852abab808dcb60dbf8e608263bc4a21db",
   "hardware_accessed": false,
   "physical_readiness": "requires operator confirmation",
   "warnings": [],
-  "omitted_files": [
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/000_wrist_a_match.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/001_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/001_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/002_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/002_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/003_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/003_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/004_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/005_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/head_board_1789289124666422435.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/000_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/000_wrist_a_match.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/001_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/001_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/002_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/002_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/003_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/003_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/004_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/004_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/005_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/005_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/006_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/006_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/007_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/007_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/008_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/008_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/009_wrist_a.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/009_wrist_a_tracked.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/BOARD_PROJECTED_TARGETS.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/head_board_1789289073365325179.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/head_board_1789289074498234861.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289605470927161__nominal_hover_100mm__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289607335046763__initial_40mm_below_hover__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289623926863482__adjust_down_002__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289628072232917__adjust_forward_003__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289633032078289__adjust_down_004__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289638419592397__adjust_down_005__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289643120522409__adjust_back_006__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289649000645730__release_before__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789289650146617545__release_after__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286971912833336__nominal_hover_100mm__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286974122480213__initial_40mm_below_hover__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286986046239611__adjust_back_002__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286991964950308__adjust_right_003__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286998933212468__adjust_down_004__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287004836400246__adjust_down_005__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287009850295668__adjust_forward_006__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287013909519787__adjust_down_007__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287018800788335__adjust_back_008__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287032314057028__adjust_up_009__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287043482212937__adjust_forward_010__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287047739017711__adjust_forward_011__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287052017713924__adjust_right_012__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287056369372649__adjust_down_013__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287060433713691__release_before__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287061527001196__release_after__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287633408316317__nominal_hover_100mm__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287635291149055__initial_40mm_below_hover__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287751313244347__adjust_back_002__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287761220595687__adjust_down_003__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287765147708118__adjust_back_004__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287768867868976__adjust_down_005__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287771463190716__adjust_down_006__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287775178016783__adjust_right_007__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287781919648606__adjust_down_008__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287784823027518__adjust_down_009__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287789783351204__adjust_down_010__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287795171769246__adjust_back_011__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287800632798628__adjust_up_012__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287805166127727__adjust_down_013__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287813461187036__adjust_up_014__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287826195262231__adjust_forward_015__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287831330082037__adjust_back_016__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287834628411439__adjust_down_017__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287841598153183__adjust_forward_018__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287843991848178__release_before__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__hdmi__1789287845101114927__release_after__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283102668233150__nominal_hover_100mm__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283105292945443__initial_40mm_below_hover__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283118469902702__adjust_back_002__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283125381577307__adjust_right_003__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283131913640364__adjust_left_004__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283140081879752__adjust_left_005__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283146633554421__adjust_right_006__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283153540480717__adjust_right_007__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283160169782837__adjust_right_008__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283198034271070__adjust_back_009__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283204599158074__adjust_forward_010__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283216461770179__adjust_back_011__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283229117480640__adjust_forward_012__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283235877389599__adjust_down_013__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283242462593338__adjust_back_014__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283247831095997__adjust_down_015__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283256737490495__adjust_forward_016__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283265574928961__adjust_down_017__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283272656557983__adjust_back_018__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283278121927028__adjust_down_019__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283281051505583__release_before__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    },
-    {
-      "path": "/home/dexmate/ROCO-SteadyHand-live/runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283283010349067__release_after__WRIST_A.png",
-      "reason": "file/total size budget exceeded",
-      "required_input": false
-    }
-  ],
+  "omitted_files": [],
   "missing_references": [],
   "diagnostics": {
     "preflight": {
@@ -786,10 +280,10 @@
       "grasp_clearance_m": 0.008000000000000007,
       "place": {
         "offset_board_xy_m": [
-          0.009841367339999426,
-          0.03623893809739067
+          0.0018391353729834271,
+          0.03369642853341993
         ],
-        "clearance_m": 0.014276911627082667,
+        "clearance_m": 0.014499344012233406,
         "yaw_deg": 0.0
       },
       "configured": {
@@ -883,16 +377,16 @@
         "schema_version": 1,
         "board_reference": {
           "center_base_xy_m": [
-            0.45992431315527493,
-            -0.033739564136989635
+            0.43046559253080613,
+            -0.06639789919630804
           ],
           "board_x_unit_base_xy": [
-            -0.012089059384789864,
-            -0.9999269246515924
+            0.011600369699614818,
+            -0.9999327134476761
           ],
           "board_y_unit_base_xy": [
-            -0.9999269246515926,
-            0.012089059384789866
+            -0.999932713447676,
+            -0.011600369699614818
           ],
           "board_size_m": 0.386,
           "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
@@ -900,38 +394,38 @@
             "status": "fresh",
             "source": "differential_four_corner_386mm",
             "translation_m": [
-              0.020270115664380917,
-              0.0036689774258350178
+              -0.009188604960087868,
+              -0.028989357633483384
             ],
-            "rotation_deg": -1.3178672074212798,
-            "fit_residual_m": 0.005726317351174955,
+            "rotation_deg": 0.039468878400270545,
+            "fit_residual_m": 0.00879296681745338,
             "edge_scale": [
-              1.0205084330168204,
-              1.0313972659224253,
-              1.0108970035408043,
-              1.0122249072344076
+              1.0263483352809915,
+              1.0325980594516782,
+              1.032795485235407,
+              1.031533862247119
             ],
             "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T07:04:34.957691+00:00"
+            "captured_at_utc": "2026-09-13T09:04:08.577776+00:00"
           },
-          "captured_at_utc": "2026-09-13T07:08:03.017700+00:00"
+          "captured_at_utc": "2026-09-13T09:05:28.021807+00:00"
         },
         "release": {
           "board_xy_m": [
-            -0.0786295018817165,
-            0.13736639755613805
+            -0.08663173384873249,
+            0.13482388799216719
           ],
           "tcp_pose": {
             "position_m": [
-              0.32351851041414237,
-              0.046544822404012524,
-              0.5333633527687776
+              0.2946458162328689,
+              0.01866399855668332,
+              0.5397663712157927
             ],
             "quaternion_wxyz": [
-              0.8219773450975223,
-              0.05317069411400215,
-              0.07106855835915321,
-              0.5625614468185817
+              0.8154209367533873,
+              0.05213649351327089,
+              0.0715612988250308,
+              0.5720572195671019
             ]
           },
           "source": "measured_release_TCP"
@@ -940,11 +434,18 @@
     },
     "bolt_8mm": {
       "grasp_verified": true,
-      "place_verified": false,
+      "place_verified": true,
       "place_cv_reference_present": false,
       "place_cv_enabled": false,
       "grasp_clearance_m": 0.015,
-      "place": null,
+      "place": {
+        "offset_board_xy_m": [
+          0.00028363148131851375,
+          0.0331220428378837
+        ],
+        "clearance_m": 0.027474973577436,
+        "yaw_deg": 0.0
+      },
       "configured": {
         "enabled": false,
         "pick_enabled": true,
@@ -958,73 +459,138 @@
         "schema_version": 1,
         "board_reference": {
           "center_base_xy_m": [
-            0.439654197490894,
-            -0.03740854156282465
+            0.42976948903943085,
+            -0.06757907853491807
           ],
           "board_x_unit_base_xy": [
-            0.01091155147271351,
-            -0.9999404672501551
+            0.006077330524842695,
+            -0.999981532856328
           ],
           "board_y_unit_base_xy": [
-            -0.9999404672501551,
-            -0.01091155147271351
+            -0.9999815328563283,
+            -0.006077330524842682
           ],
           "board_size_m": 0.386,
           "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
           "registration": {
-            "status": "reference",
-            "source": "/home/dexmate/ROCO-SteadyHand-live/calibration/vega_board_manual.json"
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.00988470845146317,
+              -0.030170536972093424
+            ],
+            "rotation_deg": -0.2769907207175698,
+            "fit_residual_m": 0.009177259159036935,
+            "edge_scale": [
+              1.037029344508268,
+              1.0279006464526455,
+              1.0318487757641055,
+              1.031939864318928
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T08:56:38.129555+00:00"
           },
-          "captured_at_utc": "2026-09-12T08:49:06.870287+00:00"
+          "captured_at_utc": "2026-09-13T09:00:06.164920+00:00"
         },
         "approach": {
           "board_xy_m": [
-            0.12140978651637106,
-            -0.08457193362736201
+            0.11984603499457437,
+            -0.08361533542869413
           ],
           "tcp_pose": {
             "position_m": [
-              0.525545865453352,
-              -0.15788828921382442,
-              null
+              0.5141116242984664,
+              -0.18691474228519997,
+              0.5770772970472293
             ],
             "quaternion_wxyz": [
-              0.8158175491223725,
-              0.052638024999248696,
-              0.0714430131564337,
-              0.5714602879809529
+              0.8172567402576325,
+              0.05265468445363164,
+              0.07149856922435277,
+              0.5693916572162147
             ]
           },
-          "source": "legacy_coarse_hover_not_final_grasp",
-          "z_not_recorded": true
+          "source": "feature_image_TCP"
         },
         "grasp": {
           "board_xy_m": [
-            0.12140978651637106,
-            -0.08457193362736201
+            0.11251792648418761,
+            -0.02748790051869969
           ],
           "tcp_pose": {
             "position_m": [
-              0.525545865453352,
-              -0.15788828921382442,
-              null
+              0.4579406905643368,
+              -0.17992787407750555,
+              0.5890241344079781
             ],
             "quaternion_wxyz": [
-              0.8158175491223725,
-              0.052638024999248696,
-              0.0714430131564337,
-              0.5714602879809529
+              0.8180605452554662,
+              0.05235137914863302,
+              0.0728748588741555,
+              0.5680893700304883
             ]
           },
-          "source": "legacy_coarse_hover_not_final_grasp",
-          "z_not_recorded": true
-        },
-        "migration": {
-          "confidence": "assumed_calibration_reference",
-          "warning": "Teaching frame/final grasp not recovered; hover verification required"
+          "source": "confirmed_grasp_hover_TCP"
         }
       },
-      "placement_board": null
+      "placement_board": {
+        "schema_version": 1,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.43049746128716887,
+            -0.06768942948926024
+          ],
+          "board_x_unit_base_xy": [
+            0.007047642166100013,
+            -0.9999751650615618
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999751650615617,
+            -0.007047642166100002
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.009156736203725166,
+              -0.030280887926435584
+            ],
+            "rotation_deg": -0.22139475951275722,
+            "fit_residual_m": 0.008792066532981238,
+            "edge_scale": [
+              1.0261534499899965,
+              1.0296217229999842,
+              1.0316255060255968,
+              1.0370566619565165
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T09:00:26.040814+00:00"
+          },
+          "captured_at_utc": "2026-09-13T09:02:29.357432+00:00"
+        },
+        "release": {
+          "board_xy_m": [
+            -0.055297944260425246,
+            0.09875027788140828
+          ],
+          "tcp_pose": {
+            "position_m": [
+              0.331359915739164,
+              -0.013088815172187518,
+              0.544855810606476
+            ],
+            "quaternion_wxyz": [
+              0.8165901851773391,
+              0.052388507173771796,
+              0.07168272096806577,
+              0.5703485787680701
+            ]
+          },
+          "source": "measured_release_TCP"
+        }
+      }
     },
     "pin": {
       "grasp_verified": true,
@@ -1138,10 +704,10 @@
       "grasp_clearance_m": 0.0,
       "place": {
         "offset_board_xy_m": [
-          0.015236215772551055,
-          0.032270786570474747
+          -0.0006129393507411048,
+          0.03953401799382478
         ],
-        "clearance_m": 0.017693223696357063,
+        "clearance_m": 0.011202118187910504,
         "yaw_deg": 0.0
       },
       "configured": {
@@ -1235,16 +801,16 @@
         "schema_version": 1,
         "board_reference": {
           "center_base_xy_m": [
-            0.4753541237748952,
-            -0.0006332812800244406
+            0.4294305689688712,
+            -0.0661092749352473
           ],
           "board_x_unit_base_xy": [
-            0.006684131150470447,
-            -0.9999776609458653
+            0.008070564252783963,
+            -0.9999674324659987
           ],
           "board_y_unit_base_xy": [
-            -0.9999776609458653,
-            -0.006684131150470449
+            -0.9999674324659991,
+            -0.008070564252783968
           ],
           "board_size_m": 0.386,
           "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
@@ -1252,38 +818,38 @@
             "status": "fresh",
             "source": "differential_four_corner_386mm",
             "translation_m": [
-              0.0356999262840012,
-              0.03677526028280021
+              -0.010223628522022809,
+              -0.028700733372422658
             ],
-            "rotation_deg": -0.24222289755870133,
-            "fit_residual_m": 0.003660844208619759,
+            "rotation_deg": -0.16278396408362522,
+            "fit_residual_m": 0.008656352187138793,
             "edge_scale": [
-              1.0171688761857895,
-              0.9956504897471442,
-              1.0180456775469737,
-              1.0000447930701748
+              1.0306207373258913,
+              1.0241163369465531,
+              1.0321335953608495,
+              1.0351651654907037
             ],
             "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T08:09:07.576282+00:00"
+            "captured_at_utc": "2026-09-13T09:05:58.378865+00:00"
           },
-          "captured_at_utc": "2026-09-13T08:11:01.537837+00:00"
+          "captured_at_utc": "2026-09-13T09:07:27.715455+00:00"
         },
         "release": {
           "board_xy_m": [
-            0.08802969610640975,
-            0.12562673327063775
+            0.07218054098311753,
+            0.13288996469398776
           ],
           "tcp_pose": {
             "position_m": [
-              0.35031859892056416,
-              -0.08950071644747346,
-              0.5307807505071529
+              0.29712746986713207,
+              -0.13935996217475516,
+              0.5354928090069166
             ],
             "quaternion_wxyz": [
-              0.8173446907667395,
-              0.052385937490730845,
-              0.07153055166075245,
-              0.5692861760202406
+              0.81696935391115,
+              0.05219703145456772,
+              0.07193639443434077,
+              0.5697909264222415
             ]
           },
           "source": "measured_release_TCP"
@@ -1645,18 +1211,184 @@
   },
   "recent_runs": [
     {
-      "path": "runs/wrist_parts_20260913T085633_922047Z",
+      "path": "runs/wrist_parts_20260913T090550_795999Z",
       "full_evidence_requested": true,
-      "part": null,
-      "action": null,
-      "status": "no_final_summary",
+      "part": "battery_size5",
+      "action": "drop_calibrate",
+      "status": "failed",
+      "last_error": "RuntimeError: Recovery blocked: arm is moving or E-stop is active",
+      "holding_may_be_true": false,
+      "board_reference": {
+        "center_base_xy_m": [
+          0.4294305689688712,
+          -0.0661092749352473
+        ],
+        "board_x_unit_base_xy": [
+          0.008070564252783963,
+          -0.9999674324659987
+        ],
+        "board_y_unit_base_xy": [
+          -0.9999674324659991,
+          -0.008070564252783968
+        ],
+        "board_size_m": 0.386,
+        "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+        "registration": {
+          "status": "fresh",
+          "source": "differential_four_corner_386mm",
+          "translation_m": [
+            -0.010223628522022809,
+            -0.028700733372422658
+          ],
+          "rotation_deg": -0.16278396408362522,
+          "fit_residual_m": 0.008656352187138793,
+          "edge_scale": [
+            1.0306207373258913,
+            1.0241163369465531,
+            1.0321335953608495,
+            1.0351651654907037
+          ],
+          "metric_scale": 0.9611882628747844,
+          "captured_at_utc": "2026-09-13T09:05:58.378865+00:00"
+        },
+        "captured_at_utc": "2026-09-13T09:07:35.616340+00:00"
+      }
+    },
+    {
+      "path": "runs/wrist_parts_20260913T090403_134845Z",
+      "full_evidence_requested": false,
+      "part": "rod_16mm",
+      "action": "drop_calibrate",
+      "status": "failed",
+      "last_error": "RuntimeError: Recovery blocked: arm is moving or E-stop is active",
+      "holding_may_be_true": false,
+      "board_reference": {
+        "center_base_xy_m": [
+          0.43046559253080613,
+          -0.06639789919630804
+        ],
+        "board_x_unit_base_xy": [
+          0.011600369699614818,
+          -0.9999327134476761
+        ],
+        "board_y_unit_base_xy": [
+          -0.999932713447676,
+          -0.011600369699614818
+        ],
+        "board_size_m": 0.386,
+        "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+        "registration": {
+          "status": "fresh",
+          "source": "differential_four_corner_386mm",
+          "translation_m": [
+            -0.009188604960087868,
+            -0.028989357633483384
+          ],
+          "rotation_deg": 0.039468878400270545,
+          "fit_residual_m": 0.00879296681745338,
+          "edge_scale": [
+            1.0263483352809915,
+            1.0325980594516782,
+            1.032795485235407,
+            1.031533862247119
+          ],
+          "metric_scale": 0.9611882628747844,
+          "captured_at_utc": "2026-09-13T09:04:08.577776+00:00"
+        },
+        "captured_at_utc": "2026-09-13T09:05:36.001951+00:00"
+      }
+    },
+    {
+      "path": "runs/wrist_parts_20260913T090019_721256Z",
+      "full_evidence_requested": true,
+      "part": "bolt_8mm",
+      "action": "drop_calibrate",
+      "status": "failed",
+      "last_error": "RuntimeError: Recovery blocked: arm is moving or E-stop is active",
+      "holding_may_be_true": false,
+      "board_reference": {
+        "center_base_xy_m": [
+          0.43049746128716887,
+          -0.06768942948926024
+        ],
+        "board_x_unit_base_xy": [
+          0.007047642166100013,
+          -0.9999751650615618
+        ],
+        "board_y_unit_base_xy": [
+          -0.9999751650615617,
+          -0.007047642166100002
+        ],
+        "board_size_m": 0.386,
+        "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+        "registration": {
+          "status": "fresh",
+          "source": "differential_four_corner_386mm",
+          "translation_m": [
+            -0.009156736203725166,
+            -0.030280887926435584
+          ],
+          "rotation_deg": -0.22139475951275722,
+          "fit_residual_m": 0.008792066532981238,
+          "edge_scale": [
+            1.0261534499899965,
+            1.0296217229999842,
+            1.0316255060255968,
+            1.0370566619565165
+          ],
+          "metric_scale": 0.9611882628747844,
+          "captured_at_utc": "2026-09-13T09:00:26.040814+00:00"
+        },
+        "captured_at_utc": "2026-09-13T09:02:36.542287+00:00"
+      }
+    },
+    {
+      "path": "runs/wrist_parts_20260913T085633_922047Z",
+      "full_evidence_requested": false,
+      "part": "bolt_8mm",
+      "action": "localize",
+      "status": "profile_saved",
       "last_error": null,
-      "holding_may_be_true": null,
-      "board_reference": null
+      "holding_may_be_true": false,
+      "board_reference": {
+        "center_base_xy_m": [
+          0.42976948903943085,
+          -0.06757907853491807
+        ],
+        "board_x_unit_base_xy": [
+          0.006077330524842695,
+          -0.999981532856328
+        ],
+        "board_y_unit_base_xy": [
+          -0.9999815328563283,
+          -0.006077330524842682
+        ],
+        "board_size_m": 0.386,
+        "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+        "registration": {
+          "status": "fresh",
+          "source": "differential_four_corner_386mm",
+          "translation_m": [
+            -0.00988470845146317,
+            -0.030170536972093424
+          ],
+          "rotation_deg": -0.2769907207175698,
+          "fit_residual_m": 0.009177259159036935,
+          "edge_scale": [
+            1.037029344508268,
+            1.0279006464526455,
+            1.0318487757641055,
+            1.031939864318928
+          ],
+          "metric_scale": 0.9611882628747844,
+          "captured_at_utc": "2026-09-13T08:56:38.129555+00:00"
+        },
+        "captured_at_utc": "2026-09-13T09:00:07.772914+00:00"
+      }
     },
     {
       "path": "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1",
-      "full_evidence_requested": true,
+      "full_evidence_requested": false,
       "part": "battery_size1",
       "action": "pick_place",
       "status": "completed",
@@ -1744,7 +1476,7 @@
     },
     {
       "path": "runs/wrist_parts_20260913T084800_864257Z",
-      "full_evidence_requested": true,
+      "full_evidence_requested": false,
       "part": "rod_16mm",
       "action": "localize",
       "status": "profile_saved",
@@ -1788,7 +1520,7 @@
     },
     {
       "path": "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1",
-      "full_evidence_requested": true,
+      "full_evidence_requested": false,
       "part": "rod_16mm",
       "action": "pick",
       "status": "pick_complete_returned",
@@ -1832,7 +1564,7 @@
     },
     {
       "path": "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1",
-      "full_evidence_requested": true,
+      "full_evidence_requested": false,
       "part": "battery_size5",
       "action": "pick_place",
       "status": "completed",
@@ -1872,81 +1604,6 @@
           "captured_at_utc": "2026-09-13T08:46:08.134281+00:00"
         },
         "captured_at_utc": "2026-09-13T08:46:46.113499+00:00"
-      }
-    },
-    {
-      "path": "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1",
-      "full_evidence_requested": true,
-      "part": "battery_size1",
-      "action": "pick_place",
-      "status": "completed",
-      "last_error": null,
-      "holding_may_be_true": false,
-      "board_reference": {
-        "center_base_xy_m": [
-          0.4284078590491196,
-          -0.036939349535897684
-        ],
-        "board_x_unit_base_xy": [
-          0.00138713879476657,
-          -0.9999990379225194
-        ],
-        "board_y_unit_base_xy": [
-          -0.9999990379225193,
-          -0.0013871387947666056
-        ],
-        "board_size_m": 0.386,
-        "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-        "registration": {
-          "status": "fresh",
-          "source": "differential_four_corner_386mm",
-          "translation_m": [
-            -0.011246338441774396,
-            0.0004691920269269697
-          ],
-          "rotation_deg": -0.5457210299391605,
-          "fit_residual_m": 0.008417566523170297,
-          "edge_scale": [
-            1.0365195885608243,
-            1.0220152017824078,
-            1.028793878559732,
-            0.9865548409724443
-          ],
-          "metric_scale": 0.9611882628747844,
-          "captured_at_utc": "2026-09-13T08:45:24.869889+00:00"
-        },
-        "captured_at_utc": "2026-09-13T08:46:02.060683+00:00"
-      }
-    },
-    {
-      "path": "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3",
-      "full_evidence_requested": true,
-      "part": "rod_16mm",
-      "action": "pick",
-      "status": "pick_failed_returned",
-      "last_error": null,
-      "holding_may_be_true": false,
-      "board_reference": {
-        "center_base_xy_m": [
-          0.439654197490894,
-          -0.03740854156282465
-        ],
-        "board_x_unit_base_xy": [
-          0.01091155147271351,
-          -0.9999404672501551
-        ],
-        "board_y_unit_base_xy": [
-          -0.9999404672501551,
-          -0.01091155147271351
-        ],
-        "board_size_m": 0.386,
-        "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-        "registration": {
-          "status": "stale",
-          "reason": "board corner geometry changed (fit residual 23.1 mm)",
-          "source": "last_known_good_frame"
-        },
-        "captured_at_utc": "2026-09-13T08:45:09.144061+00:00"
       }
     },
     {
@@ -2255,50 +1912,6 @@
           "captured_at_utc": "2026-09-13T08:11:19.711379+00:00"
         },
         "captured_at_utc": "2026-09-13T08:13:29.798949+00:00"
-      }
-    },
-    {
-      "path": "runs/wrist_parts_20260913T080902_796432Z",
-      "full_evidence_requested": false,
-      "part": "battery_size5",
-      "action": "drop_calibrate",
-      "status": "drop_profile_saved",
-      "last_error": null,
-      "holding_may_be_true": false,
-      "board_reference": {
-        "center_base_xy_m": [
-          0.4753541237748952,
-          -0.0006332812800244406
-        ],
-        "board_x_unit_base_xy": [
-          0.006684131150470447,
-          -0.9999776609458653
-        ],
-        "board_y_unit_base_xy": [
-          -0.9999776609458653,
-          -0.006684131150470449
-        ],
-        "board_size_m": 0.386,
-        "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-        "registration": {
-          "status": "fresh",
-          "source": "differential_four_corner_386mm",
-          "translation_m": [
-            0.0356999262840012,
-            0.03677526028280021
-          ],
-          "rotation_deg": -0.24222289755870133,
-          "fit_residual_m": 0.003660844208619759,
-          "edge_scale": [
-            1.0171688761857895,
-            0.9956504897471442,
-            1.0180456775469737,
-            1.0000447930701748
-          ],
-          "metric_scale": 0.9611882628747844,
-          "captured_at_utc": "2026-09-13T08:09:07.576282+00:00"
-        },
-        "captured_at_utc": "2026-09-13T08:11:10.047322+00:00"
       }
     },
     {
@@ -2654,50 +2267,6 @@
       }
     },
     {
-      "path": "runs/wrist_parts_20260913T070430_930491Z",
-      "full_evidence_requested": false,
-      "part": "rod_16mm",
-      "action": "drop_calibrate",
-      "status": "drop_profile_saved",
-      "last_error": null,
-      "holding_may_be_true": false,
-      "board_reference": {
-        "center_base_xy_m": [
-          0.45992431315527493,
-          -0.033739564136989635
-        ],
-        "board_x_unit_base_xy": [
-          -0.012089059384789864,
-          -0.9999269246515924
-        ],
-        "board_y_unit_base_xy": [
-          -0.9999269246515926,
-          0.012089059384789866
-        ],
-        "board_size_m": 0.386,
-        "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-        "registration": {
-          "status": "fresh",
-          "source": "differential_four_corner_386mm",
-          "translation_m": [
-            0.020270115664380917,
-            0.0036689774258350178
-          ],
-          "rotation_deg": -1.3178672074212798,
-          "fit_residual_m": 0.005726317351174955,
-          "edge_scale": [
-            1.0205084330168204,
-            1.0313972659224253,
-            1.0108970035408043,
-            1.0122249072344076
-          ],
-          "metric_scale": 0.9611882628747844,
-          "captured_at_utc": "2026-09-13T07:04:34.957691+00:00"
-        },
-        "captured_at_utc": "2026-09-13T07:08:12.006612+00:00"
-      }
-    },
-    {
       "path": "runs/wrist_parts_20260913T070145_043701Z",
       "full_evidence_requested": false,
       "part": "rod_16mm",
@@ -2817,6 +2386,1781 @@
     }
   ],
   "latest_by_part": {
+    "battery_size5": {
+      "drop_calibrate": {
+        "schema_version": 1,
+        "status": "failed",
+        "part": "battery_size5",
+        "action": "drop_calibrate",
+        "holding_may_be_true": false,
+        "pickup_completed": true,
+        "recovery_state_verified": false,
+        "recovery_release_attempted": false,
+        "recovery_blocked": false,
+        "motion_faulted": false,
+        "cleanup_error": null,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.4294305689688712,
+            -0.0661092749352473
+          ],
+          "board_x_unit_base_xy": [
+            0.008070564252783963,
+            -0.9999674324659987
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999674324659991,
+            -0.008070564252783968
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.010223628522022809,
+              -0.028700733372422658
+            ],
+            "rotation_deg": -0.16278396408362522,
+            "fit_residual_m": 0.008656352187138793,
+            "edge_scale": [
+              1.0306207373258913,
+              1.0241163369465531,
+              1.0321335953608495,
+              1.0351651654907037
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T09:05:58.378865+00:00"
+          },
+          "captured_at_utc": "2026-09-13T09:07:35.616340+00:00"
+        },
+        "last_error": "RuntimeError: Recovery blocked: arm is moving or E-stop is active",
+        "execution_offsets": null,
+        "coarse_xy_m": [
+          0.2993208965744483,
+          -0.227731107454621
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.2,
+        "alignment_verified": true,
+        "alignment_fallback_used": false,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.0,
+        "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290446581835386__release_before__WRIST_A.png",
+        "drop_evidence_photos": [
+          {
+            "label": "nominal_hover_100mm",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290384242965055__nominal_hover_100mm__WRIST_A.png",
+            "tcp_position_m": [
+              0.3045645855273897,
+              -0.15714839346061926,
+              0.6224392350391097
+            ],
+            "quaternion_wxyz": [
+              0.8172194639305824,
+              0.052447915278254806,
+              0.07140847007078538,
+              0.5694755432484578
+            ],
+            "captured_at_utc": "2026-09-13T09:06:24.249750+00:00"
+          },
+          {
+            "label": "initial_40mm_below_hover",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290386144431360__initial_40mm_below_hover__WRIST_A.png",
+            "tcp_position_m": [
+              0.3046609064797884,
+              -0.1556430811516846,
+              0.5852442429812021
+            ],
+            "quaternion_wxyz": [
+              0.8173954682560985,
+              0.052178329523565874,
+              0.07195743836300639,
+              0.5691785286417237
+            ],
+            "captured_at_utc": "2026-09-13T09:06:26.153819+00:00"
+          },
+          {
+            "label": "adjust_back_002",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290396981889315__adjust_back_002__WRIST_A.png",
+            "tcp_position_m": [
+              0.28580645097511465,
+              -0.15554259262357442,
+              0.5880751273098643
+            ],
+            "quaternion_wxyz": [
+              0.8162120563435148,
+              0.052740747139487475,
+              0.07277230232662414,
+              0.5707192695929777
+            ],
+            "captured_at_utc": "2026-09-13T09:06:36.989730+00:00"
+          },
+          {
+            "label": "adjust_left_003",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290402636266785__adjust_left_003__WRIST_A.png",
+            "tcp_position_m": [
+              0.2865351131620471,
+              -0.14002634810564746,
+              0.5881421840101323
+            ],
+            "quaternion_wxyz": [
+              0.8168058866297394,
+              0.05221723084264735,
+              0.0720071594144117,
+              0.570014450135432
+            ],
+            "captured_at_utc": "2026-09-13T09:06:42.646097+00:00"
+          },
+          {
+            "label": "adjust_down_004",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290407282516195__adjust_down_004__WRIST_A.png",
+            "tcp_position_m": [
+              0.2867831388745386,
+              -0.1393131337504278,
+              0.5705005179734741
+            ],
+            "quaternion_wxyz": [
+              0.8170777980487063,
+              0.052128099501912044,
+              0.07184710770962982,
+              0.5696529876090856
+            ],
+            "captured_at_utc": "2026-09-13T09:06:47.288692+00:00"
+          },
+          {
+            "label": "adjust_forward_005",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290416661832517__adjust_forward_005__WRIST_A.png",
+            "tcp_position_m": [
+              0.2946919725710162,
+              -0.13934217793124917,
+              0.5680774606964802
+            ],
+            "quaternion_wxyz": [
+              0.8172545931031189,
+              0.05209430633214002,
+              0.07193284936677115,
+              0.5693915862406174
+            ],
+            "captured_at_utc": "2026-09-13T09:06:56.668044+00:00"
+          },
+          {
+            "label": "adjust_down_006",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290420094187490__adjust_down_006__WRIST_A.png",
+            "tcp_position_m": [
+              0.2952240293948413,
+              -0.1395788366200529,
+              0.5506402747068201
+            ],
+            "quaternion_wxyz": [
+              0.8172463154270592,
+              0.05190811928344888,
+              0.07198844259184452,
+              0.5694134448768767
+            ],
+            "captured_at_utc": "2026-09-13T09:07:00.100275+00:00"
+          },
+          {
+            "label": "adjust_forward_007",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290423425105257__adjust_forward_007__WRIST_A.png",
+            "tcp_position_m": [
+              0.303150224978009,
+              -0.1394451252237227,
+              0.5481718414882595
+            ],
+            "quaternion_wxyz": [
+              0.8174169608786177,
+              0.05202464990756144,
+              0.07186774868955402,
+              0.5691730620542891
+            ],
+            "captured_at_utc": "2026-09-13T09:07:03.431592+00:00"
+          },
+          {
+            "label": "adjust_down_008",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290434033517121__adjust_down_008__WRIST_A.png",
+            "tcp_position_m": [
+              0.30369809505277123,
+              -0.13928199141720154,
+              0.5408427615270694
+            ],
+            "quaternion_wxyz": [
+              0.8172567901203338,
+              0.0520779785184264,
+              0.07168716096930222,
+              0.5694209111964575
+            ],
+            "captured_at_utc": "2026-09-13T09:07:14.040550+00:00"
+          },
+          {
+            "label": "adjust_back_009",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290437146772081__adjust_back_009__WRIST_A.png",
+            "tcp_position_m": [
+              0.297312034813305,
+              -0.13928648113238723,
+              0.5413937389119594
+            ],
+            "quaternion_wxyz": [
+              0.8166239860126406,
+              0.052072040917481834,
+              0.07186104356622441,
+              0.5703067231245723
+            ],
+            "captured_at_utc": "2026-09-13T09:07:17.154502+00:00"
+          },
+          {
+            "label": "adjust_down_010",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290440988117008__adjust_down_010__WRIST_A.png",
+            "tcp_position_m": [
+              0.2971839936385931,
+              -0.13937363531506755,
+              0.5416512945672733
+            ],
+            "quaternion_wxyz": [
+              0.8170647662063513,
+              0.05221655198498368,
+              0.07191002677573377,
+              0.5696556394630646
+            ],
+            "captured_at_utc": "2026-09-13T09:07:20.995888+00:00"
+          },
+          {
+            "label": "adjust_down_011",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290444482780879__adjust_down_011__WRIST_A.png",
+            "tcp_position_m": [
+              0.2968665121024149,
+              -0.13937334973853083,
+              0.5360524859310425
+            ],
+            "quaternion_wxyz": [
+              0.8172889726861485,
+              0.0526973664503543,
+              0.07223586656687428,
+              0.5692483660724466
+            ],
+            "captured_at_utc": "2026-09-13T09:07:24.489993+00:00"
+          },
+          {
+            "label": "release_before",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290446581835386__release_before__WRIST_A.png",
+            "tcp_position_m": [
+              0.29717122716791816,
+              -0.13937008755125657,
+              0.5354976191832626
+            ],
+            "quaternion_wxyz": [
+              0.8170053296085993,
+              0.05219334050023838,
+              0.07189625405761922,
+              0.5697447456985038
+            ],
+            "captured_at_utc": "2026-09-13T09:07:26.588652+00:00"
+          },
+          {
+            "label": "release_after",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290447704030016__release_after__WRIST_A.png",
+            "tcp_position_m": [
+              0.29734387730430034,
+              -0.13966138437834968,
+              0.5353972543231373
+            ],
+            "quaternion_wxyz": [
+              0.8173226486837616,
+              0.05203455594820404,
+              0.07197607325594962,
+              0.56929389406043
+            ],
+            "captured_at_utc": "2026-09-13T09:07:27.710787+00:00"
+          },
+          {
+            "label": "retreat_after_release",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789290451561860284__retreat_after_release__WRIST_A.png",
+            "tcp_position_m": [
+              0.29691521289264955,
+              -0.13907137610387726,
+              0.6215660704117765
+            ],
+            "quaternion_wxyz": [
+              0.8166503762247164,
+              0.052435588766050215,
+              0.07162155467573497,
+              0.5702657494086573
+            ],
+            "captured_at_utc": "2026-09-13T09:07:31.569899+00:00"
+          }
+        ],
+        "board_scene_paths": [
+          "board_1789290361713801089.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T09:07:35.616832+00:00"
+      },
+      "pick_place": {
+        "schema_version": 1,
+        "status": "completed",
+        "part": "battery_size5",
+        "action": "pick_place",
+        "holding_may_be_true": false,
+        "pickup_completed": true,
+        "recovery_state_verified": false,
+        "recovery_release_attempted": false,
+        "recovery_blocked": false,
+        "motion_faulted": false,
+        "cleanup_error": null,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.427793995185152,
+            -0.059224102106332416
+          ],
+          "board_x_unit_base_xy": [
+            -0.00849618753019495,
+            -0.9999639067473647
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999639067473648,
+            0.008496187530194944
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.011860202305742047,
+              -0.02181556054350776
+            ],
+            "rotation_deg": -1.1119997981622154,
+            "fit_residual_m": 0.008857070785671587,
+            "edge_scale": [
+              1.0286948001153895,
+              1.0261131473327043,
+              1.0339606258747776,
+              1.0382555673525455
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T08:46:08.134281+00:00"
+          },
+          "captured_at_utc": "2026-09-13T08:46:46.113499+00:00"
+        },
+        "last_error": null,
+        "execution_offsets": {
+          "schema_version": 1,
+          "pickup": {
+            "forward_mm": 0,
+            "right_mm": 0,
+            "down_mm": 0
+          },
+          "placement": {
+            "forward_mm": 0,
+            "right_mm": 0,
+            "down_mm": 0
+          }
+        },
+        "coarse_xy_m": [
+          0.3616277554235953,
+          -0.17524756943119207
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.2,
+        "alignment_verified": true,
+        "alignment_fallback_used": true,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.0,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [
+          {
+            "label": "competition_release_before",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789289200280182088__competition_release_before__WRIST_A.png",
+            "tcp_position_m": [
+              0.30191893975514267,
+              -0.14671309498639884,
+              0.5434323788630557
+            ],
+            "quaternion_wxyz": [
+              0.8221576793064906,
+              0.052520453242541426,
+              0.07119603712589086,
+              0.5623428461767187
+            ],
+            "captured_at_utc": "2026-09-13T08:46:40.290865+00:00"
+          },
+          {
+            "label": "competition_release_after",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789289201375277788__competition_release_after__WRIST_A.png",
+            "tcp_position_m": [
+              0.3014867741392444,
+              -0.14636059107526758,
+              0.5428825911335825
+            ],
+            "quaternion_wxyz": [
+              0.8218333406959198,
+              0.05294586703564393,
+              0.0712329777400023,
+              0.56277220806177
+            ],
+            "captured_at_utc": "2026-09-13T08:46:41.383106+00:00"
+          }
+        ],
+        "board_scene_paths": [
+          "board_1789289170281034182.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T08:46:46.114015+00:00"
+      },
+      "place_cv": {
+        "schema_version": 1,
+        "status": "ready",
+        "part": "battery_size5",
+        "action": "place_cv",
+        "holding_may_be_true": false,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.4832550295489735,
+            -0.0013886093902872806
+          ],
+          "board_x_unit_base_xy": [
+            0.027433069679143992,
+            -0.9996236425215141
+          ],
+          "board_y_unit_base_xy": [
+            -0.9996236425215141,
+            -0.02743306967914399
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              0.04360083205807948,
+              0.03601993217253737
+            ],
+            "rotation_deg": 0.946798073543922,
+            "fit_residual_m": 0.00352558649116474,
+            "edge_scale": [
+              1.0108777091406107,
+              0.9879706086346658,
+              1.01774022462125,
+              1.0003634388877076
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T08:11:19.711379+00:00"
+          },
+          "captured_at_utc": "2026-09-13T08:13:29.798949+00:00"
+        },
+        "last_error": null,
+        "execution_offsets": null,
+        "coarse_xy_m": [
+          0.3562995044567314,
+          -0.16549966400288074
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.2,
+        "alignment_verified": true,
+        "alignment_fallback_used": false,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.0,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [
+          {
+            "label": "place_cv_reference",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287104637343237__place_cv_reference__WRIST_A.png",
+            "tcp_position_m": [
+              0.3600124829551715,
+              -0.09573338120476547,
+              0.6105396366417333
+            ],
+            "quaternion_wxyz": [
+              0.8114136920581184,
+              0.051570121079050846,
+              0.07248673001993274,
+              0.5776625458894857
+            ],
+            "captured_at_utc": "2026-09-13T08:11:44.644207+00:00"
+          },
+          {
+            "label": "place_cv_release_before",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287203649626490__place_cv_release_before__WRIST_A.png",
+            "tcp_position_m": [
+              0.36054259059785354,
+              -0.09534515916448127,
+              0.531076553235591
+            ],
+            "quaternion_wxyz": [
+              0.8118714943242594,
+              0.05116450543499211,
+              0.07227549156617757,
+              0.5770815569797343
+            ],
+            "captured_at_utc": "2026-09-13T08:13:23.656092+00:00"
+          },
+          {
+            "label": "place_cv_release_after",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287204742179663__place_cv_release_after__WRIST_A.png",
+            "tcp_position_m": [
+              0.3601758937818403,
+              -0.09488260703483833,
+              0.5304791716630779
+            ],
+            "quaternion_wxyz": [
+              0.8115392673810222,
+              0.051572139990025634,
+              0.07214657717240783,
+              0.5775285302717339
+            ],
+            "captured_at_utc": "2026-09-13T08:13:24.748774+00:00"
+          }
+        ],
+        "board_scene_paths": [
+          "board_1789287082129511645.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T08:13:29.799510+00:00"
+      },
+      "None": {
+        "schema_version": 1,
+        "status": "profile_saved",
+        "part": "battery_size5",
+        "action": null,
+        "holding_may_be_true": false,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.4605656809325069,
+            -0.034500506144004545
+          ],
+          "board_x_unit_base_xy": [
+            -0.010818357382231454,
+            -0.9999414798594719
+          ],
+          "board_y_unit_base_xy": [
+            -0.999941479859472,
+            0.010818357382231442
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              0.02091148344161289,
+              0.002908035418820106
+            ],
+            "rotation_deg": -1.245056564677617,
+            "fit_residual_m": 0.0051659712546362705,
+            "edge_scale": [
+              1.0190155832772565,
+              1.0112889928896003,
+              1.0262056410053744,
+              1.0115881791674854
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T08:00:08.125640+00:00"
+          },
+          "captured_at_utc": "2026-09-13T08:03:28.861722+00:00"
+        },
+        "last_error": null,
+        "execution_offsets": null,
+        "coarse_xy_m": [
+          0.3934754779111397,
+          -0.15425670469045577
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.1,
+        "alignment_verified": true,
+        "alignment_fallback_used": true,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.0,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [],
+        "board_scene_paths": [
+          "board_1789286410053597187.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T08:03:28.862259+00:00"
+      }
+    },
+    "rod_16mm": {
+      "drop_calibrate": {
+        "schema_version": 1,
+        "status": "failed",
+        "part": "rod_16mm",
+        "action": "drop_calibrate",
+        "holding_may_be_true": false,
+        "pickup_completed": true,
+        "recovery_state_verified": false,
+        "recovery_release_attempted": false,
+        "recovery_blocked": false,
+        "motion_faulted": false,
+        "cleanup_error": null,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.43046559253080613,
+            -0.06639789919630804
+          ],
+          "board_x_unit_base_xy": [
+            0.011600369699614818,
+            -0.9999327134476761
+          ],
+          "board_y_unit_base_xy": [
+            -0.999932713447676,
+            -0.011600369699614818
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.009188604960087868,
+              -0.028989357633483384
+            ],
+            "rotation_deg": 0.039468878400270545,
+            "fit_residual_m": 0.00879296681745338,
+            "edge_scale": [
+              1.0263483352809915,
+              1.0325980594516782,
+              1.032795485235407,
+              1.031533862247119
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T09:04:08.577776+00:00"
+          },
+          "captured_at_utc": "2026-09-13T09:05:36.001951+00:00"
+        },
+        "last_error": "RuntimeError: Recovery blocked: arm is moving or E-stop is active",
+        "execution_offsets": null,
+        "coarse_xy_m": [
+          0.40085139414464804,
+          -0.13745321891750134
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.2,
+        "alignment_verified": true,
+        "alignment_fallback_used": false,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.008000000000000007,
+        "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290326869789359__release_before__WRIST_A.png",
+        "drop_evidence_photos": [
+          {
+            "label": "nominal_hover_100mm",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290271732063727__nominal_hover_100mm__WRIST_A.png",
+            "tcp_position_m": [
+              0.29330746960109216,
+              0.00925151376358626,
+              0.6255360912694334
+            ],
+            "quaternion_wxyz": [
+              0.815354259768427,
+              0.0524202875419034,
+              0.07165654968554937,
+              0.5721143971433219
+            ],
+            "captured_at_utc": "2026-09-13T09:04:31.739352+00:00"
+          },
+          {
+            "label": "initial_40mm_below_hover",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290273555076991__initial_40mm_below_hover__WRIST_A.png",
+            "tcp_position_m": [
+              0.2930220605303008,
+              0.01015212699038568,
+              0.5882404274536785
+            ],
+            "quaternion_wxyz": [
+              0.8156883196447234,
+              0.05174547935684858,
+              0.07159959050942857,
+              0.5717066286131199
+            ],
+            "captured_at_utc": "2026-09-13T09:04:33.561023+00:00"
+          },
+          {
+            "label": "adjust_left_002",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290277529002064__adjust_left_002__WRIST_A.png",
+            "tcp_position_m": [
+              0.2927950239193727,
+              0.01786334099422717,
+              0.5872433561277635
+            ],
+            "quaternion_wxyz": [
+              0.8155637437002972,
+              0.05186456831962975,
+              0.07165461736298925,
+              0.5718666473271
+            ],
+            "captured_at_utc": "2026-09-13T09:04:37.535030+00:00"
+          },
+          {
+            "label": "adjust_forward_003",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290281935864854__adjust_forward_003__WRIST_A.png",
+            "tcp_position_m": [
+              0.3007200522911152,
+              0.018680925820581194,
+              0.5859242971808531
+            ],
+            "quaternion_wxyz": [
+              0.8157363063972037,
+              0.05204588937529977,
+              0.07142784270815175,
+              0.5716323705937595
+            ],
+            "captured_at_utc": "2026-09-13T09:04:41.942984+00:00"
+          },
+          {
+            "label": "adjust_down_004",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290285386522603__adjust_down_004__WRIST_A.png",
+            "tcp_position_m": [
+              0.3010888387320299,
+              0.01858790238526687,
+              0.5680874331447693
+            ],
+            "quaternion_wxyz": [
+              0.8156314691465801,
+              0.052056322504947655,
+              0.07158386380666523,
+              0.5717614854706118
+            ],
+            "captured_at_utc": "2026-09-13T09:04:45.393380+00:00"
+          },
+          {
+            "label": "adjust_down_005",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290288510321019__adjust_down_005__WRIST_A.png",
+            "tcp_position_m": [
+              0.30139490151873627,
+              0.018495857478945284,
+              0.5548937974404912
+            ],
+            "quaternion_wxyz": [
+              0.8157160446003334,
+              0.05179525585558218,
+              0.07133134834296176,
+              0.5716960947881461
+            ],
+            "captured_at_utc": "2026-09-13T09:04:48.516805+00:00"
+          },
+          {
+            "label": "adjust_up_006",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290295917019929__adjust_up_006__WRIST_A.png",
+            "tcp_position_m": [
+              0.3001422674547358,
+              0.01886243406010773,
+              0.572134290116024
+            ],
+            "quaternion_wxyz": [
+              0.8149851233310677,
+              0.052754451332629106,
+              0.07181489818958173,
+              0.5725895886336543
+            ],
+            "captured_at_utc": "2026-09-13T09:04:55.923038+00:00"
+          },
+          {
+            "label": "adjust_back_007",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290299569838115__adjust_back_007__WRIST_A.png",
+            "tcp_position_m": [
+              0.2944183599000031,
+              0.018767278171383336,
+              0.5741037580142542
+            ],
+            "quaternion_wxyz": [
+              0.8147418457868558,
+              0.05253719816721809,
+              0.07168744616243,
+              0.572971620235483
+            ],
+            "captured_at_utc": "2026-09-13T09:04:59.576420+00:00"
+          },
+          {
+            "label": "adjust_down_008",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290306381979130__adjust_down_008__WRIST_A.png",
+            "tcp_position_m": [
+              0.2949723640672874,
+              0.01850109862444705,
+              0.5563382873522734
+            ],
+            "quaternion_wxyz": [
+              0.8156713321296375,
+              0.05188247447459355,
+              0.07159081361973253,
+              0.5717195485458939
+            ],
+            "captured_at_utc": "2026-09-13T09:05:06.388230+00:00"
+          },
+          {
+            "label": "adjust_forward_009",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290310418652010__adjust_forward_009__WRIST_A.png",
+            "tcp_position_m": [
+              0.3004737293127336,
+              0.018445121546998233,
+              0.5543528217630995
+            ],
+            "quaternion_wxyz": [
+              0.8157671511488453,
+              0.05200120385625142,
+              0.07177889686832997,
+              0.5715484405265782
+            ],
+            "captured_at_utc": "2026-09-13T09:05:10.424783+00:00"
+          },
+          {
+            "label": "adjust_down_010",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290315943718058__adjust_down_010__WRIST_A.png",
+            "tcp_position_m": [
+              0.301376257956872,
+              0.018830451127291162,
+              0.5473880793848931
+            ],
+            "quaternion_wxyz": [
+              0.815821486482757,
+              0.05239106628053953,
+              0.07135983882558167,
+              0.57148775294825
+            ],
+            "captured_at_utc": "2026-09-13T09:05:15.949871+00:00"
+          },
+          {
+            "label": "adjust_back_011",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290319214162141__adjust_back_011__WRIST_A.png",
+            "tcp_position_m": [
+              0.3007212991014785,
+              0.018597791087494042,
+              0.5464797505441721
+            ],
+            "quaternion_wxyz": [
+              0.815361598623692,
+              0.05213135268439886,
+              0.07165745262290946,
+              0.5721302255961552
+            ],
+            "captured_at_utc": "2026-09-13T09:05:19.220661+00:00"
+          },
+          {
+            "label": "adjust_back_012",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290321962454446__adjust_back_012__WRIST_A.png",
+            "tcp_position_m": [
+              0.29408042723023353,
+              0.018564916765160838,
+              0.5474526105821433
+            ],
+            "quaternion_wxyz": [
+              0.8145927007743166,
+              0.05213334873854832,
+              0.07215285009564393,
+              0.5731621166978723
+            ],
+            "captured_at_utc": "2026-09-13T09:05:21.968480+00:00"
+          },
+          {
+            "label": "adjust_down_013",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290324719706168__adjust_down_013__WRIST_A.png",
+            "tcp_position_m": [
+              0.2953951656328763,
+              0.01816415076729337,
+              0.5404189339075678
+            ],
+            "quaternion_wxyz": [
+              0.8157993956763557,
+              0.051638984059943875,
+              0.07140746520731345,
+              0.571581783520098
+            ],
+            "captured_at_utc": "2026-09-13T09:05:24.726008+00:00"
+          },
+          {
+            "label": "release_before",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290326869789359__release_before__WRIST_A.png",
+            "tcp_position_m": [
+              0.294534950564949,
+              0.01863024290864391,
+              0.539775987823232
+            ],
+            "quaternion_wxyz": [
+              0.8153672335643777,
+              0.052156785222444685,
+              0.07165404697956622,
+              0.5721203035518696
+            ],
+            "captured_at_utc": "2026-09-13T09:05:26.876446+00:00"
+          },
+          {
+            "label": "release_after",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290328010414312__release_after__WRIST_A.png",
+            "tcp_position_m": [
+              0.2935915471588883,
+              0.018585132457733536,
+              0.5396593053303612
+            ],
+            "quaternion_wxyz": [
+              0.8149552721645522,
+              0.05247960722950087,
+              0.07239293254096689,
+              0.572584542678509
+            ],
+            "captured_at_utc": "2026-09-13T09:05:28.017090+00:00"
+          },
+          {
+            "label": "retreat_after_release",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290331644495173__retreat_after_release__WRIST_A.png",
+            "tcp_position_m": [
+              0.2942207958640116,
+              0.018975591847355908,
+              0.6227247748658905
+            ],
+            "quaternion_wxyz": [
+              0.8149418142465868,
+              0.052529113870945,
+              0.0714044976176987,
+              0.5727232571743343
+            ],
+            "captured_at_utc": "2026-09-13T09:05:31.651031+00:00"
+          }
+        ],
+        "board_scene_paths": [
+          "board_1789290250700355375.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T09:05:36.002482+00:00"
+      },
+      "localize": {
+        "schema_version": 1,
+        "status": "profile_saved",
+        "part": "rod_16mm",
+        "action": "localize",
+        "holding_may_be_true": false,
+        "pickup_completed": true,
+        "recovery_state_verified": false,
+        "recovery_release_attempted": false,
+        "recovery_blocked": false,
+        "motion_faulted": false,
+        "cleanup_error": null,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.4280384497358539,
+            -0.05613062534484832
+          ],
+          "board_x_unit_base_xy": [
+            0.020400941312644676,
+            -0.9997918791396329
+          ],
+          "board_y_unit_base_xy": [
+            -0.999791879139633,
+            -0.020400941312644676
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.01161574775504007,
+              -0.018722083782023672
+            ],
+            "rotation_deg": 0.5437706780745811,
+            "fit_residual_m": 0.008714530481274333,
+            "edge_scale": [
+              1.0353344730437717,
+              1.0259651970489077,
+              1.0303656699297865,
+              1.030332107717618
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T08:48:04.814202+00:00"
+          },
+          "captured_at_utc": "2026-09-13T08:52:07.782071+00:00"
+        },
+        "last_error": null,
+        "execution_offsets": null,
+        "coarse_xy_m": [
+          0.3987114850674821,
+          -0.13555039891414472
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.07999850462498129,
+        "alignment_verified": true,
+        "alignment_fallback_used": false,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.008000000000000007,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [],
+        "board_scene_paths": [
+          "board_1789289286583429322.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T08:52:07.782577+00:00"
+      },
+      "pick": {
+        "schema_version": 1,
+        "status": "pick_complete_returned",
+        "part": "rod_16mm",
+        "action": "pick",
+        "holding_may_be_true": false,
+        "pickup_completed": true,
+        "recovery_state_verified": false,
+        "recovery_release_attempted": false,
+        "recovery_blocked": false,
+        "motion_faulted": false,
+        "cleanup_error": null,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.4277874209584515,
+            -0.059525322349680665
+          ],
+          "board_x_unit_base_xy": [
+            -0.008701751844930012,
+            -0.9999621390406884
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999621390406888,
+            0.008701751844930031
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.011866776532442504,
+              -0.022116780786856017
+            ],
+            "rotation_deg": -1.123778201304818,
+            "fit_residual_m": 0.008861230077629456,
+            "edge_scale": [
+              1.028734560719639,
+              1.026206175471939,
+              1.034003121174991,
+              1.0381975444466847
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T08:46:51.696674+00:00"
+          },
+          "captured_at_utc": "2026-09-13T08:47:28.189512+00:00"
+        },
+        "last_error": null,
+        "execution_offsets": {
+          "schema_version": 1,
+          "pickup": {
+            "forward_mm": 0,
+            "right_mm": 0,
+            "down_mm": 0
+          },
+          "placement": {
+            "forward_mm": 0,
+            "right_mm": 0,
+            "down_mm": 0
+          }
+        },
+        "coarse_xy_m": [
+          0.45072051297340093,
+          -0.12964668168666763
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.2,
+        "alignment_verified": true,
+        "alignment_fallback_used": true,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.008000000000000007,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [],
+        "board_scene_paths": [
+          "board_1789289213506282252.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T08:47:28.190041+00:00"
+      },
+      "pick_place": {
+        "schema_version": 1,
+        "status": "failed",
+        "part": "rod_16mm",
+        "action": "pick_place",
+        "holding_may_be_true": false,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.45908826034779193,
+            -0.034753789791719565
+          ],
+          "board_x_unit_base_xy": [
+            -0.011007093393742406,
+            -0.9999394201125499
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999394201125495,
+            0.011007093393742406
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              0.019434062856897895,
+              0.0026547517711050877
+            ],
+            "rotation_deg": -1.2558709855461385,
+            "fit_residual_m": 0.00462380329265371,
+            "edge_scale": [
+              1.017059982097458,
+              1.0078545829629757,
+              1.0246761530384507,
+              1.0080038872165167
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T07:45:13.387396+00:00"
+          },
+          "captured_at_utc": "2026-09-13T07:45:48.265529+00:00"
+        },
+        "last_error": "RuntimeError: Not centered after 12 corrections: 12.8 px",
+        "execution_offsets": {
+          "schema_version": 1,
+          "pickup": {
+            "forward_mm": 0,
+            "right_mm": 0,
+            "down_mm": 0
+          },
+          "placement": {
+            "forward_mm": 0,
+            "right_mm": 0,
+            "down_mm": 0
+          }
+        },
+        "coarse_xy_m": [
+          0.48185962999134085,
+          -0.10492783391908797
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.2,
+        "alignment_verified": false,
+        "alignment_fallback_used": false,
+        "grasp_verified": false,
+        "grasp_clearance_m": null,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [],
+        "board_scene_paths": [
+          "board_1789285515781659364.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T07:45:48.266074+00:00"
+      },
+      "None": {
+        "schema_version": 1,
+        "status": "profile_saved",
+        "part": "rod_16mm",
+        "action": null,
+        "holding_may_be_true": false,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.4589013934784189,
+            -0.034270387293792996
+          ],
+          "board_x_unit_base_xy": [
+            -0.01768543387322139,
+            -0.9998436004839536
+          ],
+          "board_y_unit_base_xy": [
+            -0.9998436004839534,
+            0.017685433873221384
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              0.019247195987524876,
+              0.003138154269031658
+            ],
+            "rotation_deg": -1.6385518036449622,
+            "fit_residual_m": 0.006623351320126932,
+            "edge_scale": [
+              1.0259143472845478,
+              1.0363768594675715,
+              1.0174393839038847,
+              1.0106298907489422
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T07:01:49.656166+00:00"
+          },
+          "captured_at_utc": "2026-09-13T07:04:26.098463+00:00"
+        },
+        "last_error": null,
+        "execution_offsets": null,
+        "coarse_xy_m": [
+          0.48079418939638885,
+          -0.10590671896794693
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.12000427250005338,
+        "alignment_verified": true,
+        "alignment_fallback_used": true,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.008000000000000007,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [],
+        "board_scene_paths": [
+          "board_1789282911959630120.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T07:04:26.098922+00:00"
+      }
+    },
+    "bolt_8mm": {
+      "drop_calibrate": {
+        "schema_version": 1,
+        "status": "failed",
+        "part": "bolt_8mm",
+        "action": "drop_calibrate",
+        "holding_may_be_true": false,
+        "pickup_completed": true,
+        "recovery_state_verified": false,
+        "recovery_release_attempted": false,
+        "recovery_blocked": false,
+        "motion_faulted": false,
+        "cleanup_error": null,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.43049746128716887,
+            -0.06768942948926024
+          ],
+          "board_x_unit_base_xy": [
+            0.007047642166100013,
+            -0.9999751650615618
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999751650615617,
+            -0.007047642166100002
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.009156736203725166,
+              -0.030280887926435584
+            ],
+            "rotation_deg": -0.22139475951275722,
+            "fit_residual_m": 0.008792066532981238,
+            "edge_scale": [
+              1.0261534499899965,
+              1.0296217229999842,
+              1.0316255060255968,
+              1.0370566619565165
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T09:00:26.040814+00:00"
+          },
+          "captured_at_utc": "2026-09-13T09:02:36.542287+00:00"
+        },
+        "last_error": "RuntimeError: Recovery blocked: arm is moving or E-stop is active",
+        "execution_offsets": null,
+        "coarse_xy_m": [
+          0.45877766522868346,
+          -0.18001083671091728
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.2,
+        "alignment_verified": true,
+        "alignment_fallback_used": false,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.015,
+        "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290148278300973__release_before__WRIST_A.png",
+        "drop_evidence_photos": [
+          {
+            "label": "nominal_hover_100mm",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290049365526009__nominal_hover_100mm__WRIST_A.png",
+            "tcp_position_m": [
+              0.365368269991881,
+              -0.014206729831509335,
+              0.6100337612975113
+            ],
+            "quaternion_wxyz": [
+              0.8170448517363789,
+              0.05280714075488442,
+              0.0714293480486729,
+              0.5696902354558254
+            ],
+            "captured_at_utc": "2026-09-13T09:00:49.373359+00:00"
+          },
+          {
+            "label": "initial_40mm_below_hover",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290051231446973__initial_40mm_below_hover__WRIST_A.png",
+            "tcp_position_m": [
+              0.3651410696053518,
+              -0.013137102820492352,
+              0.5728573819617411
+            ],
+            "quaternion_wxyz": [
+              0.817222920914794,
+              0.05217523445594109,
+              0.07131105428574079,
+              0.569507836625288
+            ],
+            "captured_at_utc": "2026-09-13T09:00:51.237560+00:00"
+          },
+          {
+            "label": "adjust_back_002",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290083951466259__adjust_back_002__WRIST_A.png",
+            "tcp_position_m": [
+              0.33607093927190784,
+              -0.013114306615397607,
+              0.57770712477132
+            ],
+            "quaternion_wxyz": [
+              0.8161308162848164,
+              0.0530475019586112,
+              0.07241705118473074,
+              0.5708521909776104
+            ],
+            "captured_at_utc": "2026-09-13T09:01:23.958494+00:00"
+          },
+          {
+            "label": "adjust_back_003",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290091244114622__adjust_back_003__WRIST_A.png",
+            "tcp_position_m": [
+              0.3277127021880831,
+              -0.01315112242302971,
+              0.5796867641593034
+            ],
+            "quaternion_wxyz": [
+              0.8161910490831982,
+              0.05293929795491396,
+              0.07231695969049254,
+              0.5707888046113319
+            ],
+            "captured_at_utc": "2026-09-13T09:01:31.251692+00:00"
+          },
+          {
+            "label": "adjust_down_004",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290095535596549__adjust_down_004__WRIST_A.png",
+            "tcp_position_m": [
+              0.3284637847445949,
+              -0.012938092320898327,
+              0.5623523381833756
+            ],
+            "quaternion_wxyz": [
+              0.8170018599590811,
+              0.052419382381119255,
+              0.07163919169016002,
+              0.5697613495036011
+            ],
+            "captured_at_utc": "2026-09-13T09:01:35.542381+00:00"
+          },
+          {
+            "label": "adjust_forward_005",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290101340351046__adjust_forward_005__WRIST_A.png",
+            "tcp_position_m": [
+              0.33430740899048816,
+              -0.01326098630921805,
+              0.560195762663857
+            ],
+            "quaternion_wxyz": [
+              0.8171236681848327,
+              0.052215356324927256,
+              0.07179874842080153,
+              0.5695852940352573
+            ],
+            "captured_at_utc": "2026-09-13T09:01:41.347370+00:00"
+          },
+          {
+            "label": "adjust_down_006",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290106966006977__adjust_down_006__WRIST_A.png",
+            "tcp_position_m": [
+              0.33490094731064923,
+              -0.013199354431596137,
+              0.5529068718429155
+            ],
+            "quaternion_wxyz": [
+              0.81706569076478,
+              0.05218948062323221,
+              0.07149110942837106,
+              0.5697095192815814
+            ],
+            "captured_at_utc": "2026-09-13T09:01:46.972673+00:00"
+          },
+          {
+            "label": "adjust_back_007",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290109975546847__adjust_back_007__WRIST_A.png",
+            "tcp_position_m": [
+              0.32753713656785544,
+              -0.013030095108706008,
+              0.5534519140551983
+            ],
+            "quaternion_wxyz": [
+              0.8163109574598709,
+              0.05303616948853664,
+              0.07233750481912786,
+              0.5706057052409085
+            ],
+            "captured_at_utc": "2026-09-13T09:01:49.982289+00:00"
+          },
+          {
+            "label": "adjust_up_008",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290117042232243__adjust_up_008__WRIST_A.png",
+            "tcp_position_m": [
+              0.3279159783908123,
+              -0.012616936123640295,
+              0.5712254415830771
+            ],
+            "quaternion_wxyz": [
+              0.8165168540985821,
+              0.052969001249819944,
+              0.07141570000116132,
+              0.5704334401776388
+            ],
+            "captured_at_utc": "2026-09-13T09:01:57.048729+00:00"
+          },
+          {
+            "label": "adjust_back_009",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290124285356793__adjust_back_009__WRIST_A.png",
+            "tcp_position_m": [
+              0.2996021447714296,
+              -0.013313008173131018,
+              0.5775459367136127
+            ],
+            "quaternion_wxyz": [
+              0.8155584265113713,
+              0.053060357805526794,
+              0.07250724187520137,
+              0.5716570223932322
+            ],
+            "captured_at_utc": "2026-09-13T09:02:04.291530+00:00"
+          },
+          {
+            "label": "adjust_forward_010",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290130529512900__adjust_forward_010__WRIST_A.png",
+            "tcp_position_m": [
+              0.3285510773692803,
+              -0.01264503872079805,
+              0.5721523539469857
+            ],
+            "quaternion_wxyz": [
+              0.8171821464337768,
+              0.05222225579237774,
+              0.07078764594052395,
+              0.5696273209143325
+            ],
+            "captured_at_utc": "2026-09-13T09:02:10.535471+00:00"
+          },
+          {
+            "label": "adjust_forward_011",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290134002848493__adjust_forward_011__WRIST_A.png",
+            "tcp_position_m": [
+              0.3365119568790471,
+              -0.012822734960433735,
+              0.5702597915467015
+            ],
+            "quaternion_wxyz": [
+              0.8169538808045566,
+              0.052399598168107,
+              0.0713294408588499,
+              0.5698708183588267
+            ],
+            "captured_at_utc": "2026-09-13T09:02:14.009920+00:00"
+          },
+          {
+            "label": "adjust_down_012",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290137980447673__adjust_down_012__WRIST_A.png",
+            "tcp_position_m": [
+              0.33684490900251335,
+              -0.012950679631064693,
+              0.5526918144436934
+            ],
+            "quaternion_wxyz": [
+              0.816641438305944,
+              0.05215482479806342,
+              0.07154216506573095,
+              0.5703142590796676
+            ],
+            "captured_at_utc": "2026-09-13T09:02:17.987675+00:00"
+          },
+          {
+            "label": "adjust_back_013",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290141876047888__adjust_back_013__WRIST_A.png",
+            "tcp_position_m": [
+              0.3308327493607832,
+              -0.013175996426167187,
+              0.5526000086109806
+            ],
+            "quaternion_wxyz": [
+              0.8161796305406269,
+              0.05278913825516902,
+              0.07225484133643835,
+              0.5708269050038621
+            ],
+            "captured_at_utc": "2026-09-13T09:02:21.882291+00:00"
+          },
+          {
+            "label": "adjust_down_014",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290144905590596__adjust_down_014__WRIST_A.png",
+            "tcp_position_m": [
+              0.3318016545379996,
+              -0.013314928619648198,
+              0.54546360537575
+            ],
+            "quaternion_wxyz": [
+              0.816987701344447,
+              0.052050961596880545,
+              0.07161559366252704,
+              0.5698183921155237
+            ],
+            "captured_at_utc": "2026-09-13T09:02:24.911745+00:00"
+          },
+          {
+            "label": "release_before",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290148278300973__release_before__WRIST_A.png",
+            "tcp_position_m": [
+              0.33135063615415206,
+              -0.013078070223491937,
+              0.5448662086215535
+            ],
+            "quaternion_wxyz": [
+              0.8165900369100807,
+              0.05239953781974655,
+              0.07169592742558681,
+              0.5703461177618859
+            ],
+            "captured_at_utc": "2026-09-13T09:02:28.284392+00:00"
+          },
+          {
+            "label": "release_after",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290149347831925__release_after__WRIST_A.png",
+            "tcp_position_m": [
+              0.33134575906163855,
+              -0.01305229972661208,
+              0.5448471725095122
+            ],
+            "quaternion_wxyz": [
+              0.8165827018287626,
+              0.052400789858984866,
+              0.07166362649740249,
+              0.5703605639711018
+            ],
+            "captured_at_utc": "2026-09-13T09:02:29.355306+00:00"
+          },
+          {
+            "label": "retreat_after_release",
+            "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290152441449298__retreat_after_release__WRIST_A.png",
+            "tcp_position_m": [
+              0.3308324697562396,
+              -0.012765742652008298,
+              0.6148767335507331
+            ],
+            "quaternion_wxyz": [
+              0.8161351435389121,
+              0.05276542831196593,
+              0.07166129007635048,
+              0.5709675091985247
+            ],
+            "captured_at_utc": "2026-09-13T09:02:32.448356+00:00"
+          }
+        ],
+        "board_scene_paths": [
+          "board_1789290027838040252.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T09:02:36.542791+00:00"
+      },
+      "localize": {
+        "schema_version": 1,
+        "status": "profile_saved",
+        "part": "bolt_8mm",
+        "action": "localize",
+        "holding_may_be_true": false,
+        "pickup_completed": true,
+        "recovery_state_verified": false,
+        "recovery_release_attempted": false,
+        "recovery_blocked": false,
+        "motion_faulted": false,
+        "cleanup_error": null,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.42976948903943085,
+            -0.06757907853491807
+          ],
+          "board_x_unit_base_xy": [
+            0.006077330524842695,
+            -0.999981532856328
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999815328563283,
+            -0.006077330524842682
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              -0.00988470845146317,
+              -0.030170536972093424
+            ],
+            "rotation_deg": -0.2769907207175698,
+            "fit_residual_m": 0.009177259159036935,
+            "edge_scale": [
+              1.037029344508268,
+              1.0279006464526455,
+              1.0318487757641055,
+              1.031939864318928
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T08:56:38.129555+00:00"
+          },
+          "captured_at_utc": "2026-09-13T09:00:07.772914+00:00"
+        },
+        "last_error": null,
+        "execution_offsets": null,
+        "coarse_xy_m": [
+          0.5150777082663546,
+          -0.1884726513655398
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.1,
+        "alignment_verified": true,
+        "alignment_fallback_used": false,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.015,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [],
+        "board_scene_paths": [
+          "board_1789289799901974769.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T09:00:07.773417+00:00"
+      },
+      "pick": {
+        "schema_version": 1,
+        "status": "failed",
+        "part": "bolt_8mm",
+        "action": "pick",
+        "holding_may_be_true": false,
+        "automatic_continuation_safe": false,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.45990413432356214,
+            -0.03451710208303651
+          ],
+          "board_x_unit_base_xy": [
+            -0.006343803936910526,
+            -0.9999798778733548
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999798778733548,
+            0.006343803936910522
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "fresh",
+            "source": "differential_four_corner_386mm",
+            "translation_m": [
+              0.020249936832668115,
+              0.0028914394797881424
+            ],
+            "rotation_deg": -0.9886738835801713,
+            "fit_residual_m": 0.005154395736100841,
+            "edge_scale": [
+              1.0201171398620987,
+              1.023637192499335,
+              1.0118481718842267,
+              1.0152540709748423
+            ],
+            "metric_scale": 0.9611882628747844,
+            "captured_at_utc": "2026-09-13T07:13:23.191522+00:00"
+          },
+          "captured_at_utc": "2026-09-13T07:13:40.632881+00:00"
+        },
+        "last_error": "ServoWaypointError: TCP missed servo waypoint by >8 mm (probe_y: 9.94 mm after read-only settling); centering stopped at the measured pose",
+        "execution_offsets": {
+          "schema_version": 1,
+          "pickup": {
+            "forward_mm": 0,
+            "right_mm": 0,
+            "down_mm": 0
+          },
+          "placement": {
+            "forward_mm": 0,
+            "right_mm": 0,
+            "down_mm": 0
+          }
+        },
+        "coarse_xy_m": [
+          0.5437041663020831,
+          -0.1564609533418047
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.2,
+        "alignment_verified": false,
+        "alignment_fallback_used": false,
+        "grasp_verified": false,
+        "grasp_clearance_m": null,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [],
+        "board_scene_paths": [
+          "board_1789283605406024014.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T07:13:40.633425+00:00"
+      },
+      "None": {
+        "schema_version": 1,
+        "status": "profile_saved",
+        "part": "bolt_8mm",
+        "action": null,
+        "holding_may_be_true": false,
+        "last_error": null,
+        "coarse_xy_m": [
+          0.525545865453352,
+          -0.15788828921382442
+        ],
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": 0.1,
+        "alignment_verified": true,
+        "alignment_fallback_used": true,
+        "grasp_verified": true,
+        "grasp_clearance_m": 0.010000000000000009,
+        "drop_release_photo": null,
+        "board_scene_paths": [
+          "board_1789238017261066036.json"
+        ],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-12T18:35:32.326262+00:00"
+      }
+    },
     "battery_size1": {
       "pick_place": {
         "schema_version": 1,
@@ -3267,1364 +4611,6 @@
         "calibration_path": "calibration/vega_board_manual.json",
         "profiles_path": "calibration/wrist_part_profiles.json",
         "created_at_utc": "2026-09-13T05:59:59.936964+00:00"
-      }
-    },
-    "rod_16mm": {
-      "localize": {
-        "schema_version": 1,
-        "status": "profile_saved",
-        "part": "rod_16mm",
-        "action": "localize",
-        "holding_may_be_true": false,
-        "pickup_completed": true,
-        "recovery_state_verified": false,
-        "recovery_release_attempted": false,
-        "recovery_blocked": false,
-        "motion_faulted": false,
-        "cleanup_error": null,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.4280384497358539,
-            -0.05613062534484832
-          ],
-          "board_x_unit_base_xy": [
-            0.020400941312644676,
-            -0.9997918791396329
-          ],
-          "board_y_unit_base_xy": [
-            -0.999791879139633,
-            -0.020400941312644676
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              -0.01161574775504007,
-              -0.018722083782023672
-            ],
-            "rotation_deg": 0.5437706780745811,
-            "fit_residual_m": 0.008714530481274333,
-            "edge_scale": [
-              1.0353344730437717,
-              1.0259651970489077,
-              1.0303656699297865,
-              1.030332107717618
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T08:48:04.814202+00:00"
-          },
-          "captured_at_utc": "2026-09-13T08:52:07.782071+00:00"
-        },
-        "last_error": null,
-        "execution_offsets": null,
-        "coarse_xy_m": [
-          0.3987114850674821,
-          -0.13555039891414472
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.07999850462498129,
-        "alignment_verified": true,
-        "alignment_fallback_used": false,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.008000000000000007,
-        "drop_release_photo": null,
-        "drop_evidence_photos": [],
-        "board_scene_paths": [
-          "board_1789289286583429322.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T08:52:07.782577+00:00"
-      },
-      "pick": {
-        "schema_version": 1,
-        "status": "pick_complete_returned",
-        "part": "rod_16mm",
-        "action": "pick",
-        "holding_may_be_true": false,
-        "pickup_completed": true,
-        "recovery_state_verified": false,
-        "recovery_release_attempted": false,
-        "recovery_blocked": false,
-        "motion_faulted": false,
-        "cleanup_error": null,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.4277874209584515,
-            -0.059525322349680665
-          ],
-          "board_x_unit_base_xy": [
-            -0.008701751844930012,
-            -0.9999621390406884
-          ],
-          "board_y_unit_base_xy": [
-            -0.9999621390406888,
-            0.008701751844930031
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              -0.011866776532442504,
-              -0.022116780786856017
-            ],
-            "rotation_deg": -1.123778201304818,
-            "fit_residual_m": 0.008861230077629456,
-            "edge_scale": [
-              1.028734560719639,
-              1.026206175471939,
-              1.034003121174991,
-              1.0381975444466847
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T08:46:51.696674+00:00"
-          },
-          "captured_at_utc": "2026-09-13T08:47:28.189512+00:00"
-        },
-        "last_error": null,
-        "execution_offsets": {
-          "schema_version": 1,
-          "pickup": {
-            "forward_mm": 0,
-            "right_mm": 0,
-            "down_mm": 0
-          },
-          "placement": {
-            "forward_mm": 0,
-            "right_mm": 0,
-            "down_mm": 0
-          }
-        },
-        "coarse_xy_m": [
-          0.45072051297340093,
-          -0.12964668168666763
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.2,
-        "alignment_verified": true,
-        "alignment_fallback_used": true,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.008000000000000007,
-        "drop_release_photo": null,
-        "drop_evidence_photos": [],
-        "board_scene_paths": [
-          "board_1789289213506282252.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T08:47:28.190041+00:00"
-      },
-      "pick_place": {
-        "schema_version": 1,
-        "status": "failed",
-        "part": "rod_16mm",
-        "action": "pick_place",
-        "holding_may_be_true": false,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.45908826034779193,
-            -0.034753789791719565
-          ],
-          "board_x_unit_base_xy": [
-            -0.011007093393742406,
-            -0.9999394201125499
-          ],
-          "board_y_unit_base_xy": [
-            -0.9999394201125495,
-            0.011007093393742406
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              0.019434062856897895,
-              0.0026547517711050877
-            ],
-            "rotation_deg": -1.2558709855461385,
-            "fit_residual_m": 0.00462380329265371,
-            "edge_scale": [
-              1.017059982097458,
-              1.0078545829629757,
-              1.0246761530384507,
-              1.0080038872165167
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T07:45:13.387396+00:00"
-          },
-          "captured_at_utc": "2026-09-13T07:45:48.265529+00:00"
-        },
-        "last_error": "RuntimeError: Not centered after 12 corrections: 12.8 px",
-        "execution_offsets": {
-          "schema_version": 1,
-          "pickup": {
-            "forward_mm": 0,
-            "right_mm": 0,
-            "down_mm": 0
-          },
-          "placement": {
-            "forward_mm": 0,
-            "right_mm": 0,
-            "down_mm": 0
-          }
-        },
-        "coarse_xy_m": [
-          0.48185962999134085,
-          -0.10492783391908797
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.2,
-        "alignment_verified": false,
-        "alignment_fallback_used": false,
-        "grasp_verified": false,
-        "grasp_clearance_m": null,
-        "drop_release_photo": null,
-        "drop_evidence_photos": [],
-        "board_scene_paths": [
-          "board_1789285515781659364.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T07:45:48.266074+00:00"
-      },
-      "drop_calibrate": {
-        "schema_version": 1,
-        "status": "drop_profile_saved",
-        "part": "rod_16mm",
-        "action": "drop_calibrate",
-        "holding_may_be_true": false,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.45992431315527493,
-            -0.033739564136989635
-          ],
-          "board_x_unit_base_xy": [
-            -0.012089059384789864,
-            -0.9999269246515924
-          ],
-          "board_y_unit_base_xy": [
-            -0.9999269246515926,
-            0.012089059384789866
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              0.020270115664380917,
-              0.0036689774258350178
-            ],
-            "rotation_deg": -1.3178672074212798,
-            "fit_residual_m": 0.005726317351174955,
-            "edge_scale": [
-              1.0205084330168204,
-              1.0313972659224253,
-              1.0108970035408043,
-              1.0122249072344076
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T07:04:34.957691+00:00"
-          },
-          "captured_at_utc": "2026-09-13T07:08:12.006612+00:00"
-        },
-        "last_error": null,
-        "execution_offsets": null,
-        "coarse_xy_m": [
-          0.42803279724821214,
-          -0.11216470362432368
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.2,
-        "alignment_verified": true,
-        "alignment_fallback_used": false,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.008000000000000007,
-        "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283281051505583__release_before__WRIST_A.png",
-        "drop_evidence_photos": [
-          {
-            "label": "nominal_hover_100mm",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283102668233150__nominal_hover_100mm__WRIST_A.png",
-            "tcp_position_m": [
-              0.3608595436820953,
-              0.05417731301591422,
-              0.611127496932386
-            ],
-            "quaternion_wxyz": [
-              0.8224709974623932,
-              0.053408002290300315,
-              0.07070081548172466,
-              0.5618633626735192
-            ],
-            "captured_at_utc": "2026-09-13T07:05:02.674633+00:00"
-          },
-          {
-            "label": "initial_40mm_below_hover",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283105292945443__initial_40mm_below_hover__WRIST_A.png",
-            "tcp_position_m": [
-              0.3605657355854187,
-              0.055717655295026855,
-              0.5736118443394249
-            ],
-            "quaternion_wxyz": [
-              0.8227918021919639,
-              0.05320761136763037,
-              0.07052610661738416,
-              0.5614344740249257
-            ],
-            "captured_at_utc": "2026-09-13T07:05:05.298761+00:00"
-          },
-          {
-            "label": "adjust_back_002",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283118469902702__adjust_back_002__WRIST_A.png",
-            "tcp_position_m": [
-              0.33136253551261446,
-              0.05547069265405075,
-              0.578777961323518
-            ],
-            "quaternion_wxyz": [
-              0.8218398643923353,
-              0.05349039235125028,
-              0.07151553951986488,
-              0.5626753440740764
-            ],
-            "captured_at_utc": "2026-09-13T07:05:18.477216+00:00"
-          },
-          {
-            "label": "adjust_right_003",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283125381577307__adjust_right_003__WRIST_A.png",
-            "tcp_position_m": [
-              0.3310736957953889,
-              0.03986500777914415,
-              0.5790905965262085
-            ],
-            "quaternion_wxyz": [
-              0.8219329083207543,
-              0.05342206417899049,
-              0.07135726367986119,
-              0.5625660123028811
-            ],
-            "captured_at_utc": "2026-09-13T07:05:25.387832+00:00"
-          },
-          {
-            "label": "adjust_left_004",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283131913640364__adjust_left_004__WRIST_A.png",
-            "tcp_position_m": [
-              0.33198087619651784,
-              0.04557763147602656,
-              0.5790827239190153
-            ],
-            "quaternion_wxyz": [
-              0.822436105437752,
-              0.05330789947472936,
-              0.07070002097510864,
-              0.5619240405607279
-            ],
-            "captured_at_utc": "2026-09-13T07:05:31.919664+00:00"
-          },
-          {
-            "label": "adjust_left_005",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283140081879752__adjust_left_005__WRIST_A.png",
-            "tcp_position_m": [
-              0.3322318030352153,
-              0.05877740020713771,
-              0.578998816429795
-            ],
-            "quaternion_wxyz": [
-              0.8225650362586029,
-              0.053346849235150276,
-              0.07043480806772315,
-              0.5617649086709036
-            ],
-            "captured_at_utc": "2026-09-13T07:05:40.088744+00:00"
-          },
-          {
-            "label": "adjust_right_006",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283146633554421__adjust_right_006__WRIST_A.png",
-            "tcp_position_m": [
-              0.3315908920945475,
-              0.0590216416009824,
-              0.5791037375055603
-            ],
-            "quaternion_wxyz": [
-              0.8222162400690393,
-              0.05341972854344226,
-              0.07094773327433976,
-              0.5622038832241469
-            ],
-            "captured_at_utc": "2026-09-13T07:05:46.640812+00:00"
-          },
-          {
-            "label": "adjust_right_007",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283153540480717__adjust_right_007__WRIST_A.png",
-            "tcp_position_m": [
-              0.3306958819161972,
-              0.0532498208655602,
-              0.5791190136644793
-            ],
-            "quaternion_wxyz": [
-              0.8218638590961376,
-              0.053924964697730476,
-              0.0715231794751987,
-              0.5625978404612937
-            ],
-            "captured_at_utc": "2026-09-13T07:05:53.549670+00:00"
-          },
-          {
-            "label": "adjust_right_008",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283160169782837__adjust_right_008__WRIST_A.png",
-            "tcp_position_m": [
-              0.3310847669463704,
-              0.04705595079746527,
-              0.5791801587398966
-            ],
-            "quaternion_wxyz": [
-              0.8219378988253243,
-              0.053533531375733225,
-              0.0711170054848123,
-              0.5625785483147467
-            ],
-            "captured_at_utc": "2026-09-13T07:06:00.176449+00:00"
-          },
-          {
-            "label": "adjust_back_009",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283198034271070__adjust_back_009__WRIST_A.png",
-            "tcp_position_m": [
-              0.31334779633427207,
-              0.046383533327784734,
-              0.5827919633311999
-            ],
-            "quaternion_wxyz": [
-              0.8215506998625371,
-              0.053354677094232014,
-              0.07132639655333847,
-              0.563134327796008
-            ],
-            "captured_at_utc": "2026-09-13T07:06:38.040910+00:00"
-          },
-          {
-            "label": "adjust_forward_010",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283204599158074__adjust_forward_010__WRIST_A.png",
-            "tcp_position_m": [
-              0.32218970640742933,
-              0.04672358587949856,
-              0.5812115137439586
-            ],
-            "quaternion_wxyz": [
-              0.822441042467918,
-              0.05316814417482214,
-              0.07064264999647944,
-              0.5619372706190295
-            ],
-            "captured_at_utc": "2026-09-13T07:06:44.606465+00:00"
-          },
-          {
-            "label": "adjust_back_011",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283216461770179__adjust_back_011__WRIST_A.png",
-            "tcp_position_m": [
-              0.31320768990733105,
-              0.04644741809462133,
-              0.5827642497821286
-            ],
-            "quaternion_wxyz": [
-              0.8216104130351969,
-              0.05348875081583495,
-              0.07140289513452117,
-              0.5630247856841681
-            ],
-            "captured_at_utc": "2026-09-13T07:06:56.468850+00:00"
-          },
-          {
-            "label": "adjust_forward_012",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283229117480640__adjust_forward_012__WRIST_A.png",
-            "tcp_position_m": [
-              0.3296373882105009,
-              0.04670120465296078,
-              0.5795265947506949
-            ],
-            "quaternion_wxyz": [
-              0.8223288344998884,
-              0.053246786362471016,
-              0.07079536667388196,
-              0.5620748026282939
-            ],
-            "captured_at_utc": "2026-09-13T07:07:09.123789+00:00"
-          },
-          {
-            "label": "adjust_down_013",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283235877389599__adjust_down_013__WRIST_A.png",
-            "tcp_position_m": [
-              0.33008294064162663,
-              0.04643544239767669,
-              0.5617808783671951
-            ],
-            "quaternion_wxyz": [
-              0.8223029407387036,
-              0.05305077201077185,
-              0.07097991739261134,
-              0.562107943875978
-            ],
-            "captured_at_utc": "2026-09-13T07:07:15.883776+00:00"
-          },
-          {
-            "label": "adjust_back_014",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283242462593338__adjust_back_014__WRIST_A.png",
-            "tcp_position_m": [
-              0.3231694521161867,
-              0.046382717111387535,
-              0.5624973304648127
-            ],
-            "quaternion_wxyz": [
-              0.8216492169204028,
-              0.05340656590331899,
-              0.0715088771230359,
-              0.5629625063404364
-            ],
-            "captured_at_utc": "2026-09-13T07:07:22.468693+00:00"
-          },
-          {
-            "label": "adjust_down_015",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283247831095997__adjust_down_015__WRIST_A.png",
-            "tcp_position_m": [
-              0.32389681891415445,
-              0.04644864253392037,
-              0.549892378143233
-            ],
-            "quaternion_wxyz": [
-              0.8222691418451007,
-              0.05300230332352958,
-              0.07096628315443178,
-              0.5621636780039845
-            ],
-            "captured_at_utc": "2026-09-13T07:07:27.837372+00:00"
-          },
-          {
-            "label": "adjust_forward_016",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283256737490495__adjust_forward_016__WRIST_A.png",
-            "tcp_position_m": [
-              0.3297113988202892,
-              0.0465899990860518,
-              0.5481003130969105
-            ],
-            "quaternion_wxyz": [
-              0.822355923253568,
-              0.05310214099927744,
-              0.07093914468986655,
-              0.5620307250157549
-            ],
-            "captured_at_utc": "2026-09-13T07:07:36.744160+00:00"
-          },
-          {
-            "label": "adjust_down_017",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283265574928961__adjust_down_017__WRIST_A.png",
-            "tcp_position_m": [
-              0.32989409111902174,
-              0.04673900185569532,
-              0.5405891755409342
-            ],
-            "quaternion_wxyz": [
-              0.8221530099203763,
-              0.05323498743228926,
-              0.0708928276118972,
-              0.5623207904614054
-            ],
-            "captured_at_utc": "2026-09-13T07:07:45.581302+00:00"
-          },
-          {
-            "label": "adjust_back_018",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283272656557983__adjust_back_018__WRIST_A.png",
-            "tcp_position_m": [
-              0.32329730529495804,
-              0.046442961614036146,
-              0.5412306909927935
-            ],
-            "quaternion_wxyz": [
-              0.821786578497767,
-              0.05336505598848455,
-              0.07142401698100541,
-              0.5627766875045346
-            ],
-            "captured_at_utc": "2026-09-13T07:07:52.664928+00:00"
-          },
-          {
-            "label": "adjust_down_019",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283278121927028__adjust_down_019__WRIST_A.png",
-            "tcp_position_m": [
-              0.3240451739808944,
-              0.04647992287015417,
-              0.5337303232914712
-            ],
-            "quaternion_wxyz": [
-              0.8221422039862187,
-              0.05279952006696165,
-              0.07072846552011766,
-              0.5623983386093445
-            ],
-            "captured_at_utc": "2026-09-13T07:07:58.127908+00:00"
-          },
-          {
-            "label": "release_before",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283281051505583__release_before__WRIST_A.png",
-            "tcp_position_m": [
-              0.32351944391088694,
-              0.046574283490292405,
-              0.5333681043559151
-            ],
-            "quaternion_wxyz": [
-              0.8219734280809049,
-              0.05318670937766112,
-              0.07105085316524803,
-              0.5625678925596375
-            ],
-            "captured_at_utc": "2026-09-13T07:08:01.060704+00:00"
-          },
-          {
-            "label": "release_after",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283283010349067__release_after__WRIST_A.png",
-            "tcp_position_m": [
-              0.3233025106761064,
-              0.046547130901923806,
-              0.5333478768516795
-            ],
-            "quaternion_wxyz": [
-              0.8219119083303028,
-              0.05325396764150462,
-              0.07122942732162021,
-              0.5626288284106239
-            ],
-            "captured_at_utc": "2026-09-13T07:08:03.016485+00:00"
-          },
-          {
-            "label": "retreat_after_release",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789283287941461761__retreat_after_release__WRIST_A.png",
-            "tcp_position_m": [
-              0.35921148723860163,
-              0.05604974132682306,
-              0.6091303063379245
-            ],
-            "quaternion_wxyz": [
-              0.8224741062161144,
-              0.05355338952609236,
-              0.07033423818948686,
-              0.5618909805403315
-            ],
-            "captured_at_utc": "2026-09-13T07:08:07.948932+00:00"
-          }
-        ],
-        "board_scene_paths": [
-          "board_1789283077420294182.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T07:08:12.007255+00:00"
-      },
-      "None": {
-        "schema_version": 1,
-        "status": "profile_saved",
-        "part": "rod_16mm",
-        "action": null,
-        "holding_may_be_true": false,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.4589013934784189,
-            -0.034270387293792996
-          ],
-          "board_x_unit_base_xy": [
-            -0.01768543387322139,
-            -0.9998436004839536
-          ],
-          "board_y_unit_base_xy": [
-            -0.9998436004839534,
-            0.017685433873221384
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              0.019247195987524876,
-              0.003138154269031658
-            ],
-            "rotation_deg": -1.6385518036449622,
-            "fit_residual_m": 0.006623351320126932,
-            "edge_scale": [
-              1.0259143472845478,
-              1.0363768594675715,
-              1.0174393839038847,
-              1.0106298907489422
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T07:01:49.656166+00:00"
-          },
-          "captured_at_utc": "2026-09-13T07:04:26.098463+00:00"
-        },
-        "last_error": null,
-        "execution_offsets": null,
-        "coarse_xy_m": [
-          0.48079418939638885,
-          -0.10590671896794693
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.12000427250005338,
-        "alignment_verified": true,
-        "alignment_fallback_used": true,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.008000000000000007,
-        "drop_release_photo": null,
-        "drop_evidence_photos": [],
-        "board_scene_paths": [
-          "board_1789282911959630120.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T07:04:26.098922+00:00"
-      }
-    },
-    "battery_size5": {
-      "pick_place": {
-        "schema_version": 1,
-        "status": "completed",
-        "part": "battery_size5",
-        "action": "pick_place",
-        "holding_may_be_true": false,
-        "pickup_completed": true,
-        "recovery_state_verified": false,
-        "recovery_release_attempted": false,
-        "recovery_blocked": false,
-        "motion_faulted": false,
-        "cleanup_error": null,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.427793995185152,
-            -0.059224102106332416
-          ],
-          "board_x_unit_base_xy": [
-            -0.00849618753019495,
-            -0.9999639067473647
-          ],
-          "board_y_unit_base_xy": [
-            -0.9999639067473648,
-            0.008496187530194944
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              -0.011860202305742047,
-              -0.02181556054350776
-            ],
-            "rotation_deg": -1.1119997981622154,
-            "fit_residual_m": 0.008857070785671587,
-            "edge_scale": [
-              1.0286948001153895,
-              1.0261131473327043,
-              1.0339606258747776,
-              1.0382555673525455
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T08:46:08.134281+00:00"
-          },
-          "captured_at_utc": "2026-09-13T08:46:46.113499+00:00"
-        },
-        "last_error": null,
-        "execution_offsets": {
-          "schema_version": 1,
-          "pickup": {
-            "forward_mm": 0,
-            "right_mm": 0,
-            "down_mm": 0
-          },
-          "placement": {
-            "forward_mm": 0,
-            "right_mm": 0,
-            "down_mm": 0
-          }
-        },
-        "coarse_xy_m": [
-          0.3616277554235953,
-          -0.17524756943119207
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.2,
-        "alignment_verified": true,
-        "alignment_fallback_used": true,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.0,
-        "drop_release_photo": null,
-        "drop_evidence_photos": [
-          {
-            "label": "competition_release_before",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789289200280182088__competition_release_before__WRIST_A.png",
-            "tcp_position_m": [
-              0.30191893975514267,
-              -0.14671309498639884,
-              0.5434323788630557
-            ],
-            "quaternion_wxyz": [
-              0.8221576793064906,
-              0.052520453242541426,
-              0.07119603712589086,
-              0.5623428461767187
-            ],
-            "captured_at_utc": "2026-09-13T08:46:40.290865+00:00"
-          },
-          {
-            "label": "competition_release_after",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789289201375277788__competition_release_after__WRIST_A.png",
-            "tcp_position_m": [
-              0.3014867741392444,
-              -0.14636059107526758,
-              0.5428825911335825
-            ],
-            "quaternion_wxyz": [
-              0.8218333406959198,
-              0.05294586703564393,
-              0.0712329777400023,
-              0.56277220806177
-            ],
-            "captured_at_utc": "2026-09-13T08:46:41.383106+00:00"
-          }
-        ],
-        "board_scene_paths": [
-          "board_1789289170281034182.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T08:46:46.114015+00:00"
-      },
-      "place_cv": {
-        "schema_version": 1,
-        "status": "ready",
-        "part": "battery_size5",
-        "action": "place_cv",
-        "holding_may_be_true": false,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.4832550295489735,
-            -0.0013886093902872806
-          ],
-          "board_x_unit_base_xy": [
-            0.027433069679143992,
-            -0.9996236425215141
-          ],
-          "board_y_unit_base_xy": [
-            -0.9996236425215141,
-            -0.02743306967914399
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              0.04360083205807948,
-              0.03601993217253737
-            ],
-            "rotation_deg": 0.946798073543922,
-            "fit_residual_m": 0.00352558649116474,
-            "edge_scale": [
-              1.0108777091406107,
-              0.9879706086346658,
-              1.01774022462125,
-              1.0003634388877076
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T08:11:19.711379+00:00"
-          },
-          "captured_at_utc": "2026-09-13T08:13:29.798949+00:00"
-        },
-        "last_error": null,
-        "execution_offsets": null,
-        "coarse_xy_m": [
-          0.3562995044567314,
-          -0.16549966400288074
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.2,
-        "alignment_verified": true,
-        "alignment_fallback_used": false,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.0,
-        "drop_release_photo": null,
-        "drop_evidence_photos": [
-          {
-            "label": "place_cv_reference",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287104637343237__place_cv_reference__WRIST_A.png",
-            "tcp_position_m": [
-              0.3600124829551715,
-              -0.09573338120476547,
-              0.6105396366417333
-            ],
-            "quaternion_wxyz": [
-              0.8114136920581184,
-              0.051570121079050846,
-              0.07248673001993274,
-              0.5776625458894857
-            ],
-            "captured_at_utc": "2026-09-13T08:11:44.644207+00:00"
-          },
-          {
-            "label": "place_cv_release_before",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287203649626490__place_cv_release_before__WRIST_A.png",
-            "tcp_position_m": [
-              0.36054259059785354,
-              -0.09534515916448127,
-              0.531076553235591
-            ],
-            "quaternion_wxyz": [
-              0.8118714943242594,
-              0.05116450543499211,
-              0.07227549156617757,
-              0.5770815569797343
-            ],
-            "captured_at_utc": "2026-09-13T08:13:23.656092+00:00"
-          },
-          {
-            "label": "place_cv_release_after",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287204742179663__place_cv_release_after__WRIST_A.png",
-            "tcp_position_m": [
-              0.3601758937818403,
-              -0.09488260703483833,
-              0.5304791716630779
-            ],
-            "quaternion_wxyz": [
-              0.8115392673810222,
-              0.051572139990025634,
-              0.07214657717240783,
-              0.5775285302717339
-            ],
-            "captured_at_utc": "2026-09-13T08:13:24.748774+00:00"
-          }
-        ],
-        "board_scene_paths": [
-          "board_1789287082129511645.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T08:13:29.799510+00:00"
-      },
-      "drop_calibrate": {
-        "schema_version": 1,
-        "status": "drop_profile_saved",
-        "part": "battery_size5",
-        "action": "drop_calibrate",
-        "holding_may_be_true": false,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.4753541237748952,
-            -0.0006332812800244406
-          ],
-          "board_x_unit_base_xy": [
-            0.006684131150470447,
-            -0.9999776609458653
-          ],
-          "board_y_unit_base_xy": [
-            -0.9999776609458653,
-            -0.006684131150470449
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              0.0356999262840012,
-              0.03677526028280021
-            ],
-            "rotation_deg": -0.24222289755870133,
-            "fit_residual_m": 0.003660844208619759,
-            "edge_scale": [
-              1.0171688761857895,
-              0.9956504897471442,
-              1.0180456775469737,
-              1.0000447930701748
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T08:09:07.576282+00:00"
-          },
-          "captured_at_utc": "2026-09-13T08:11:10.047322+00:00"
-        },
-        "last_error": null,
-        "execution_offsets": null,
-        "coarse_xy_m": [
-          0.3450204925326566,
-          -0.16207456523402644
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.2,
-        "alignment_verified": true,
-        "alignment_fallback_used": false,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.0,
-        "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287060433713691__release_before__WRIST_A.png",
-        "drop_evidence_photos": [
-          {
-            "label": "nominal_hover_100mm",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286971912833336__nominal_hover_100mm__WRIST_A.png",
-            "tcp_position_m": [
-              0.3498404058469779,
-              -0.07702820863282797,
-              0.6131252046202111
-            ],
-            "quaternion_wxyz": [
-              0.8170500702119711,
-              0.05285786181628628,
-              0.0716577432390015,
-              0.5696493632443708
-            ],
-            "captured_at_utc": "2026-09-13T08:09:31.919693+00:00"
-          },
-          {
-            "label": "initial_40mm_below_hover",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286974122480213__initial_40mm_below_hover__WRIST_A.png",
-            "tcp_position_m": [
-              0.3501448071915122,
-              -0.07542376169094855,
-              0.5756850847153892
-            ],
-            "quaternion_wxyz": [
-              0.8172546768649644,
-              0.05247446152651425,
-              0.07171374604984239,
-              0.569384196002439
-            ],
-            "captured_at_utc": "2026-09-13T08:09:34.129928+00:00"
-          },
-          {
-            "label": "adjust_back_002",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286986046239611__adjust_back_002__WRIST_A.png",
-            "tcp_position_m": [
-              0.32131223448098745,
-              -0.07535653551844745,
-              0.5807392885485994
-            ],
-            "quaternion_wxyz": [
-              0.8162485136203524,
-              0.0531189155830349,
-              0.07255143151639781,
-              0.5706601743636658
-            ],
-            "captured_at_utc": "2026-09-13T08:09:46.053664+00:00"
-          },
-          {
-            "label": "adjust_right_003",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286991964950308__adjust_right_003__WRIST_A.png",
-            "tcp_position_m": [
-              0.3213123090883803,
-              -0.08090264990942178,
-              0.5810415965658626
-            ],
-            "quaternion_wxyz": [
-              0.8165888360247358,
-              0.05293668655613182,
-              0.07205154066235642,
-              0.57025341347896
-            ],
-            "captured_at_utc": "2026-09-13T08:09:51.972107+00:00"
-          },
-          {
-            "label": "adjust_down_004",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789286998933212468__adjust_down_004__WRIST_A.png",
-            "tcp_position_m": [
-              0.3220254875334893,
-              -0.08143954473100198,
-              0.5634126869032293
-            ],
-            "quaternion_wxyz": [
-              0.8170867311033005,
-              0.05276250587615625,
-              0.07190568423745197,
-              0.5695743712658913
-            ],
-            "captured_at_utc": "2026-09-13T08:09:58.940819+00:00"
-          },
-          {
-            "label": "adjust_down_005",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287004836400246__adjust_down_005__WRIST_A.png",
-            "tcp_position_m": [
-              0.32221344512186834,
-              -0.08146198124193013,
-              0.545292265361586
-            ],
-            "quaternion_wxyz": [
-              0.8170598938336997,
-              0.052491651458138326,
-              0.0717884464033235,
-              0.569652679602807
-            ],
-            "captured_at_utc": "2026-09-13T08:10:04.843043+00:00"
-          },
-          {
-            "label": "adjust_forward_006",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287009850295668__adjust_forward_006__WRIST_A.png",
-            "tcp_position_m": [
-              0.3399396453253026,
-              -0.08119303286284715,
-              0.5409731679143286
-            ],
-            "quaternion_wxyz": [
-              0.8174248207625584,
-              0.052628608878665675,
-              0.07143044911177943,
-              0.5691612977605605
-            ],
-            "captured_at_utc": "2026-09-13T08:10:09.856901+00:00"
-          },
-          {
-            "label": "adjust_down_007",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287013909519787__adjust_down_007__WRIST_A.png",
-            "tcp_position_m": [
-              0.3402738817625963,
-              -0.08160733699381414,
-              0.5333934143371291
-            ],
-            "quaternion_wxyz": [
-              0.8173348776470482,
-              0.05230635843317103,
-              0.07174489054552294,
-              0.5692806103581578
-            ],
-            "captured_at_utc": "2026-09-13T08:10:13.915792+00:00"
-          },
-          {
-            "label": "adjust_back_008",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287018800788335__adjust_back_008__WRIST_A.png",
-            "tcp_position_m": [
-              0.3232154081921733,
-              -0.08153328143795739,
-              0.536062340841905
-            ],
-            "quaternion_wxyz": [
-              0.8165978396304046,
-              0.0529763077360338,
-              0.07269222407119928,
-              0.5701555223701648
-            ],
-            "captured_at_utc": "2026-09-13T08:10:18.807030+00:00"
-          },
-          {
-            "label": "adjust_up_009",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287032314057028__adjust_up_009__WRIST_A.png",
-            "tcp_position_m": [
-              0.3232118494500983,
-              -0.08165769696559344,
-              0.543891437520177
-            ],
-            "quaternion_wxyz": [
-              0.8169124475096761,
-              0.05279405875315776,
-              0.07228877457543204,
-              0.5697729140056598
-            ],
-            "captured_at_utc": "2026-09-13T08:10:32.320233+00:00"
-          },
-          {
-            "label": "adjust_forward_010",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287043482212937__adjust_forward_010__WRIST_A.png",
-            "tcp_position_m": [
-              0.3422918559532588,
-              -0.08130235009017403,
-              0.540684135568749
-            ],
-            "quaternion_wxyz": [
-              0.8179241322663036,
-              0.052344447920824336,
-              0.0709945987442965,
-              0.5685243526687441
-            ],
-            "captured_at_utc": "2026-09-13T08:10:43.488061+00:00"
-          },
-          {
-            "label": "adjust_forward_011",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287047739017711__adjust_forward_011__WRIST_A.png",
-            "tcp_position_m": [
-              0.3503678154416576,
-              -0.08159033297156496,
-              0.5386867526203432
-            ],
-            "quaternion_wxyz": [
-              0.817963636030083,
-              0.0523646159895984,
-              0.07139418603113099,
-              0.5684156114373178
-            ],
-            "captured_at_utc": "2026-09-13T08:10:47.745375+00:00"
-          },
-          {
-            "label": "adjust_right_012",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287052017713924__adjust_right_012__WRIST_A.png",
-            "tcp_position_m": [
-              0.3499192074736873,
-              -0.08871777300100389,
-              0.53875717992208
-            ],
-            "quaternion_wxyz": [
-              0.8172665155538077,
-              0.05282732394463816,
-              0.07154931251024811,
-              0.5693552601660028
-            ],
-            "captured_at_utc": "2026-09-13T08:10:52.024780+00:00"
-          },
-          {
-            "label": "adjust_down_013",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287056369372649__adjust_down_013__WRIST_A.png",
-            "tcp_position_m": [
-              0.35091476206328875,
-              -0.08989975197134253,
-              0.5311843295453509
-            ],
-            "quaternion_wxyz": [
-              0.8177538965733162,
-              0.051943685189709786,
-              0.07121770118569987,
-              0.5687780386459155
-            ],
-            "captured_at_utc": "2026-09-13T08:10:56.375944+00:00"
-          },
-          {
-            "label": "release_before",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287060433713691__release_before__WRIST_A.png",
-            "tcp_position_m": [
-              0.3503487339598915,
-              -0.08950602015743922,
-              0.5307743502850936
-            ],
-            "quaternion_wxyz": [
-              0.8173606994242942,
-              0.05237049784231026,
-              0.07150479758570745,
-              0.5692678472517168
-            ],
-            "captured_at_utc": "2026-09-13T08:11:00.440433+00:00"
-          },
-          {
-            "label": "release_after",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287061527001196__release_after__WRIST_A.png",
-            "tcp_position_m": [
-              0.35031386707457945,
-              -0.08958253516427644,
-              0.5307441502274673
-            ],
-            "quaternion_wxyz": [
-              0.8173401023103165,
-              0.05231981136608557,
-              0.07157710106836611,
-              0.5692929940695105
-            ],
-            "captured_at_utc": "2026-09-13T08:11:01.533089+00:00"
-          },
-          {
-            "label": "retreat_after_release",
-            "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789287065973897917__retreat_after_release__WRIST_A.png",
-            "tcp_position_m": [
-              0.34952113039815436,
-              -0.07523967347487506,
-              0.6108224020239859
-            ],
-            "quaternion_wxyz": [
-              0.8166060636120495,
-              0.052979395462188605,
-              0.0716701567055334,
-              0.5702728374789554
-            ],
-            "captured_at_utc": "2026-09-13T08:11:05.980174+00:00"
-          }
-        ],
-        "board_scene_paths": [
-          "board_1789286949893024892.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T08:11:10.047817+00:00"
-      },
-      "None": {
-        "schema_version": 1,
-        "status": "profile_saved",
-        "part": "battery_size5",
-        "action": null,
-        "holding_may_be_true": false,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.4605656809325069,
-            -0.034500506144004545
-          ],
-          "board_x_unit_base_xy": [
-            -0.010818357382231454,
-            -0.9999414798594719
-          ],
-          "board_y_unit_base_xy": [
-            -0.999941479859472,
-            0.010818357382231442
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              0.02091148344161289,
-              0.002908035418820106
-            ],
-            "rotation_deg": -1.245056564677617,
-            "fit_residual_m": 0.0051659712546362705,
-            "edge_scale": [
-              1.0190155832772565,
-              1.0112889928896003,
-              1.0262056410053744,
-              1.0115881791674854
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T08:00:08.125640+00:00"
-          },
-          "captured_at_utc": "2026-09-13T08:03:28.861722+00:00"
-        },
-        "last_error": null,
-        "execution_offsets": null,
-        "coarse_xy_m": [
-          0.3934754779111397,
-          -0.15425670469045577
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.1,
-        "alignment_verified": true,
-        "alignment_fallback_used": true,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.0,
-        "drop_release_photo": null,
-        "drop_evidence_photos": [],
-        "board_scene_paths": [
-          "board_1789286410053597187.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T08:03:28.862259+00:00"
       }
     },
     "usb_a": {
@@ -5643,110 +5629,6 @@
         "created_at_utc": "2026-09-13T07:13:17.741711+00:00"
       }
     },
-    "bolt_8mm": {
-      "pick": {
-        "schema_version": 1,
-        "status": "failed",
-        "part": "bolt_8mm",
-        "action": "pick",
-        "holding_may_be_true": false,
-        "automatic_continuation_safe": false,
-        "board_reference": {
-          "center_base_xy_m": [
-            0.45990413432356214,
-            -0.03451710208303651
-          ],
-          "board_x_unit_base_xy": [
-            -0.006343803936910526,
-            -0.9999798778733548
-          ],
-          "board_y_unit_base_xy": [
-            -0.9999798778733548,
-            0.006343803936910522
-          ],
-          "board_size_m": 0.386,
-          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
-          "registration": {
-            "status": "fresh",
-            "source": "differential_four_corner_386mm",
-            "translation_m": [
-              0.020249936832668115,
-              0.0028914394797881424
-            ],
-            "rotation_deg": -0.9886738835801713,
-            "fit_residual_m": 0.005154395736100841,
-            "edge_scale": [
-              1.0201171398620987,
-              1.023637192499335,
-              1.0118481718842267,
-              1.0152540709748423
-            ],
-            "metric_scale": 0.9611882628747844,
-            "captured_at_utc": "2026-09-13T07:13:23.191522+00:00"
-          },
-          "captured_at_utc": "2026-09-13T07:13:40.632881+00:00"
-        },
-        "last_error": "ServoWaypointError: TCP missed servo waypoint by >8 mm (probe_y: 9.94 mm after read-only settling); centering stopped at the measured pose",
-        "execution_offsets": {
-          "schema_version": 1,
-          "pickup": {
-            "forward_mm": 0,
-            "right_mm": 0,
-            "down_mm": 0
-          },
-          "placement": {
-            "forward_mm": 0,
-            "right_mm": 0,
-            "down_mm": 0
-          }
-        },
-        "coarse_xy_m": [
-          0.5437041663020831,
-          -0.1564609533418047
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.2,
-        "alignment_verified": false,
-        "alignment_fallback_used": false,
-        "grasp_verified": false,
-        "grasp_clearance_m": null,
-        "drop_release_photo": null,
-        "drop_evidence_photos": [],
-        "board_scene_paths": [
-          "board_1789283605406024014.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-13T07:13:40.633425+00:00"
-      },
-      "None": {
-        "schema_version": 1,
-        "status": "profile_saved",
-        "part": "bolt_8mm",
-        "action": null,
-        "holding_may_be_true": false,
-        "last_error": null,
-        "coarse_xy_m": [
-          0.525545865453352,
-          -0.15788828921382442
-        ],
-        "yaw_deg": 0.0,
-        "gripper_open_fraction": 0.1,
-        "alignment_verified": true,
-        "alignment_fallback_used": true,
-        "grasp_verified": true,
-        "grasp_clearance_m": 0.010000000000000009,
-        "drop_release_photo": null,
-        "board_scene_paths": [
-          "board_1789238017261066036.json"
-        ],
-        "events_path": "events.jsonl",
-        "calibration_path": "calibration/vega_board_manual.json",
-        "profiles_path": "calibration/wrist_part_profiles.json",
-        "created_at_utc": "2026-09-12T18:35:32.326262+00:00"
-      }
-    },
     "gear_60teeth": {
       "pick": {
         "schema_version": 1,
@@ -5917,19 +5799,14 @@
     }
   },
   "git_revision": "1338f3e33f19c8078125de7ac35e5745716faafd",
-  "git_status": "M calibration/wrist_part_profiles.json\n M competition_offsets.json\n M configs/competition_actions.json\n M configs/competition_plan.json\n?? calibration/place_templates/\n?? calibration/wrist_templates/battery_size1_1789284490090854796.png\n?? calibration/wrist_templates/battery_size5_1789286604684315901.png\n?? calibration/wrist_templates/rod_16mm_1789283061705325280.png\n?? calibration/wrist_templates/rod_16mm_1789289526267759605.png\n?? calibration/wrist_templates/usb_a_1789288776913657333.png",
+  "git_status": "M calibration/wrist_part_profiles.json\n M competition_offsets.json\n M configs/competition_actions.json\n M configs/competition_plan.json\n?? calibration/place_templates/\n?? calibration/wrist_templates/battery_size1_1789284490090854796.png\n?? calibration/wrist_templates/battery_size5_1789286604684315901.png\n?? calibration/wrist_templates/bolt_8mm_1789290006160441110.png\n?? calibration/wrist_templates/rod_16mm_1789283061705325280.png\n?? calibration/wrist_templates/rod_16mm_1789289526267759605.png\n?? calibration/wrist_templates/usb_a_1789288776913657333.png",
   "code_diff": "diagnostics/code_diff.json",
   "full_run_folders": [
-    "runs/wrist_parts_20260913T085633_922047Z",
-    "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1",
     "runs/wrist_parts_20260913T085257_639456Z",
-    "runs/wrist_parts_20260913T084800_864257Z",
-    "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1",
-    "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1",
-    "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1",
-    "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3"
+    "runs/wrist_parts_20260913T090019_721256Z",
+    "runs/wrist_parts_20260913T090550_795999Z"
   ],
-  "included_file_count": 309,
-  "included_bytes": 267958642,
-  "evidence_complete_within_selection": false
+  "included_file_count": 320,
+  "included_bytes": 482238157,
+  "evidence_complete_within_selection": true
 }

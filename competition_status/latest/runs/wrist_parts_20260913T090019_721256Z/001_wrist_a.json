@@ -1,0 +1,15 @@
+{
+  "accepted": true,
+  "attempt": 1,
+  "frame_id": 11,
+  "timestamp_ns": 2201640148,
+  "received_monotonic_ns": 61606476850318,
+  "shape": [
+    1536,
+    1920,
+    3
+  ],
+  "mean": 87.65085743091724,
+  "std": 49.23069638429007,
+  "file": "001_wrist_a.png"
+}

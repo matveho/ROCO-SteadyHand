@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "part": "rod_16mm",
+  "action": "drop_calibrate",
+  "holding_may_be_true": false,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.43046559253080613,
+      -0.06639789919630804
+    ],
+    "board_x_unit_base_xy": [
+      0.011600369699614818,
+      -0.9999327134476761
+    ],
+    "board_y_unit_base_xy": [
+      -0.999932713447676,
+      -0.011600369699614818
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.009188604960087868,
+        -0.028989357633483384
+      ],
+      "rotation_deg": 0.039468878400270545,
+      "fit_residual_m": 0.00879296681745338,
+      "edge_scale": [
+        1.0263483352809915,
+        1.0325980594516782,
+        1.032795485235407,
+        1.031533862247119
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T09:04:08.577776+00:00"
+    },
+    "captured_at_utc": "2026-09-13T09:05:36.001951+00:00"
+  },
+  "last_error": "RuntimeError: Recovery blocked: arm is moving or E-stop is active",
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.40085139414464804,
+    -0.13745321891750134
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.2,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.008000000000000007,
+  "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290326869789359__release_before__WRIST_A.png",
+  "drop_evidence_photos": [
+    {
+      "label": "nominal_hover_100mm",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290271732063727__nominal_hover_100mm__WRIST_A.png",
+      "tcp_position_m": [
+        0.29330746960109216,
+        0.00925151376358626,
+        0.6255360912694334
+      ],
+      "quaternion_wxyz": [
+        0.815354259768427,
+        0.0524202875419034,
+        0.07165654968554937,
+        0.5721143971433219
+      ],
+      "captured_at_utc": "2026-09-13T09:04:31.739352+00:00"
+    },
+    {
+      "label": "initial_40mm_below_hover",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290273555076991__initial_40mm_below_hover__WRIST_A.png",
+      "tcp_position_m": [
+        0.2930220605303008,
+        0.01015212699038568,
+        0.5882404274536785
+      ],
+      "quaternion_wxyz": [
+        0.8156883196447234,
+        0.05174547935684858,
+        0.07159959050942857,
+        0.5717066286131199
+      ],
+      "captured_at_utc": "2026-09-13T09:04:33.561023+00:00"
+    },
+    {
+      "label": "adjust_left_002",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290277529002064__adjust_left_002__WRIST_A.png",
+      "tcp_position_m": [
+        0.2927950239193727,
+        0.01786334099422717,
+        0.5872433561277635
+      ],
+      "quaternion_wxyz": [
+        0.8155637437002972,
+        0.05186456831962975,
+        0.07165461736298925,
+        0.5718666473271
+      ],
+      "captured_at_utc": "2026-09-13T09:04:37.535030+00:00"
+    },
+    {
+      "label": "adjust_forward_003",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290281935864854__adjust_forward_003__WRIST_A.png",
+      "tcp_position_m": [
+        0.3007200522911152,
+        0.018680925820581194,
+        0.5859242971808531
+      ],
+      "quaternion_wxyz": [
+        0.8157363063972037,
+        0.05204588937529977,
+        0.07142784270815175,
+        0.5716323705937595
+      ],
+      "captured_at_utc": "2026-09-13T09:04:41.942984+00:00"
+    },
+    {
+      "label": "adjust_down_004",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290285386522603__adjust_down_004__WRIST_A.png",
+      "tcp_position_m": [
+        0.3010888387320299,
+        0.01858790238526687,
+        0.5680874331447693
+      ],
+      "quaternion_wxyz": [
+        0.8156314691465801,
+        0.052056322504947655,
+        0.07158386380666523,
+        0.5717614854706118
+      ],
+      "captured_at_utc": "2026-09-13T09:04:45.393380+00:00"
+    },
+    {
+      "label": "adjust_down_005",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290288510321019__adjust_down_005__WRIST_A.png",
+      "tcp_position_m": [
+        0.30139490151873627,
+        0.018495857478945284,
+        0.5548937974404912
+      ],
+      "quaternion_wxyz": [
+        0.8157160446003334,
+        0.05179525585558218,
+        0.07133134834296176,
+        0.5716960947881461
+      ],
+      "captured_at_utc": "2026-09-13T09:04:48.516805+00:00"
+    },
+    {
+      "label": "adjust_up_006",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290295917019929__adjust_up_006__WRIST_A.png",
+      "tcp_position_m": [
+        0.3001422674547358,
+        0.01886243406010773,
+        0.572134290116024
+      ],
+      "quaternion_wxyz": [
+        0.8149851233310677,
+        0.052754451332629106,
+        0.07181489818958173,
+        0.5725895886336543
+      ],
+      "captured_at_utc": "2026-09-13T09:04:55.923038+00:00"
+    },
+    {
+      "label": "adjust_back_007",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290299569838115__adjust_back_007__WRIST_A.png",
+      "tcp_position_m": [
+        0.2944183599000031,
+        0.018767278171383336,
+        0.5741037580142542
+      ],
+      "quaternion_wxyz": [
+        0.8147418457868558,
+        0.05253719816721809,
+        0.07168744616243,
+        0.572971620235483
+      ],
+      "captured_at_utc": "2026-09-13T09:04:59.576420+00:00"
+    },
+    {
+      "label": "adjust_down_008",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290306381979130__adjust_down_008__WRIST_A.png",
+      "tcp_position_m": [
+        0.2949723640672874,
+        0.01850109862444705,
+        0.5563382873522734
+      ],
+      "quaternion_wxyz": [
+        0.8156713321296375,
+        0.05188247447459355,
+        0.07159081361973253,
+        0.5717195485458939
+      ],
+      "captured_at_utc": "2026-09-13T09:05:06.388230+00:00"
+    },
+    {
+      "label": "adjust_forward_009",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290310418652010__adjust_forward_009__WRIST_A.png",
+      "tcp_position_m": [
+        0.3004737293127336,
+        0.018445121546998233,
+        0.5543528217630995
+      ],
+      "quaternion_wxyz": [
+        0.8157671511488453,
+        0.05200120385625142,
+        0.07177889686832997,
+        0.5715484405265782
+      ],
+      "captured_at_utc": "2026-09-13T09:05:10.424783+00:00"
+    },
+    {
+      "label": "adjust_down_010",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290315943718058__adjust_down_010__WRIST_A.png",
+      "tcp_position_m": [
+        0.301376257956872,
+        0.018830451127291162,
+        0.5473880793848931
+      ],
+      "quaternion_wxyz": [
+        0.815821486482757,
+        0.05239106628053953,
+        0.07135983882558167,
+        0.57148775294825
+      ],
+      "captured_at_utc": "2026-09-13T09:05:15.949871+00:00"
+    },
+    {
+      "label": "adjust_back_011",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290319214162141__adjust_back_011__WRIST_A.png",
+      "tcp_position_m": [
+        0.3007212991014785,
+        0.018597791087494042,
+        0.5464797505441721
+      ],
+      "quaternion_wxyz": [
+        0.815361598623692,
+        0.05213135268439886,
+        0.07165745262290946,
+        0.5721302255961552
+      ],
+      "captured_at_utc": "2026-09-13T09:05:19.220661+00:00"
+    },
+    {
+      "label": "adjust_back_012",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290321962454446__adjust_back_012__WRIST_A.png",
+      "tcp_position_m": [
+        0.29408042723023353,
+        0.018564916765160838,
+        0.5474526105821433
+      ],
+      "quaternion_wxyz": [
+        0.8145927007743166,
+        0.05213334873854832,
+        0.07215285009564393,
+        0.5731621166978723
+      ],
+      "captured_at_utc": "2026-09-13T09:05:21.968480+00:00"
+    },
+    {
+      "label": "adjust_down_013",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290324719706168__adjust_down_013__WRIST_A.png",
+      "tcp_position_m": [
+        0.2953951656328763,
+        0.01816415076729337,
+        0.5404189339075678
+      ],
+      "quaternion_wxyz": [
+        0.8157993956763557,
+        0.051638984059943875,
+        0.07140746520731345,
+        0.571581783520098
+      ],
+      "captured_at_utc": "2026-09-13T09:05:24.726008+00:00"
+    },
+    {
+      "label": "release_before",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290326869789359__release_before__WRIST_A.png",
+      "tcp_position_m": [
+        0.294534950564949,
+        0.01863024290864391,
+        0.539775987823232
+      ],
+      "quaternion_wxyz": [
+        0.8153672335643777,
+        0.052156785222444685,
+        0.07165404697956622,
+        0.5721203035518696
+      ],
+      "captured_at_utc": "2026-09-13T09:05:26.876446+00:00"
+    },
+    {
+      "label": "release_after",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290328010414312__release_after__WRIST_A.png",
+      "tcp_position_m": [
+        0.2935915471588883,
+        0.018585132457733536,
+        0.5396593053303612
+      ],
+      "quaternion_wxyz": [
+        0.8149552721645522,
+        0.05247960722950087,
+        0.07239293254096689,
+        0.572584542678509
+      ],
+      "captured_at_utc": "2026-09-13T09:05:28.017090+00:00"
+    },
+    {
+      "label": "retreat_after_release",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__rod_16mm__1789290331644495173__retreat_after_release__WRIST_A.png",
+      "tcp_position_m": [
+        0.2942207958640116,
+        0.018975591847355908,
+        0.6227247748658905
+      ],
+      "quaternion_wxyz": [
+        0.8149418142465868,
+        0.052529113870945,
+        0.0714044976176987,
+        0.5727232571743343
+      ],
+      "captured_at_utc": "2026-09-13T09:05:31.651031+00:00"
+    }
+  ],
+  "board_scene_paths": [
+    "board_1789290250700355375.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T09:05:36.002482+00:00"
+}

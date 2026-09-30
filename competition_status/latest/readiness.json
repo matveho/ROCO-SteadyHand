@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "report_kind": "vega_competition_onsite_readiness",
-  "generated_at_utc": "2026-09-13T08:57:21.246525+00:00",
+  "generated_at_utc": "2026-09-13T09:08:42.148834+00:00",
   "git_revision": "1338f3e33f19c8078125de7ac35e5745716faafd",
   "hardware_accessed": false,
   "calibration_or_task_files_modified": [
@@ -48,6 +48,7 @@
       "max_retries_per_part": 2,
       "eligible_actions_now": [
         "battery_size1.pick_place",
+        "bolt_8mm.pick_place",
         "battery_size5.pick_place",
         "rod_16mm.pick_place",
         "hdmi.pick_place"
@@ -236,12 +237,12 @@
         "reason": "ready"
       },
       "pick_place": {
-        "ready": false,
-        "reason": "place settings missing"
+        "ready": true,
+        "reason": "ready"
       },
       "grasp_clearance_mm": 15.0,
       "jaw_open_fraction": 0.1,
-      "board_reference": "assumed_calibration_reference",
+      "board_reference": "taught",
       "template_integrity_ok": true
     },
     "usb_a": {
@@ -359,19 +360,19 @@
       0.6001751625580388
     ],
     "task.rod_16mm.place": [
-      0.30143800787708264,
-      0.03971739877087087,
-      0.6238139215154833
+      0.30389304931246297,
+      0.04774689706699009,
+      0.6232866325764367
     ],
     "task.bolt_8mm.pick": [
-      0.525545865453352,
-      -0.15788828921382442,
-      0.5746312306185762
+      0.46836820672572355,
+      -0.1496198339040552,
+      0.5872439493236434
     ],
     "task.bolt_8mm.place": [
-      0.3734233882520284,
-      0.017453619390133773,
-      0.6084237144279048
+      0.3403064121199431,
+      0.01680859191887025,
+      0.6154991139282548
     ],
     "task.usb_a.pick": [
       0.48551547148912144,
@@ -419,9 +420,9 @@
       0.6212830549867558
     ],
     "task.battery_size5.place": [
-      0.3149954836853343,
-      -0.1268037795857886,
-      0.6204965680499117
+      0.30755974579019685,
+      -0.11103482112981769,
+      0.6221646846595098
     ]
   },
   "tests": {

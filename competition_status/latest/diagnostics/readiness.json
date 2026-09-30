@@ -4,9 +4,9 @@
     "tools/vega_competition_readiness.py",
     "--skip-tests",
     "--output",
-    "/tmp/vega-status-paapl4_m/readiness.json"
+    "/tmp/vega-status-_r0fey0x/readiness.json"
   ],
   "returncode": 0,
-  "stdout": "READINESS REPORT = /tmp/vega-status-paapl4_m/readiness.json\nHARDWARE ACCESSED = False\nREADY FOR ONSITE VALIDATION = True\nVERIFIED COMPETITION ACTIONS AVAILABLE = True\n  PASS task_coordinates\n  PASS calibration\n  PASS competition_plan\n  PASS execution_settings\n  WARN protected_inputs_unchanged\nREGRESSION TESTS SKIPPED; this result covers requested static/IK checks only.\n",
+  "stdout": "READINESS REPORT = /tmp/vega-status-_r0fey0x/readiness.json\nHARDWARE ACCESSED = False\nREADY FOR ONSITE VALIDATION = True\nVERIFIED COMPETITION ACTIONS AVAILABLE = True\n  PASS task_coordinates\n  PASS calibration\n  PASS competition_plan\n  PASS execution_settings\n  WARN protected_inputs_unchanged\nREGRESSION TESTS SKIPPED; this result covers requested static/IK checks only.\n",
   "stderr": ""
 }

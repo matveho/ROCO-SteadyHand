@@ -1,0 +1,294 @@
+{
+  "schema_version": 1,
+  "part": "bolt_8mm",
+  "photos": [
+    {
+      "label": "nominal_hover_100mm",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290049365526009__nominal_hover_100mm__WRIST_A.png",
+      "tcp_position_m": [
+        0.365368269991881,
+        -0.014206729831509335,
+        0.6100337612975113
+      ],
+      "quaternion_wxyz": [
+        0.8170448517363789,
+        0.05280714075488442,
+        0.0714293480486729,
+        0.5696902354558254
+      ],
+      "captured_at_utc": "2026-09-13T09:00:49.373359+00:00"
+    },
+    {
+      "label": "initial_40mm_below_hover",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290051231446973__initial_40mm_below_hover__WRIST_A.png",
+      "tcp_position_m": [
+        0.3651410696053518,
+        -0.013137102820492352,
+        0.5728573819617411
+      ],
+      "quaternion_wxyz": [
+        0.817222920914794,
+        0.05217523445594109,
+        0.07131105428574079,
+        0.569507836625288
+      ],
+      "captured_at_utc": "2026-09-13T09:00:51.237560+00:00"
+    },
+    {
+      "label": "adjust_back_002",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290083951466259__adjust_back_002__WRIST_A.png",
+      "tcp_position_m": [
+        0.33607093927190784,
+        -0.013114306615397607,
+        0.57770712477132
+      ],
+      "quaternion_wxyz": [
+        0.8161308162848164,
+        0.0530475019586112,
+        0.07241705118473074,
+        0.5708521909776104
+      ],
+      "captured_at_utc": "2026-09-13T09:01:23.958494+00:00"
+    },
+    {
+      "label": "adjust_back_003",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290091244114622__adjust_back_003__WRIST_A.png",
+      "tcp_position_m": [
+        0.3277127021880831,
+        -0.01315112242302971,
+        0.5796867641593034
+      ],
+      "quaternion_wxyz": [
+        0.8161910490831982,
+        0.05293929795491396,
+        0.07231695969049254,
+        0.5707888046113319
+      ],
+      "captured_at_utc": "2026-09-13T09:01:31.251692+00:00"
+    },
+    {
+      "label": "adjust_down_004",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290095535596549__adjust_down_004__WRIST_A.png",
+      "tcp_position_m": [
+        0.3284637847445949,
+        -0.012938092320898327,
+        0.5623523381833756
+      ],
+      "quaternion_wxyz": [
+        0.8170018599590811,
+        0.052419382381119255,
+        0.07163919169016002,
+        0.5697613495036011
+      ],
+      "captured_at_utc": "2026-09-13T09:01:35.542381+00:00"
+    },
+    {
+      "label": "adjust_forward_005",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290101340351046__adjust_forward_005__WRIST_A.png",
+      "tcp_position_m": [
+        0.33430740899048816,
+        -0.01326098630921805,
+        0.560195762663857
+      ],
+      "quaternion_wxyz": [
+        0.8171236681848327,
+        0.052215356324927256,
+        0.07179874842080153,
+        0.5695852940352573
+      ],
+      "captured_at_utc": "2026-09-13T09:01:41.347370+00:00"
+    },
+    {
+      "label": "adjust_down_006",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290106966006977__adjust_down_006__WRIST_A.png",
+      "tcp_position_m": [
+        0.33490094731064923,
+        -0.013199354431596137,
+        0.5529068718429155
+      ],
+      "quaternion_wxyz": [
+        0.81706569076478,
+        0.05218948062323221,
+        0.07149110942837106,
+        0.5697095192815814
+      ],
+      "captured_at_utc": "2026-09-13T09:01:46.972673+00:00"
+    },
+    {
+      "label": "adjust_back_007",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290109975546847__adjust_back_007__WRIST_A.png",
+      "tcp_position_m": [
+        0.32753713656785544,
+        -0.013030095108706008,
+        0.5534519140551983
+      ],
+      "quaternion_wxyz": [
+        0.8163109574598709,
+        0.05303616948853664,
+        0.07233750481912786,
+        0.5706057052409085
+      ],
+      "captured_at_utc": "2026-09-13T09:01:49.982289+00:00"
+    },
+    {
+      "label": "adjust_up_008",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290117042232243__adjust_up_008__WRIST_A.png",
+      "tcp_position_m": [
+        0.3279159783908123,
+        -0.012616936123640295,
+        0.5712254415830771
+      ],
+      "quaternion_wxyz": [
+        0.8165168540985821,
+        0.052969001249819944,
+        0.07141570000116132,
+        0.5704334401776388
+      ],
+      "captured_at_utc": "2026-09-13T09:01:57.048729+00:00"
+    },
+    {
+      "label": "adjust_back_009",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290124285356793__adjust_back_009__WRIST_A.png",
+      "tcp_position_m": [
+        0.2996021447714296,
+        -0.013313008173131018,
+        0.5775459367136127
+      ],
+      "quaternion_wxyz": [
+        0.8155584265113713,
+        0.053060357805526794,
+        0.07250724187520137,
+        0.5716570223932322
+      ],
+      "captured_at_utc": "2026-09-13T09:02:04.291530+00:00"
+    },
+    {
+      "label": "adjust_forward_010",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290130529512900__adjust_forward_010__WRIST_A.png",
+      "tcp_position_m": [
+        0.3285510773692803,
+        -0.01264503872079805,
+        0.5721523539469857
+      ],
+      "quaternion_wxyz": [
+        0.8171821464337768,
+        0.05222225579237774,
+        0.07078764594052395,
+        0.5696273209143325
+      ],
+      "captured_at_utc": "2026-09-13T09:02:10.535471+00:00"
+    },
+    {
+      "label": "adjust_forward_011",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290134002848493__adjust_forward_011__WRIST_A.png",
+      "tcp_position_m": [
+        0.3365119568790471,
+        -0.012822734960433735,
+        0.5702597915467015
+      ],
+      "quaternion_wxyz": [
+        0.8169538808045566,
+        0.052399598168107,
+        0.0713294408588499,
+        0.5698708183588267
+      ],
+      "captured_at_utc": "2026-09-13T09:02:14.009920+00:00"
+    },
+    {
+      "label": "adjust_down_012",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290137980447673__adjust_down_012__WRIST_A.png",
+      "tcp_position_m": [
+        0.33684490900251335,
+        -0.012950679631064693,
+        0.5526918144436934
+      ],
+      "quaternion_wxyz": [
+        0.816641438305944,
+        0.05215482479806342,
+        0.07154216506573095,
+        0.5703142590796676
+      ],
+      "captured_at_utc": "2026-09-13T09:02:17.987675+00:00"
+    },
+    {
+      "label": "adjust_back_013",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290141876047888__adjust_back_013__WRIST_A.png",
+      "tcp_position_m": [
+        0.3308327493607832,
+        -0.013175996426167187,
+        0.5526000086109806
+      ],
+      "quaternion_wxyz": [
+        0.8161796305406269,
+        0.05278913825516902,
+        0.07225484133643835,
+        0.5708269050038621
+      ],
+      "captured_at_utc": "2026-09-13T09:02:21.882291+00:00"
+    },
+    {
+      "label": "adjust_down_014",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290144905590596__adjust_down_014__WRIST_A.png",
+      "tcp_position_m": [
+        0.3318016545379996,
+        -0.013314928619648198,
+        0.54546360537575
+      ],
+      "quaternion_wxyz": [
+        0.816987701344447,
+        0.052050961596880545,
+        0.07161559366252704,
+        0.5698183921155237
+      ],
+      "captured_at_utc": "2026-09-13T09:02:24.911745+00:00"
+    },
+    {
+      "label": "release_before",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290148278300973__release_before__WRIST_A.png",
+      "tcp_position_m": [
+        0.33135063615415206,
+        -0.013078070223491937,
+        0.5448662086215535
+      ],
+      "quaternion_wxyz": [
+        0.8165900369100807,
+        0.05239953781974655,
+        0.07169592742558681,
+        0.5703461177618859
+      ],
+      "captured_at_utc": "2026-09-13T09:02:28.284392+00:00"
+    },
+    {
+      "label": "release_after",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290149347831925__release_after__WRIST_A.png",
+      "tcp_position_m": [
+        0.33134575906163855,
+        -0.01305229972661208,
+        0.5448471725095122
+      ],
+      "quaternion_wxyz": [
+        0.8165827018287626,
+        0.052400789858984866,
+        0.07166362649740249,
+        0.5703605639711018
+      ],
+      "captured_at_utc": "2026-09-13T09:02:29.355306+00:00"
+    },
+    {
+      "label": "retreat_after_release",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__bolt_8mm__1789290152441449298__retreat_after_release__WRIST_A.png",
+      "tcp_position_m": [
+        0.3308324697562396,
+        -0.012765742652008298,
+        0.6148767335507331
+      ],
+      "quaternion_wxyz": [
+        0.8161351435389121,
+        0.05276542831196593,
+        0.07166129007635048,
+        0.5709675091985247
+      ],
+      "captured_at_utc": "2026-09-13T09:02:32.448356+00:00"
+    }
+  ]
+}
