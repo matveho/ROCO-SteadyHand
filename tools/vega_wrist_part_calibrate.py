@@ -1817,6 +1817,50 @@ class PartSession:
             else:
                 print("Use retry to recheck IK, image to inspect, or abort to finish.", flush=True)
 
+    def _plan_drop_retreat(self, release_pose):
+        from steadyhand.executor import cartesian_waypoints
+        retreat = Pose((*release_pose.position_m[:2],
+            self.surface(*release_pose.position_m[:2]) + .100), release_pose.quaternion_wxyz)
+        original_seed = tuple(self.robot._read_joint_positions())
+        errors = []
+        for step in (.020, .005, .002):
+            seed = original_seed
+            plan = []
+            try:
+                for waypoint in cartesian_waypoints(release_pose, retreat,
+                        max_translation_step_m=step, max_orientation_step_rad=.08):
+                    seed = tuple(float(v) for v in self.robot._kinematics.solve(waypoint, seed))
+                    self.robot._check_joint_limits(seed)
+                    plan.append((waypoint, seed))
+            except IKError as exc:
+                errors.append(str(exc))
+                continue
+            self.event("drop_retreat_plan", {
+                "translation_step_mm": step * 1000, "waypoints": len(plan),
+                "release_tcp": list(release_pose.position_m),
+                "retreat_tcp": list(retreat.position_m),
+                "joint_path_rad": [list(q) for _, q in plan],
+            })
+            print(f"RELEASE RETREAT READY: {len(plan)} solved waypoints "
+                  f"({step * 1000:g} mm spacing); release orientation preserved", flush=True)
+            return retreat, plan
+        raise IKError("No vertical retreat could be solved at this orientation, including "
+                      "5 mm and 2 mm waypoints. No release commanded. Try a small up N "
+                      "or yaw N adjustment, then release again. Last solver error: " + errors[-1])
+
+    def _execute_drop_retreat(self, plan):
+        # Execute the exact joint path solved before opening the jaws; solving
+        # again from noisy telemetry could select a different IK branch.
+        try:
+            for waypoint, joints in plan:
+                if self.remote_safe:
+                    self.remote_waypoint(waypoint)
+                self.robot.move_joints(joints, speed_scale=min(.42, self.args.speed_scale))
+        except BaseException:
+            self.motion_faulted = True
+            self.automatic_continuation_safe = False
+            raise
+
     def teach_drop(self, part, profile):
         """Teach a physical drop position using an existing pickup profile.
 
@@ -1885,6 +1929,7 @@ class PartSession:
                     self.remote_checkpoint("before_drop_release")
                     release_pose = self.robot.get_tcp_pose()
                     settings = self._drop_settings_from_pose(release_pose)
+                    retreat, retreat_plan = self._plan_drop_retreat(release_pose)
                     release_photo = self._capture_drop_release_photo()
                     release_result = self.robot.release_gripper(self.part)
                     self.holding = False
@@ -1913,9 +1958,7 @@ class PartSession:
                     # Lift over the actual release, including manual XY/yaw
                     # adjustments. This is the exact reference used in runs.
                     self.remote_checkpoint("before_drop_retreat")
-                    retreat = Pose((*release_pose.position_m[:2],
-                        self.surface(*release_pose.position_m[:2]) + .100), release_pose.quaternion_wxyz)
-                    self.move(retreat, slow=True)
+                    self._execute_drop_retreat(retreat_plan)
                     self.remote_checkpoint("drop_retreat_complete")
                     self._capture_drop_evidence("retreat_after_release")
                     self._finish_place_corner_teaching(settings, retreat)
@@ -1988,15 +2031,17 @@ class PartSession:
                     target_z = z + amount if command == "up" else z - amount
                     target = Pose((x, y, target_z), current.quaternion_wxyz)
                 elif command == "yaw" and len(raw) == 2:
-                    self.yaw = _number(raw[1])
+                    requested_yaw = _number(raw[1])
                     target = Pose(
                         current.position_m,
-                        _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz,
+                        _yaw_pose(self.runtime[3], requested_yaw).quaternion_wxyz,
                     )
                 else:
                     print("Unknown command; use help, directions, down N, yaw N, release, return, or abort.", flush=True)
                     continue
                 self.move(target, slow=True)
+                if command == "yaw":
+                    self.yaw = requested_yaw
                 self.history.append((current, old_yaw))
                 self._capture_drop_evidence(
                     f"adjust_{command}_{len(self.drop_evidence_photos):03d}"
