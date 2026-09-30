@@ -2077,8 +2077,6 @@ class PartSession:
                         amount /= 1000.0
                         dx, dy = {"forward": (amount, 0), "back": (-amount, 0), "left": (0, amount), "right": (0, -amount)}[command]
                         x, y = current.position_m[0]+dx, current.position_m[1]+dy
-                        if math.dist((x, y), self.coarse.position_m[:2]) > .060:
-                            raise ValueError("Adjustment exceeds 60 mm local radius; fix coarse coordinates")
                         target = Pose((x, y, self.surface(x, y)+.100), current.quaternion_wxyz)
                         yaw = self.yaw
                     else:

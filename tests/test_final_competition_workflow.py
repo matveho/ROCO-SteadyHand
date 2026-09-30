@@ -414,6 +414,21 @@ class FinalWorkflowTests(unittest.TestCase):
         self.assertNotIn("COMMAND BLOCKED", self.output.getvalue())
         self.assertEqual(s.status, "drop_cancelled_returned")
 
+    def test_manual_pickup_jogs_can_exceed_old_radius_and_still_undo(self):
+        s, _ = self.session(mode='calibrate')
+        start = s.robot.pose
+        s.coarse = start
+        commands = ['back 30', 'back 20', 'back 10', 'right 20', 'right 31', 'undo', 'abort']
+        with mock.patch.object(s, 'begin_part'), mock.patch.object(s, 'teach_feature'), \
+                mock.patch('builtins.input', side_effect=commands):
+            self.assertEqual(s.teach(s.part), 1)
+        np.testing.assert_allclose(s.robot.pose.position_m[:2],
+                                   [start.position_m[0] - .06, start.position_m[1]])
+        self.assertTrue(any(np.linalg.norm(np.array(v[1].position_m[:2]) - start.position_m[:2]) > .06
+                            for v in s.robot.trace if v[0] == 'move'))
+        self.assertEqual(len(s.history), 3)  # four accepted jogs, then undo; 31 mm rejected
+        self.assertNotIn('Adjustment exceeds 60 mm', self.output.getvalue())
+
     def test_competition_menu_uses_requested_numbers(self):
         with mock.patch("builtins.input", return_value="0"):
             self.assertEqual(pipeline.main(["--check-only"]), 0)
