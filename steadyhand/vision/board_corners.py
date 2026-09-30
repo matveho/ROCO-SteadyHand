@@ -291,20 +291,35 @@ class CornerServo:
             raise RuntimeError("TCP missed board-corner waypoint by more than 8 mm")
         return actual
 
-    def observe(self, reference):
-        first = match_corners(self.capture(), reference)
-        second = match_corners(self.capture(), reference)
-        common = {key: dict(value, uv=((np.asarray(value["uv"]) + first[key]["uv"]) / 2).tolist())
-                  for key, value in second.items() if key in first
-                  and math.dist(value["uv"], first[key]["uv"]) <= 2.}
-        if not common:
-            raise CornerVisualError("Board corner image unstable between fresh frames")
-        return common, self.pose()
+    def observe(self, reference, *, prefer_all=False):
+        # Exposure/edge thresholding can reject one frame immediately after a
+        # move. Retry acquisition only: no arm commands, no relaxed matching,
+        # and always require agreement in the latest two consecutive frames.
+        self.pose()
+        previous = {}
+        for attempt in range(4):
+            rgb = self.capture()  # Camera faults are not visual rejections.
+            reason = None
+            try:
+                current = match_corners(rgb, reference)
+            except CornerVisualError as exc:
+                current, reason = {}, str(exc)
+            jumps = {key: math.dist(value["uv"], previous[key]["uv"])
+                     for key, value in current.items() if key in previous}
+            common = {key: dict(value, uv=((np.asarray(value["uv"]) + previous[key]["uv"]) / 2).tolist())
+                      for key, value in current.items() if jumps.get(key, math.inf) <= 2.}
+            if common and (not prefer_all or len(common) == len(reference["corners"]) or attempt == 3):
+                return common, self.pose()
+            self.event("place_corner_frame_retry", {"frame": attempt + 1,
+                "matched_corners": list(current), "stable_corners": list(common),
+                "corner_jitter_px": jumps, "reason": reason or "waiting for stable corner pair"})
+            previous = current
+        raise CornerVisualError("Board corner image unstable between fresh frames after four captures")
 
     def teach(self, selected_uvs=None, anchor_xy=None):
         rgb = self.capture()
         reference = make_reference(rgb, selected_uvs)
-        initial, actual = self.observe(reference)
+        initial, actual = self.observe(reference, prefer_all=True)
         def record(label, matches, pose):
             self.event("place_corner_measurement", {
                 "stage": label, "tcp_position_m": list(pose.position_m),
@@ -321,12 +336,12 @@ class CornerServo:
         # displacement and retain the same conditioning/return checks.
         for axis, delta in zip(("x", "y"), ((TEACH_PROBE_M, 0.), (0., TEACH_PROBE_M))):
             self.go(tuple(a+b for a, b in zip(actual.position_m[:2], delta)))
-            observation, pose = self.observe(reference)
+            observation, pose = self.observe(reference, prefer_all=True)
             record(f"probe_{axis}", observation, pose)
             probe_matches.append(observation)
             probe_poses.append(pose.position_m[:2])
             self.go(actual.position_m[:2])
-            returned, pose = self.observe(reference)
+            returned, pose = self.observe(reference, prefer_all=True)
             record(f"return_{axis}", returned, pose)
             returns.append((returned, pose))
         valid, rejected = [], []
@@ -383,26 +398,47 @@ class CornerServo:
         for iteration in range(9):
             matches, pose = self.observe(reference)
             delta, error, ids = correction(reference, matches)
+            metric_error = float(np.linalg.norm(delta))
             self.event("place_corner_observation", {"iteration": iteration, "matched_corners": matches,
                 "used_corners": ids, "error_px": error, "correction_m": delta.tolist(),
                 "estimated_error_m": float(np.linalg.norm(delta))})
-            if error <= 2 and np.linalg.norm(delta) <= .001:
+            if error <= 2 and metric_error <= .001:
                 return {"status": "converged", "iterations": iteration, "error_px": error,
                         "estimated_error_m": float(np.linalg.norm(delta)),
                         "corners": ids, "tcp_position_m": list(pose.position_m)}
-            if previous is not None:
-                stalled = stalled+1 if error >= previous-1 else 0
-                if error > previous * 1.6 + 3 or stalled >= 2:
+            bias_m = 0.
+            if previous is not None and set(ids) == set(previous["ids"]):
+                # A fixed 1 px improvement gate incorrectly rejects useful
+                # subpixel progress near a 2 px target. Judge metric progress.
+                progress = previous["metric_error"] - metric_error
+                stalled = stalled + 1 if progress < max(.00015, previous["metric_error"] * .08) else 0
+                if error > previous["error"] * 1.6 + 3 or stalled >= 3:
                     raise CornerVisualError("Board corner correction stalled or diverged")
+                same_direction = float(delta @ previous["delta"]) > .95 * metric_error * previous["metric_error"]
+                if (previous["measured_step_m"] < .0003 and same_direction
+                        and .8 * previous["metric_error"] <= metric_error <= 1.2 * previous["metric_error"]):
+                    # Onsite 1.3 mm commands moved <0.04 mm. With fresh image
+                    # evidence confirming the same residual, compensate in
+                    # that direction; cap excess at less than our 1 mm
+                    # convergence tolerance. Never accumulate blind targets.
+                    bias_m = min(.00075, .5 * previous["requested_step_m"])
+            else:
+                stalled = 0
             if iteration == 8:
                 break
-            step = .6 * delta
+            # Avoid attenuating the final 1–3 mm into the server deadband.
+            gain = 1. if metric_error <= .003 else .6
+            step = (gain + bias_m / max(metric_error, 1e-12)) * delta
             length = float(np.linalg.norm(step))
             if length > .005:
                 step *= .005 / length
             xy = np.asarray(pose.position_m[:2]) + step
             if len(ids) == 1 and math.dist(xy, self.origin.position_m[:2]) > .010:
                 raise CornerVisualError("Single-corner correction reached its 10 mm travel limit")
-            self.go(tuple(xy))
-            previous = error
+            self.event("place_corner_control", {"gain": gain, "deadband_compensation_m": bias_m,
+                "requested_step_m": step.tolist()})
+            actual = self.go(tuple(xy))
+            previous = {"error": error, "metric_error": metric_error, "delta": delta,
+                "ids": ids, "requested_step_m": float(np.linalg.norm(step)),
+                "measured_step_m": math.dist(actual.position_m[:2], pose.position_m[:2])}
         raise CornerVisualError("Board corner alignment not verified within eight corrections")

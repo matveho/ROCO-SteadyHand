@@ -142,6 +142,64 @@ class BoardCornerTests(unittest.TestCase):
         CornerServo(robot, motion, capture, lambda x, y: .5).align(self.calibrated())
         motion.assert_not_called()
 
+    def test_reported_hdmi_residual_converges_despite_controller_deadband(self):
+        # Exact C3 mapping and final residual from the 20260913T112707 HDMI
+        # log. The old 0.6 gain issued 1.29 mm repeatedly with <0.04 mm motion.
+        matrix = np.array([[-302.7382252138453, 1166.024446832604],
+                           [1584.0785391979039, -149.55502599383064]])
+        residual = np.array([-.0007186840509216132, -.0020243618950434813])
+        for deadband in (.0015, .0025):
+            with self.subTest(deadband=deadband):
+                robot, motion, capture = self.simulated()
+                desired = np.asarray(robot.pose.position_m[:2]) + residual
+                reference = self.calibrated()
+                reference["corners"] = reference["corners"][:1]
+                corner = reference["corners"][0]
+                corner["jacobian_px_per_m"] = matrix.tolist()
+                def move(pose):
+                    if math.dist(robot.pose.position_m, pose.position_m) > deadband:
+                        robot.pose = pose
+                motion.side_effect = move
+                events = mock.Mock()
+                servo = CornerServo(robot, motion, capture, lambda x, y: .5, events)
+                def observe(_):
+                    uv = np.asarray(corner["uv"]) + matrix @ (np.asarray(robot.pose.position_m[:2]) - desired)
+                    return {corner["id"]: {"uv": uv.tolist(), "score": .997}}, robot.pose
+                servo.observe = mock.Mock(side_effect=observe)
+                before = copy.deepcopy(reference)
+                result = servo.align(reference)
+                self.assertEqual(result["status"], "converged")
+                self.assertLessEqual(result["estimated_error_m"], .001)
+                self.assertLessEqual(result["error_px"], 2.)
+                self.assertLessEqual(motion.call_count, 2)
+                self.assertLessEqual(math.dist(robot.pose.position_m[:2], desired), .001)
+                self.assertEqual(reference, before)
+                controls = [c.args[1] for c in events.call_args_list if c.args[0] == "place_corner_control"]
+                self.assertTrue(all(c["deadband_compensation_m"] <= .00075 for c in controls))
+
+    def test_unresponsive_arm_does_not_accumulate_unbounded_corner_commands(self):
+        robot, motion, capture = self.simulated(offset=[4, 0])
+        motion.side_effect = lambda target: None
+        events = mock.Mock()
+        with self.assertRaisesRegex(CornerVisualError, "stalled"):
+            CornerServo(robot, motion, capture, lambda x, y: .5, events).align(self.calibrated())
+        self.assertEqual(motion.call_count, 3)
+        self.assertLessEqual(max(math.dist(c.args[0].position_m, robot.pose.position_m)
+                                 for c in motion.call_args_list), .0028)
+
+    def test_large_real_motion_without_visual_progress_does_not_get_compensation(self):
+        robot, motion, capture = self.simulated()
+        reference = self.calibrated()
+        events = mock.Mock()
+        servo = CornerServo(robot, motion, capture, lambda x, y: .5, events)
+        fixed = {c["id"]: {"uv": (np.asarray(c["uv"]) + [4, 0]).tolist()}
+                 for c in reference["corners"]}
+        servo.observe = mock.Mock(side_effect=lambda _: (fixed, robot.pose))
+        with self.assertRaisesRegex(CornerVisualError, "stalled"):
+            servo.align(reference)
+        controls = [c.args[1] for c in events.call_args_list if c.args[0] == "place_corner_control"]
+        self.assertTrue(all(c["deadband_compensation_m"] == 0 for c in controls))
+
     def test_one_time_teaching_uses_measured_movement_and_returns_to_anchor(self):
         robot, motion, capture = self.simulated()
         reference, _ = CornerServo(robot, motion, capture, lambda x, y: .5).teach(anchor_xy=[.4, -.1])
@@ -290,9 +348,38 @@ class BoardCornerTests(unittest.TestCase):
 
     def test_unstable_corner_frames_stop_before_motion(self):
         robot, motion, _ = self.simulated()
-        capture = mock.Mock(side_effect=[self.rgb, self.translated(6, 0)])
+        capture = mock.Mock(side_effect=[self.rgb, self.translated(6, 0)] * 2)
         with self.assertRaisesRegex(CornerVisualError, "unstable"):
             CornerServo(robot, motion, capture, lambda x, y: .5).align(self.calibrated())
+        self.assertEqual(capture.call_count, 4)
+        motion.assert_not_called()
+
+    def test_one_unstable_pair_retries_images_without_moving_or_loosening_jitter(self):
+        robot, motion, _ = self.simulated()
+        capture = mock.Mock(side_effect=[self.rgb, self.translated(6, 0), self.translated(6.2, .1)])
+        matches, _ = CornerServo(robot, motion, capture, lambda x, y: .5).observe(self.calibrated())
+        self.assertEqual(capture.call_count, 3)
+        self.assertEqual(len(matches), 4)
+        motion.assert_not_called()
+
+    def test_teaching_gives_intermittently_missing_corners_an_extra_image_pair(self):
+        robot, motion, capture = self.simulated()
+        reference = self.calibrated()
+        all_corners = {c["id"]: {"uv": c["uv"]} for c in reference["corners"]}
+        one_corner = {"C3": all_corners["C3"]}
+        with mock.patch("steadyhand.vision.board_corners.match_corners",
+                        side_effect=[all_corners, one_corner, all_corners, all_corners]) as match:
+            matches, _ = CornerServo(robot, motion, capture, lambda x, y: .5).observe(reference, prefer_all=True)
+        self.assertEqual(set(matches), set(all_corners))
+        self.assertEqual(match.call_count, 4)
+        motion.assert_not_called()
+
+    def test_camera_fault_is_not_retried_as_an_unstable_image(self):
+        robot, motion, _ = self.simulated()
+        capture = mock.Mock(side_effect=RuntimeError("camera disconnected"))
+        with self.assertRaisesRegex(RuntimeError, "camera disconnected"):
+            CornerServo(robot, motion, capture, lambda x, y: .5).observe(self.calibrated())
+        capture.assert_called_once()
         motion.assert_not_called()
 
 
