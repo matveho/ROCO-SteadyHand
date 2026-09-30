@@ -28,6 +28,7 @@ from steadyhand.board_calibration import (
     orthonormalize_xy_axes,
 )
 from steadyhand.executor import move_tcp_segmented
+from steadyhand.execution_offsets import load_offsets, describe_offsets
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
@@ -926,6 +927,12 @@ def _sequence_indices(raw, available=None):
     return list(dict.fromkeys(selected))
 
 
+def _snapshot_execution_offsets(args):
+    # Called anew for every menu run, then reused by every part and retry.
+    args.execution_offsets = load_offsets()
+    describe_offsets(args.execution_offsets)
+
+
 def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place_cv=False, head_reacquire=True):
     """Run one gated action with automatic, bounded recovery.
 
@@ -937,10 +944,13 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
     """
     if isinstance(retries, bool) or not isinstance(retries, int) or not 0 <= retries <= 2:
         raise ValueError("competition retries must be an integer 0..2 (maximum three attempts)")
+    if getattr(args, "execution_offsets", None) is None:
+        _snapshot_execution_offsets(args)
     command = [
         "--part", part, "--mode", "test", "--action", action,
         "--competition", "--confirm-head-motion", "--confirm-physical-motion",
         "--speed-scale", str(args.speed_scale),
+        "--execution-offsets-json", json.dumps(args.execution_offsets.as_dict()),
     ]
     if no_cv:
         command.append("--no-cv")
@@ -1048,6 +1058,7 @@ def _profile_ready_for_action(profiles, part, action):
 
 def _priority_competition_actions(args, *, action=None, no_cv=False):
     """Build and run the score-first plan from only verified profiles."""
+    _snapshot_execution_offsets(args)
     plan = _load_competition_plan()
     cfg = load_bundle("vega")["robot"]
     profiles = load_profiles(ROOT / "calibration" / "wrist_part_profiles.json", cfg)
@@ -1104,6 +1115,7 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
 
 def _configured_competition_run(args):
     """Run the single JSON-configured, calibration-gated competition routine."""
+    _snapshot_execution_offsets(args)
     settings = _load_competition_actions()
     if not getattr(args, "speed_scale_cli", False):
         args.speed_scale = settings["pipeline_speed_scale"]
@@ -1191,6 +1203,7 @@ def _configured_competition_run(args):
 
 def _all_calibrated_competition_run(args, *, place_cv=False):
     """Run every verified pickup, using place CV only where it is available."""
+    _snapshot_execution_offsets(args)
     settings = _load_competition_actions()
     cfg = load_bundle("vega")["robot"]
     profiles = load_profiles(ROOT / "calibration" / "wrist_part_profiles.json", cfg)
@@ -1264,6 +1277,7 @@ def _run_competition_sequence(args, raw=None):
         print(exc, file=sys.stderr)
         return 2
     plan = _load_competition_plan()
+    _snapshot_execution_offsets(args)
     for index in indices:
         part, action = available_actions[str(index)].split(".", 1)
         result = _run_competition_action(

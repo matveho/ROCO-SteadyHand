@@ -26,6 +26,7 @@ from steadyhand.board_geometry import validate_task_coordinate_extent
 from steadyhand.cameras.vega import VegaWristCameras
 from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented
+from steadyhand.execution_offsets import load_offsets, parse_offsets, describe_offsets
 from steadyhand.geometry import matrix_to_quaternion, quaternion_to_matrix, interpolate_pose, pose_distance
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
@@ -47,6 +48,16 @@ from steadyhand.vision.wrist_review import select_pixel
 ROOT = Path(__file__).resolve().parents[1]
 COMPETITION_ACTIONS = ROOT / "configs" / "competition_actions.json"
 GOAL_CLICK_MAX_ERROR_PX = 50.0
+
+
+def _session_execution_offsets(args):
+    # In particular, drop teaching reuses competition-style pickup positioning.
+    # Gate by CLI mode, not begin_part(competition=True), so NO teaching reads
+    # this file, even if it is missing or malformed.
+    if args.mode != "test":
+        return None
+    snapshot = getattr(args, "execution_offsets_json", None)
+    return parse_offsets(json.loads(snapshot)) if snapshot is not None else load_offsets()
 
 
 def _competition_center_backoff_m():
@@ -144,6 +155,7 @@ class PartSession:
 
     def __init__(self, args, output, cfg, profiles):
         self.args, self.output, self.cfg, self.profiles = args, output, cfg, profiles
+        self.execution_offsets = getattr(args, "execution_offsets", None)
         self.floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
         self.robot = VegaAdapter(cfg)
         self.cameras = VegaWristCameras()
@@ -211,6 +223,7 @@ class PartSession:
                 "action": self.action,
                 "holding_may_be_true": bool(self.holding),
                 "last_error": self.last_error,
+                "execution_offsets": self.execution_offsets.as_dict() if getattr(self, "execution_offsets", None) else None,
                 "coarse_xy_m": list(self.coarse.position_m[:2]) if hasattr(self, "coarse") else None,
                 "yaw_deg": self.yaw,
                 "gripper_open_fraction": getattr(self, "gripper_open_fraction", None),
@@ -1280,6 +1293,34 @@ class PartSession:
                 if answer in ("abort", "stop", "q", "exit"):
                     raise KeyboardInterrupt()
 
+    def _execution_target(self, kind, hover, clearance):
+        """Apply a run's correction once, after CV, without modifying teaching."""
+        offsets = getattr(self, "execution_offsets", None)
+        if offsets is None:
+            return hover, clearance
+        offset = getattr(offsets, kind)
+        corrected = offset.hover(hover, self.surface)
+        depth = offset.clearance(clearance)
+        if corrected != hover or depth != clearance:
+            self.event("execution_offset", {
+                "stage": kind,
+                "offset_mm": offsets.as_dict()[kind],
+                "original_hover_tcp": list(hover.position_m),
+                "corrected_hover_tcp": list(corrected.position_m),
+                "taught_clearance_m": clearance,
+                "execution_clearance_m": depth,
+            })
+            # Reject an unreachable corrected descent before shifting the arm.
+            # move() and grab() also preflight their entire segmented paths.
+            x, y = corrected.position_m[:2]
+            descent = Pose((x, y, self.surface(x, y) + depth), corrected.quaternion_wxyz)
+            seed = self.robot._read_joint_positions()
+            seed = self.robot._kinematics.solve(corrected, seed)
+            self.robot._kinematics.solve(descent, seed)
+            if corrected != hover:
+                self.move(corrected, slow=True)
+        return corrected, depth
+
     def place(self, settings, *, partial_release=False, use_place_cv=False):
         if not self.holding or settings is None:
             raise ValueError("Place needs a verified held part and taught place settings")
@@ -1309,6 +1350,11 @@ class PartSession:
                 quat = aligned.quaternion_wxyz
                 hover = Pose((x, y, self.surface(x, y) + .100), quat)
                 release = Pose((x, y, self.surface(x, y) + settings["clearance_m"]), quat)
+        # Placement has its own independent correction, after visual alignment
+        # (or saved-pose fallback), so neither pickup nor CV can erase/double it.
+        hover, clearance = self._execution_target("placement", hover, settings["clearance_m"])
+        x, y = hover.position_m[:2]
+        release = Pose((x, y, self.surface(x, y) + clearance), hover.quaternion_wxyz)
         self.remote_checkpoint("before_place_descent")
         self.move(release, slow=True)
         self.remote_checkpoint("place_release_height")
@@ -2037,9 +2083,12 @@ class PartSession:
         if not competition and input("Type grab to test the taught descent/grip/lift; anything else cancels: ").strip() != "grab":
             self.status = "cancelled_before_grip"
             return 1
+        _, pickup_clearance = self._execution_target(
+            "pickup", self.robot.get_tcp_pose(), profile["grasp_clearance_m"]
+        )
         try:
             self.grab(
-                profile["grasp_clearance_m"],
+                pickup_clearance,
                 allow_unverified=bool(
                     no_cv or (competition and self.alignment_fallback_used)
                 ),
@@ -2058,7 +2107,7 @@ class PartSession:
                 )
                 try:
                     self.return_part(
-                        profile["grasp_clearance_m"], partial_release=competition
+                        pickup_clearance, partial_release=competition
                     )
                 except Exception as return_exc:
                     self.last_error = f"{type(return_exc).__name__}: {return_exc}"
@@ -2079,13 +2128,14 @@ class PartSession:
                 print("Pick not confirmed; type return to release it for inspection.", flush=True)
                 if input("return / exit: ").strip().lower() == "return":
                     self.return_part(
-                        profile["grasp_clearance_m"], partial_release=competition
+                        pickup_clearance, partial_release=competition
                     )
                 self.status = "pick_not_confirmed"
                 return 2
         profile = dict(profile, grasp_verified=True)
         self.grasp_verified = True
-        self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
+        if not competition:
+            self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
         if action == "pick":
             self.status = "pick_complete_holding"
             if competition:
@@ -2095,7 +2145,7 @@ class PartSession:
                 )
                 try:
                     self.return_part(
-                        profile["grasp_clearance_m"], partial_release=competition
+                        pickup_clearance, partial_release=competition
                     )
                 except Exception as exc:
                     self.last_error = f"{type(exc).__name__}: {exc}"
@@ -2109,7 +2159,7 @@ class PartSession:
                 return 0
             print("Pick complete. Part is held; next actions are blocked until it is returned.")
             if input("Type return to put it back at source, or exit to stop holding: ").strip() == "return":
-                self.return_part(profile["grasp_clearance_m"])
+                self.return_part(pickup_clearance)
                 self.status = "pick_complete_returned"
                 return 0
             return 3
@@ -2181,6 +2231,9 @@ def main(argv=None):
     parser.add_argument("--action", choices=("localize", "pick", "pick_place"), default="localize")
     parser.add_argument("--sequence", nargs="+", help="Explicit part.action sequence")
     parser.add_argument("--competition", action="store_true")
+    # Internal snapshot passed by the pipeline to keep all parts/retries on the
+    # same settings, even if the operator edits the JSON while a run is active.
+    parser.add_argument("--execution-offsets-json", help=argparse.SUPPRESS)
     parser.add_argument(
         "--no-cv", action="store_true",
         help="competition pickup from saved arm/task coordinates without wrist images",
@@ -2211,6 +2264,9 @@ def main(argv=None):
         parser.error("--speed-scale must be .10..70 in remote-safe mode, otherwise .25..70")
     if args.remote_safe:
         args.speed_scale = min(float(args.speed_scale), .20)
+    args.execution_offsets = _session_execution_offsets(args)
+    if args.execution_offsets is not None:
+        describe_offsets(args.execution_offsets)
     cfg = load_bundle("vega")["robot"]
     if cfg.get("working_arm") != WORKING_ARM or cfg["kinematics"].get("ee_frame") != TCP_FRAME:
         raise ValueError("Requires right arm / tip_r")
