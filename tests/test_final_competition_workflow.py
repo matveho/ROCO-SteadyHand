@@ -383,12 +383,14 @@ class FinalWorkflowTests(unittest.TestCase):
         with mock.patch("builtins.input", return_value="0"):
             self.assertEqual(pipeline.main(["--check-only"]), 0)
         output = self.output.getvalue()
-        self.assertIn("  3. Head-camera target preview", output)
-        self.assertIn(" 10. Test any action", output)
+        self.assertIn("  3. Calibrate pickup", output)
+        self.assertIn("  4. Calibrate placement", output)
         self.assertNotIn("Remote-safe", output)
         self.assertNotIn(" 11.", output)
         self.assertNotIn(" 12.", output)
-        self.assertIn("  9. EXIT", output)
+        self.assertIn("  0. Exit", output)
+        self.assertNotIn("Board calibration", output)
+        self.assertNotIn("Rollback versions", output)
 
     def test_test_command_uses_part_competition_cv_and_speed_settings(self):
         settings = pipeline._load_competition_actions()

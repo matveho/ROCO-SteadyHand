@@ -873,11 +873,11 @@ def _run_wrist_calibration_menu(args):
     return 0
 
 
-def _run_drop_calibration_menu(args):
+def _run_drop_calibration_menu(args, part=None):
     if args.check_only:
         print("Drop calibration requires physical motion; remove --check-only.")
         return 2
-    selected = _choose(
+    selected = [part] if part is not None else _choose(
         OrderedDict((part, "pick with saved calibration, teach drop hover/depth, release and save") for part in PART_NAMES),
         "DROP-OFF POSITION CALIBRATION",
     )
@@ -897,11 +897,11 @@ def _run_drop_calibration_menu(args):
     return 0
 
 
-def _run_place_cv_menu(args):
+def _run_place_cv_menu(args, part=None):
     if args.check_only:
         print("Placement CV teaching requires physical motion; remove --check-only.")
         return 2
-    selected = _choose(
+    selected = [part] if part is not None else _choose(
         OrderedDict((part, "teach wrist release feature while holding the verified part") for part in PART_NAMES),
         "PLACEMENT CV TARGET TEACHING",
     )
@@ -967,22 +967,104 @@ def _run_rollback_menu(args):
     return run_version_menu(["--confirm-head-motion", "--confirm-physical-motion"])
 
 
+def _menu_profiles():
+    return load_profiles(ROOT / "calibration" / "wrist_part_profiles.json",
+                         load_bundle("vega")["robot"])
+
+
+def _choose_pickup_calibrated_part(title):
+    profiles = _menu_profiles().get("parts", {})
+    available = OrderedDict((part, "pickup verified") for part in PART_NAMES
+                            if profiles.get(part, {}).get("grasp_verified") is True)
+    if not available:
+        print("No parts have verified pickup calibration. Use Calibrate pickup first.", flush=True)
+        return None
+    while True:
+        selected = _choose(available, title)
+        if not selected:
+            return None
+        if len(selected) == 1:
+            return selected[0]
+        print("Choose one part at a time.", flush=True)
+
+
 def _run_task_tests_menu(args):
     if args.check_only:
         print("Task tests require physical motion; remove --check-only.")
         return 2
-    actions = OrderedDict(
-        (f"{verb}_{part}", f"{description}; uses saved calibration and competition settings")
-        for part in PART_NAMES
-        for verb, description in (("grab", "pick up the part"), ("place", "pick up then place the part"))
-    )
-    selected = _choose(actions, "TEST ANY ACTION (supervised)")
-    for name in selected:
-        verb, part = name.split("_", 1)
-        action = "pick" if verb == "grab" else "pick_place"
-        result = run_wrist_part_calibration(_task_test_command(args, part, action))
+    part = _choose_pickup_calibrated_part("TEST ONE PART")
+    if part is None:
+        return 0
+    profile = _menu_profiles()["parts"][part]
+    placement_ready = bool(profile.get("place") and profile.get("place_verified") is True)
+    while True:
+        print(f"\nTEST {part}")
+        print("  1. Pickup only")
+        print("  2. Pickup and placement" + ("" if placement_ready else
+              " — UNAVAILABLE: placement must be present and verified"))
+        print("  0. Back")
+        choice = clean_choice(input("Choose action: "))
+        if choice in ("0", "back", ""):
+            return 0
+        if choice == "2" and not placement_ready:
+            print("Placement unavailable; teach and verify physical placement first.", flush=True)
+            continue
+        if choice not in ("1", "2"):
+            print("Choose 1, 2, or 0.", flush=True)
+            continue
+        action = "pick" if choice == "1" else "pick_place"
+        return run_wrist_part_calibration(_task_test_command(args, part, action))
+
+
+def _run_placement_calibration_menu(args):
+    if args.check_only:
+        print("Placement calibration requires physical motion; remove --check-only.")
+        return 2
+    part = _choose_pickup_calibrated_part("CALIBRATE PLACEMENT")
+    if part is None:
+        return 0
+    while True:
+        profile = _menu_profiles()["parts"][part]
+        placement_ready = bool(profile.get("place") and profile.get("place_verified") is True)
+        print(f"\nCALIBRATE PLACEMENT: {part}")
+        print("  1. Teach/refine physical release position")
+        print("  2. Teach/refine placement CV" + ("" if placement_ready else
+              " — UNAVAILABLE: teach and verify physical release first"))
+        print("  0. Back")
+        choice = clean_choice(input("Choose placement calibration: "))
+        if choice in ("0", "back", ""):
+            return 0
+        if choice == "1":
+            result = _run_drop_calibration_menu(args, part=part)
+        elif choice == "2" and placement_ready:
+            result = _run_place_cv_menu(args, part=part)
+        elif choice == "2":
+            print("Placement CV unavailable; complete physical release calibration first.", flush=True)
+            continue
+        else:
+            print("Choose 1, 2, or 0.", flush=True)
+            continue
         if result:
             return result
+
+
+def _show_menu_readiness(args):
+    profiles = _menu_profiles().get("parts", {})
+    settings = _load_competition_actions()
+    print("\nREADINESS — saved calibration/configuration only; no motion")
+    print("Part             Pickup verified  Placement verified  Placement CV    Competition enabled")
+    for part in PART_NAMES:
+        profile = profiles.get(part, {})
+        pickup = profile.get("grasp_verified") is True
+        place = bool(profile.get("place") and profile.get("place_verified") is True)
+        cv = profile.get("place_cv") or {}
+        cv_status = "saved/enabled" if cv.get("enabled") else ("disabled" if cv else "not taught")
+        entry = settings["parts"][part]
+        enabled = "yes" if entry["enabled"] else "no"
+        print(f"{part:<17}{str(pickup):<17}{str(place):<20}{cv_status:<16}{enabled}"
+              f" (pickup={'on' if entry['pick_enabled'] else 'off'}, "
+              f"placement={'on' if entry['place_enabled'] else 'off'})")
+    print(f"Competition settings: {COMPETITION_ACTIONS}", flush=True)
     return 0
 
 
@@ -1438,6 +1520,70 @@ def _run_competition_sequence(args, raw=None):
     return 0
 
 
+def _run_position_testing_menu(args):
+    runtime = _load_runtime()
+    task_data = runtime[1]
+    available = _available_position_names(runtime, task_data, args.clearance_m)
+    all_targets = _make_test_targets(
+        list(available), runtime, task_data, args.clearance_m
+    )
+    if args.check_only:
+        selected = _choose(available, "CALIBRATED POSITION TESTS", allow_all=True)
+        targets = OrderedDict((name, all_targets[name]) for name in selected)
+        _run_motion_targets(
+            targets, runtime[0],
+            confirm_physical=args.confirm_physical_motion,
+            check_only=True, speed_scale=args.speed_scale,
+        )
+    else:
+        # The first prompt is intentionally after the fresh image,
+        # matching the retake-image flow used later in the session.
+        _run_motion_targets(
+            OrderedDict(), runtime[0],
+            confirm_physical=args.confirm_physical_motion,
+            check_only=False, speed_scale=args.speed_scale,
+            available_targets=all_targets, interactive_next=True,
+            runtime=runtime, task_data=task_data,
+            clearance_m=args.clearance_m, prompt_after_capture=True,
+            remote_safe=args.remote_safe,
+        )
+    return 0
+
+
+def _run_advanced_tools_menu(args):
+    while True:
+        print("\nADVANCED TOOLS")
+        print("  1. Board calibration")
+        print("  2. Position testing")
+        print("  3. Head-camera target preview")
+        print("  4. Run all calibrated with placement CV")
+        print("  5. Run all calibrated without placement CV")
+        print("  6. Reload settings")
+        print("  7. Rollback versions")
+        print("  0. Back")
+        choice = clean_choice(input("Choose advanced tool: "))
+        if choice in ("0", "back", ""):
+            return 0
+        handlers = {
+            "1": _recalibrate,
+            "2": lambda: _run_position_testing_menu(args),
+            "3": lambda: _run_head_preview_menu(args),
+            "4": lambda: _all_calibrated_competition_run(args, place_cv=True),
+            "5": lambda: _all_calibrated_competition_run(args, place_cv=False),
+            "6": lambda: _reload_operator_settings(args),
+            "7": lambda: _run_rollback_menu(args),
+        }
+        if choice not in handlers:
+            print("Choose a listed advanced tool or 0 to go back.")
+            continue
+        if choice == "1" and args.check_only:
+            print("--check-only does not run physical recalibration.")
+            continue
+        result = handlers[choice]()
+        if result:
+            return result
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--confirm-head-motion", action="store_true")
@@ -1616,69 +1762,30 @@ def main(argv=None):
         return 0
 
     while True:
-        print("\n=== VEGA COMPETITION PIPELINE ===")
-        print("  1. Board calibration")
-        print("  2. Position testing")
-        print("  3. Head-camera target preview")
-        print("  4. Run all calibrated with placement CV")
-        print("  5. Run all calibrated without placement CV")
-        print("  6. Run competition routine (configs/competition_actions.json)")
-        print("  7. Reload settings")
-        print("  8. Rollback versions")
-        print("  9. EXIT")
-        print(" 10. Test any action (grab_<item> / place_<item>)")
+        print("\n=== VEGA COMPETITION ===")
+        print("  1. Run competition")
+        print("  2. Test one part")
+        print("  3. Calibrate pickup")
+        print("  4. Calibrate placement")
+        print("  5. Check readiness")
+        print("  6. Advanced tools")
+        print("  0. Exit")
         try:
             choice = clean_choice(input("Select an option: "))
         except (KeyboardInterrupt, EOFError):
             return 0
-        if choice in ("9", "0", "q", "quit", "exit"):
+        if choice in ("0", "q", "quit", "exit"):
             return 0
-        if choice == "2":
-            try:
-                runtime = _load_runtime()
-                task_data = runtime[1]
-                available = _available_position_names(runtime, task_data, args.clearance_m)
-                all_targets = _make_test_targets(
-                    list(available), runtime, task_data, args.clearance_m
-                )
-                if args.check_only:
-                    selected = _choose(available, "CALIBRATED POSITION TESTS", allow_all=True)
-                    targets = OrderedDict((name, all_targets[name]) for name in selected)
-                    _run_motion_targets(
-                        targets, runtime[0],
-                        confirm_physical=args.confirm_physical_motion,
-                        check_only=True, speed_scale=args.speed_scale,
-                    )
-                else:
-                    # The first prompt is intentionally after the fresh image,
-                    # matching the retake-image flow used later in the session.
-                    _run_motion_targets(
-                        OrderedDict(), runtime[0],
-                        confirm_physical=args.confirm_physical_motion,
-                        check_only=False, speed_scale=args.speed_scale,
-                        available_targets=all_targets, interactive_next=True,
-                        runtime=runtime, task_data=task_data,
-                        clearance_m=args.clearance_m, prompt_after_capture=True,
-                        remote_safe=args.remote_safe,
-                    )
-            except Exception as exc:
-                print(f"Position test failed: {type(exc).__name__}: {exc}", file=sys.stderr)
-            continue
         handlers = {
-            "1": ("Board calibration", _recalibrate),
-            "3": ("Head-camera target preview", lambda: _run_head_preview_menu(args)),
-            "4": ("All calibrated with placement CV", lambda: _all_calibrated_competition_run(args, place_cv=True)),
-            "5": ("All calibrated without placement CV", lambda: _all_calibrated_competition_run(args, place_cv=False)),
-            "6": ("Competition routine", lambda: _configured_competition_run(args)),
-            "7": ("Reload settings", lambda: _reload_operator_settings(args)),
-            "8": ("Rollback versions", lambda: _run_rollback_menu(args)),
-            "10": ("Action test", lambda: _run_task_tests_menu(args)),
+            "1": ("Competition", lambda: _configured_competition_run(args)),
+            "2": ("Part test", lambda: _run_task_tests_menu(args)),
+            "3": ("Pickup calibration", lambda: _run_wrist_calibration_menu(args)),
+            "4": ("Placement calibration", lambda: _run_placement_calibration_menu(args)),
+            "5": ("Readiness", lambda: _show_menu_readiness(args)),
+            "6": ("Advanced tools", lambda: _run_advanced_tools_menu(args)),
         }
         if choice not in handlers:
-            print("Unknown menu option. Choose 1–10.")
-            continue
-        if choice == "1" and args.check_only:
-            print("--check-only does not run physical recalibration.")
+            print("Unknown menu option. Choose 1–6 or 0 to exit.")
             continue
         label, handler = handlers[choice]
         try:
