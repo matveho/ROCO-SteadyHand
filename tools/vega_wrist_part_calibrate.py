@@ -456,10 +456,20 @@ class PartSession:
         # an otherwise completed motion can abandon CV and start a NEW plan.
         if (not isinstance(exc, ServoWaypointError) or exc.measured_pose is None or
                 exc.position_error_m is None or not .008 < exc.position_error_m <= .010):
+            self.event("servo_replan_rejected", {"reason": "missing structured pose or residual outside 8..10 mm",
+                       "position_error_m": getattr(exc, "position_error_m", None)})
             return False
-        pose = self.robot.stationary_tcp_pose()
-        if (math.dist(pose.position_m, exc.measured_pose.position_m) > .002 or
-                quaternion_angle(pose.quaternion_wxyz, exc.measured_pose.quaternion_wxyz) > .005):
+        print(f"SERVO RECOVERY CHECK: {exc.position_error_m * 1000:.2f} mm miss; checking fresh stopped-arm state.", flush=True)
+        try:
+            pose = self.robot.stationary_tcp_pose()
+        except (RuntimeError, ValueError) as state_exc:
+            self.event("servo_replan_rejected", {"reason": str(state_exc)})
+            raise
+        drift = math.dist(pose.position_m, exc.measured_pose.position_m)
+        rotation = quaternion_angle(pose.quaternion_wxyz, exc.measured_pose.quaternion_wxyz)
+        if drift > .002 or rotation > .005:
+            self.event("servo_replan_rejected", {"reason": "TCP changed after servo stopped",
+                       "drift_m": drift, "rotation_rad": rotation})
             return False
         self.event("servo_replan_allowed", {"reason": str(exc), "measured_tcp": pose.position_m})
         print("CENTERING ABANDONED: stationary arm verified; saved grasp will be replanned from measured pose.", flush=True)

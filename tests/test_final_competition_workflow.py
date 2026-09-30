@@ -139,6 +139,46 @@ class FinalWorkflowTests(unittest.TestCase):
             s._recoverable_servo_miss(wrist.ServoWaypointError("miss", position_error_m=.009, measured_pose=s.robot.pose))
         self.assertEqual(s.robot.trace, [])
 
+    def test_logged_bolt_probe_y_failure_runs_real_servo_then_saved_pick_without_prompt(self):
+        s, profile = self.session(competition=True, part="bolt_8mm")
+        original_profile = copy.deepcopy(profile)
+        s._load_saved_feature = lambda _: (setattr(s, "tracker", mock.Mock()),
+            setattr(s, "reference_feature", (906., 851.)), setattr(s, "goal", (916., 705.)))
+        s.robot.stationary_tcp_pose = mock.Mock(side_effect=s.robot.get_tcp_pose)
+        actual_servo = wrist.run_xy_servo
+        actual_move = s.robot.move_tcp
+        calls = []
+        s.capture.return_value = np.zeros((1536, 1920, 3), np.uint8)
+        def servo(robot, capture, **kwargs):
+            tracker = SimpleNamespace(uv=(906., 851.), locate=lambda rgb: ((906., 851.), .956))
+            kwargs["tracker_factory"] = lambda rgb, uv: tracker
+            def move(pose, *, speed_scale):
+                calls.append(pose)
+                actual_move(pose, speed_scale=speed_scale)
+                if len(calls) == 3:  # probe_x, return, then the reported missed probe_y
+                    requested = (.5422002345160333, -.14552863612351902, .5711560682008909)
+                    measured = (.5433259777349304, -.15538316249527073, .5704454995736536)
+                    robot.pose = Pose(tuple(p + m - r for p, m, r in zip(pose.position_m, measured, requested)),
+                                      pose.quaternion_wxyz)
+            robot.move_tcp = move
+            try:
+                return actual_servo(robot, capture, **kwargs)
+            finally:
+                robot.move_tcp = actual_move
+        with mock.patch.object(wrist, "run_xy_servo", side_effect=servo), \
+                mock.patch("steadyhand.vision.wrist_servo.time.sleep"), \
+                mock.patch("builtins.input", side_effect=AssertionError("competition prompted")):
+            self.assertEqual(s.test(s.part, "pick", competition=True), 0)
+        self.assertEqual(len(calls), 3)  # no invalid Jacobian or further visual correction
+        s.robot.stationary_tcp_pose.assert_called_once()
+        self.assertIn("9.94 mm", self.output.getvalue())
+        self.assertFalse(s.motion_faulted)
+        self.assertFalse(s.holding)
+        self.assertEqual(s.status, "pick_complete_returned")
+        self.assertEqual(profile, original_profile)
+        grip = next(v for v in s.robot.trace if v[0] == "grip")
+        np.testing.assert_allclose(grip[1].position_m[:2], s.grasp_target.position_m[:2])
+
     def test_drop_unreachable_transfer_keeps_controls_and_returns_held_part(self):
         s, profile = self.session(mode="drop", part="gear_20teeth")
         original = copy.deepcopy(s.profiles)
