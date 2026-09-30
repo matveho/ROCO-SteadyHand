@@ -863,14 +863,32 @@ class FinalWorkflowTests(unittest.TestCase):
                 self.assertEqual(grip[1], release[1])
                 self.assertAlmostEqual(grip[1].position_m[2], s.surface(*original["coarse_xy_m"]) + original["grasp_clearance_m"])
                 openings = [v[1] for v in s.robot.trace if v[0] == "jaws"]
-                self.assertTrue(all(v == min(.60, max(.20, original["gripper_open_fraction"])) for v in openings))
+                self.assertTrue(all(v == original["gripper_open_fraction"] for v in openings))
                 self.assertEqual(s.profiles["parts"][part], original)
                 s.frame.assert_not_called()
+
+    def test_competition_reproduces_taught_opening_with_and_without_remote_supervision(self):
+        for remote in (False, True):
+            for opening in (0., .10, .75, None):
+                with self.subTest(remote=remote, opening=opening):
+                    s, profile = self.session(competition=True)
+                    profile['gripper_open_fraction'] = opening
+                    original = copy.deepcopy(profile)
+                    s.remote_safe = remote
+                    s.remote_checkpoint = mock.Mock()
+                    with mock.patch('builtins.input', side_effect=AssertionError('competition prompted')), \
+                            mock.patch.object(wrist.time, 'sleep'):
+                        self.assertEqual(s.test(s.part, 'pick', competition=True, no_cv=True), 0)
+                    openings = [v[1] for v in s.robot.trace if v[0] == 'jaws']
+                    self.assertTrue(openings)
+                    self.assertTrue(all(v == (.20 if opening is None else opening) for v in openings))
+                    self.assertEqual(profile, original)
 
     def test_task_test_and_competition_cv_paths_have_identical_motion_and_jaw_traces(self):
         traces = []
         for competition in (False, True):
             s, profile = self.session(competition=competition)
+            profile['gripper_open_fraction'] = .10
             def load_feature(_):
                 s.tracker = mock.Mock()
                 s.reference_feature = tuple(profile["feature_uv"])
@@ -886,6 +904,7 @@ class FinalWorkflowTests(unittest.TestCase):
             servo.assert_called_once()
             traces.append(s.robot.trace)
         self.assertEqual(traces[0], traces[1])
+        self.assertTrue(all(v[1] == .10 for v in traces[0] if v[0] == 'jaws'))
         self.assertEqual(self.output.getvalue().count("EXECUTION CENTER BACKOFF"), 2)
 
     def test_next_part_resets_previous_visual_success(self):

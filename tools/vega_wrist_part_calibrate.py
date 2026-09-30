@@ -540,7 +540,6 @@ class PartSession:
         """Move the empty right jaw to an absolute 0..1 opening fraction."""
         fraction = _number(fraction, 0.0, 1.0)
         if getattr(self, "remote_safe", False):
-            fraction = min(.60, fraction)
             self.remote_checkpoint("before_pregrasp_jaw_adjustment")
         self.robot.connect_gripper()
         result = self.robot._gripper.move_fraction(
@@ -1077,19 +1076,6 @@ class PartSession:
                 )
         if profile and profile.get("gripper_open_fraction") is not None:
             opening = float(profile["gripper_open_fraction"])
-            if competition or getattr(self.args, "mode", "calibrate") == "test":
-                # Keep competition jaws away from both hard stops.  A zero
-                # opening is too tight before descent, while a saved 100%
-                # opening wastes time on a long travel.  The profile itself is
-                # left unchanged; this is only a live competition clamp.
-                clamped = min(.60, max(.20, opening))
-                if clamped != opening:
-                    print(
-                        "COMPETITION GRIPPER OPENING OVERRIDE: "
-                        f"using {clamped * 100:.0f}% pre-grasp opening",
-                        flush=True,
-                    )
-                opening = clamped
             self.gripper_open_fraction = opening
             self._set_gripper_fraction(opening)
         self.coarse = coarse
