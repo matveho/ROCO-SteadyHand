@@ -2,14 +2,14 @@
   "schema_version": 1,
     "description": "Single operator-editable competition routine. Set enabled=false to skip a part; edit this file on the laptop before deployment.",
   "order": [
-    "bolt_8mm",
     "battery_size5",
+    "bolt_8mm",
+    "pin",
     "rod_16mm",
     "usb_a",
     "hdmi",
-    "gear_20teeth",
     "gear_60teeth",
-    "pin",
+    "gear_20teeth",
     "battery_size1"
   ],
   "retries_per_action": 2,
