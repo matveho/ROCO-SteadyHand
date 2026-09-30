@@ -346,6 +346,43 @@ class BoardCornerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _validate_place_corners(reference)
 
+    def test_low_reference_requires_explicit_height_and_preserves_legacy_validation(self):
+        from steadyhand.wrist_part_profiles import _validate_place_corners
+        reference = self.calibrated()
+        reference["camera"] = "wrist_a"
+        _validate_place_corners(reference)  # Existing 100 mm calibration.
+        reference["reference_clearance_m"] = .020
+        with self.assertRaises(ValueError):
+            _validate_place_corners(reference)  # Cannot silently reinterpret old data.
+        reference["alignment_clearance_m"] = .020
+        _validate_place_corners(reference)
+        for invalid in (.005, .040, .100):
+            reference["reference_clearance_m"] = invalid
+            with self.assertRaises(ValueError):
+                _validate_place_corners(reference)
+
+    def test_low_corner_teaching_stays_at_20_with_smaller_bounded_probes(self):
+        robot, motion, capture = self.simulated()
+        robot.pose = Pose((.4, -.1, .520), (1, 0, 0, 0))
+        servo = CornerServo(robot, motion, capture, lambda x, y: .5, low_clearance=True)
+        reference, _ = servo.teach()
+        self.assertAlmostEqual(reference["reference_clearance_m"], .020)
+        for call in motion.call_args_list:
+            self.assertAlmostEqual(call.args[0].position_m[2], .520)
+            self.assertLessEqual(math.dist(call.args[0].position_m[:2], [.4, -.1]), .006001)
+        with self.assertRaisesRegex(CornerVisualError, "10 mm travel"):
+            servo.go((.411, -.1))
+
+    def test_low_alignment_requires_explicit_opt_in_and_rejects_wrong_reference_height(self):
+        robot, motion, capture = self.simulated()
+        robot.pose = Pose((.4, -.1, .520), (1, 0, 0, 0))
+        with self.assertRaises(ValueError):
+            CornerServo(robot, motion, capture, lambda x, y: .5)
+        servo = CornerServo(robot, motion, capture, lambda x, y: .5, low_clearance=True)
+        with self.assertRaisesRegex(CornerVisualError, "different hover height"):
+            servo.align(self.calibrated())
+        motion.assert_not_called()
+
     def test_unstable_corner_frames_stop_before_motion(self):
         robot, motion, _ = self.simulated()
         capture = mock.Mock(side_effect=[self.rgb, self.translated(6, 0)] * 2)

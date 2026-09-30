@@ -418,7 +418,10 @@ class FinalWorkflowTests(unittest.TestCase):
             self.assertFalse(s.holding)
             self.assertTrue(Path(s.args.profiles).is_file())
             np.testing.assert_allclose(s.robot.pose.position_m[:2], saved["place_release_tcp_m"][:2])
-            self.assertAlmostEqual(s.robot.pose.position_m[2] - s.surface(*s.robot.pose.position_m[:2]), .1)
+            self.assertAlmostEqual(s.robot.pose.position_m[2] - s.surface(*s.robot.pose.position_m[:2]), .020)
+            # The ordinary post-release retreat still reached 100 mm first.
+            self.assertTrue(any(v[0] == "move" and abs(v[1].position_m[2] -
+                s.surface(*v[1].position_m[:2]) - .100) < 1e-7 for v in s.robot.trace))
             self.assertEqual(saved["template"], original["template"])
             self.assertEqual(saved.get("pickup_board"), original.get("pickup_board"))
             return {"enabled": True}
@@ -432,6 +435,7 @@ class FinalWorkflowTests(unittest.TestCase):
 
     def test_corner_refresh_uses_saved_hover_without_pickup_or_release(self):
         s, profile = self.session(mode="place-cv")
+        profile["place"]["clearance_m"] = .012
         before = copy.deepcopy(profile)
         s._optional_place_corner_teaching = mock.Mock(return_value={"enabled": True})
         s.begin_part = mock.Mock(side_effect=AssertionError("corner refresh attempted pickup"))
@@ -482,7 +486,7 @@ class FinalWorkflowTests(unittest.TestCase):
         s._capture_drop_evidence.return_value = None
         s.inspection_image = mock.Mock()
         s._optional_place_corner_teaching = mock.Mock(side_effect=[None, {"enabled": True}])
-        with mock.patch("builtins.input", side_effect=["release", "retry"]):
+        with mock.patch("builtins.input", side_effect=["down 45", "release", "retry"]):
             self.assertEqual(s.teach_drop(s.part, profile), 0)
         self.assertEqual(s._optional_place_corner_teaching.call_count, 2)
         self.assertEqual([v[0] for v in s.robot.trace].count("grip"), 1)
@@ -494,7 +498,7 @@ class FinalWorkflowTests(unittest.TestCase):
         s._capture_drop_evidence.return_value = None
         s.inspection_image = mock.Mock()
         s._optional_place_corner_teaching = mock.Mock(return_value=None)
-        with mock.patch("builtins.input", side_effect=["release", "skip"]):
+        with mock.patch("builtins.input", side_effect=["down 45", "release", "skip"]):
             self.assertEqual(s.teach_drop(s.part, profile), 0)
         self.assertEqual(s.status, "drop_profile_saved")
         saved = json.loads(Path(s.args.profiles).read_text())["parts"][s.part]
@@ -505,12 +509,13 @@ class FinalWorkflowTests(unittest.TestCase):
         import cv2
         from steadyhand.vision.board_corners import make_reference, CornerServo
         s, profile = self.session(mode="place-cv")
-        s.robot.pose = s.profile_pose(profile, "place")
+        profile["place"]["clearance_m"] = .012
+        s.robot.pose = s.profile_pose(profile, "place", clearance=.020)
         before = copy.deepcopy(profile)
         rgb = cv2.cvtColor(cv2.imread(str(Path(__file__).parent / "fixtures" / "placement_board_corners.jpg")),
                            cv2.COLOR_BGR2RGB)
         reference = make_reference(rgb)
-        reference.update(reference_clearance_m=.1, reference_quaternion_wxyz=list(s.robot.pose.quaternion_wxyz))
+        reference.update(reference_clearance_m=.020, reference_quaternion_wxyz=list(s.robot.pose.quaternion_wxyz))
         for corner in reference["corners"]:
             corner["jacobian_px_per_m"] = [[0, 2000], [1800, 0]]
         s._publish_live_image = mock.Mock()
@@ -519,6 +524,7 @@ class FinalWorkflowTests(unittest.TestCase):
             s._teach_board_corner_reference(profile["place"])
         saved = s.profiles["parts"][s.part]
         self.assertTrue(saved["place_cv"]["enabled"])
+        self.assertEqual(saved["place_cv"]["alignment_clearance_m"], .020)
         for key, value in before.items():
             if key != "place_cv":
                 self.assertEqual(saved[key], value, key)
@@ -542,6 +548,104 @@ class FinalWorkflowTests(unittest.TestCase):
         align.assert_called_once()
         self.assertFalse(s.holding)
         self.assertEqual([v[0] for v in s.robot.trace].count("release"), 1)
+
+    def low_placement_session(self):
+        from steadyhand.vision.placement import placement_digest
+        s, profile = self.session(competition=True)
+        profile["place"]["clearance_m"] = .012
+        s.holding = True
+        hover = s.profile_pose(profile, "place")
+        s.place_cv_settings = {"method": "white_board_corners_v1", "enabled": True,
+            "alignment_clearance_m": .020, "reference_clearance_m": .020,
+            "placement_sha256": placement_digest(profile["place"]),
+            "reference_board": snapshot(s.runtime[2]),
+            "reference_quaternion_wxyz": list(hover.quaternion_wxyz), "corners": []}
+        return s, profile, hover
+
+    def test_low_cv_transports_high_aligns_at_20_then_releases_and_retreats_high(self):
+        from steadyhand.vision.board_corners import CornerServo
+        s, profile, high = self.low_placement_session()
+        before = copy.deepcopy(s.profiles)
+        corrected_xy = np.asarray(high.position_m[:2]) + [.002, -.001]
+        def align(_):
+            pose = s.robot.pose
+            self.assertAlmostEqual(pose.position_m[2] - s.surface(*pose.position_m[:2]), .020)
+            self.assertTrue(s.holding)
+            self.assertNotIn("release", [v[0] for v in s.robot.trace])
+            s.move(wrist.Pose((*corrected_xy, s.surface(*corrected_xy) + .020), pose.quaternion_wxyz))
+            return {"status": "converged"}
+        with mock.patch.object(CornerServo, "align", side_effect=align), \
+                mock.patch.object(s, "move", wraps=s.move) as move, \
+                mock.patch("builtins.input", side_effect=AssertionError("competition prompt")):
+            s.place(profile["place"], use_place_cv=True)
+        np.testing.assert_allclose(move.call_args_list[0].args[0].position_m, high.position_m)
+        low = move.call_args_list[1].args[0]
+        np.testing.assert_allclose(low.position_m[:2], high.position_m[:2])
+        self.assertAlmostEqual(low.position_m[2] - s.surface(*low.position_m[:2]), .020)
+        release = next(v[1] for v in s.robot.trace if v[0] == "release")
+        np.testing.assert_allclose(release.position_m[:2], corrected_xy)
+        self.assertAlmostEqual(release.position_m[2] - s.surface(*release.position_m[:2]), .012)
+        self.assertAlmostEqual(s.robot.pose.position_m[2] - s.surface(*corrected_xy), .100)
+        self.assertEqual(s.profiles, before)
+
+    def test_failed_low_cv_lifts_before_returning_to_saved_xy_and_releases_normally(self):
+        from steadyhand.vision.board_corners import CornerServo, CornerVisualError
+        s, profile, high = self.low_placement_session()
+        before = copy.deepcopy(s.profiles)
+        corrected_xy = np.asarray(high.position_m[:2]) + [.004, -.003]
+        def failed(_):
+            s.move(Pose((*corrected_xy, s.surface(*corrected_xy) + .020), high.quaternion_wxyz))
+            raise CornerVisualError("corner obscured after correction")
+        with mock.patch.object(CornerServo, "align", side_effect=failed), \
+                mock.patch.object(s, "move", wraps=s.move) as move, \
+                mock.patch("builtins.input", side_effect=AssertionError("competition prompt")):
+            s.place(profile["place"], use_place_cv=True)
+        targets = [c.args[0] for c in move.call_args_list]
+        # Transport, low descent, failed correction, VERTICAL lift, high XY
+        # return, saved descent, normal high retreat.
+        np.testing.assert_allclose(targets[3].position_m[:2], corrected_xy)
+        self.assertAlmostEqual(targets[3].position_m[2] - s.surface(*corrected_xy), .100)
+        np.testing.assert_allclose(targets[4].position_m, high.position_m)
+        release = next(v[1] for v in s.robot.trace if v[0] == "release")
+        np.testing.assert_allclose(release.position_m[:2], high.position_m[:2])
+        self.assertFalse(s.holding)
+        self.assertEqual(s.profiles, before)
+
+    def test_unreachable_low_alignment_falls_back_before_low_motion(self):
+        from steadyhand.vision.board_corners import CornerVisualError
+        s, profile, high = self.low_placement_session()
+        s._move_place_corner = mock.Mock(side_effect=CornerVisualError("20 mm approach preflight rejected"))
+        s._place_visual_align = mock.Mock(side_effect=AssertionError("unreachable CV"))
+        with mock.patch("builtins.input", side_effect=AssertionError("competition prompt")):
+            s.place(profile["place"], use_place_cv=True)
+        release = next(v[1] for v in s.robot.trace if v[0] == "release")
+        np.testing.assert_allclose(release.position_m[:2], high.position_m[:2])
+        self.assertFalse(s.holding)
+        s._place_visual_align.assert_not_called()
+
+    def test_disabled_or_missing_cv_keeps_original_placement_sequence(self):
+        for mode in ("disabled", "missing", "stale"):
+            s, profile, high = self.low_placement_session()
+            if mode == "missing":
+                s.place_cv_settings = None
+            elif mode == "stale":
+                s.place_cv_settings["placement_sha256"] = "outdated"
+            s._move_place_corner = mock.Mock(side_effect=AssertionError("unexpected low CV"))
+            s._place_visual_align = mock.Mock(side_effect=AssertionError("unexpected CV"))
+            with mock.patch.object(s, "move", wraps=s.move) as move:
+                s.place(profile["place"], use_place_cv=mode != "disabled")
+            self.assertEqual(len(move.call_args_list), 3)
+            np.testing.assert_allclose(move.call_args_list[0].args[0].position_m, high.position_m)
+            np.testing.assert_allclose(move.call_args_list[-1].args[0].position_m, high.position_m)
+
+    def test_low_cv_never_descends_below_a_higher_saved_release(self):
+        s, profile, high = self.low_placement_session()
+        profile["place"]["clearance_m"] = .030
+        s._move_place_corner = mock.Mock(side_effect=AssertionError("CV below saved release"))
+        s._place_visual_align = mock.Mock(side_effect=AssertionError("CV below saved release"))
+        s.place(profile["place"], use_place_cv=True)
+        release = next(v[1] for v in s.robot.trace if v[0] == "release")
+        self.assertAlmostEqual(release.position_m[2] - s.surface(*release.position_m[:2]), .030)
 
     def test_corner_visual_failure_preserves_old_calibration_but_motion_fault_propagates(self):
         from steadyhand.vision.board_corners import CornerVisualError

@@ -18,6 +18,7 @@ from .wrist_servo import PixelJacobian, jacobian_from_measured_probes
 
 METHOD = "white_board_corners_v1"
 TEACH_PROBE_M = .010
+LOW_ALIGNMENT_CLEARANCE_M = .020
 
 
 class CornerVisualError(RuntimeError):
@@ -257,12 +258,18 @@ def rotate_reference(reference, current_board):
 class CornerServo:
     """Uses the session's existing preflight/motion layer, never opens jaws."""
 
-    def __init__(self, robot, move, capture, surface, event=None):
+    def __init__(self, robot, move, capture, surface, event=None, *, low_clearance=False):
         self.robot, self.move, self.capture, self.surface = robot, move, capture, surface
         self.event = event or (lambda *_: None)
         self.origin = robot.stationary_tcp_pose(settle_timeout_s=2.)
         self.clearance = self.origin.position_m[2] - surface(*self.origin.position_m[:2])
-        if self.clearance < .060:
+        self.radius_m = .010 if low_clearance else .030
+        self.probe_m = .006 if low_clearance else TEACH_PROBE_M
+        self.step_m = .003 if low_clearance else .005
+        if low_clearance:
+            if abs(self.clearance - LOW_ALIGNMENT_CLEARANCE_M) > .004:
+                raise CornerVisualError("20 mm placement alignment height was not reached")
+        elif self.clearance < .060:
             raise ValueError("Board corner alignment requires >=60 mm hover clearance")
 
     def pose(self):
@@ -270,13 +277,13 @@ class CornerServo:
         if (abs(pose.position_m[2] - self.surface(*pose.position_m[:2]) - self.clearance) > .004
                 or quaternion_angle(pose.quaternion_wxyz, self.origin.quaternion_wxyz) > .025):
             raise RuntimeError("TCP height/orientation drift invalidates board-corner alignment")
-        if math.dist(pose.position_m[:2], self.origin.position_m[:2]) > .033:
+        if math.dist(pose.position_m[:2], self.origin.position_m[:2]) > self.radius_m + .003:
             raise RuntimeError("TCP left the board-corner alignment radius")
         return pose
 
     def go(self, xy):
-        if math.dist(xy, self.origin.position_m[:2]) > .030001:
-            raise CornerVisualError("Board corner alignment reached its 30 mm travel limit")
+        if math.dist(xy, self.origin.position_m[:2]) > self.radius_m + .000001:
+            raise CornerVisualError(f"Board corner alignment reached its {self.radius_m * 1000:g} mm travel limit")
         before = self.pose()
         target = Pose((*xy, self.surface(*xy) + self.clearance), self.origin.quaternion_wxyz)
         self.move(target)
@@ -332,9 +339,9 @@ class CornerServo:
         self.origin = actual
         probe_matches, probe_poses, returns = [], [], []
         # Six-millimetre probes produced <1 px of scene movement onsite.
-        # Use the established 10 mm wrist probe size, but learn from measured
-        # displacement and retain the same conditioning/return checks.
-        for axis, delta in zip(("x", "y"), ((TEACH_PROBE_M, 0.), (0., TEACH_PROBE_M))):
+        # Use 10 mm at a high hover, 6 mm near the release. Always learn from
+        # measured displacement and retain the conditioning/return checks.
+        for axis, delta in zip(("x", "y"), ((self.probe_m, 0.), (0., self.probe_m))):
             self.go(tuple(a+b for a, b in zip(actual.position_m[:2], delta)))
             observation, pose = self.observe(reference, prefer_all=True)
             record(f"probe_{axis}", observation, pose)
@@ -430,8 +437,8 @@ class CornerServo:
             gain = 1. if metric_error <= .003 else .6
             step = (gain + bias_m / max(metric_error, 1e-12)) * delta
             length = float(np.linalg.norm(step))
-            if length > .005:
-                step *= .005 / length
+            if length > self.step_m:
+                step *= self.step_m / length
             xy = np.asarray(pose.position_m[:2]) + step
             if len(ids) == 1 and math.dist(xy, self.origin.position_m[:2]) > .010:
                 raise CornerVisualError("Single-corner correction reached its 10 mm travel limit")

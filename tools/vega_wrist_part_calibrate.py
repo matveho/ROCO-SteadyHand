@@ -1382,7 +1382,19 @@ class PartSession:
         self.move(retreat, slow=True)
         self.remote_checkpoint("return_retreat_complete")
 
-    def _place_visual_align(self, settings):
+    def _return_to_place_hover(self, hover):
+        """Recover a low CV attempt vertically before any saved-XY travel."""
+        current = self.robot.stationary_tcp_pose(settle_timeout_s=2.)
+        lift = Pose((*current.position_m[:2], self.surface(*current.position_m[:2]) + .100),
+                    current.quaternion_wxyz)
+        seed = preflight_tcp_segmented(self.robot._kinematics, self.robot._read_joint_positions(),
+                                       current, lift, **MOTION_STEPS)
+        preflight_tcp_segmented(self.robot._kinematics, seed, lift, hover, **MOTION_STEPS)
+        self.move(lift, slow=True)
+        if hover != lift:
+            self.move(hover, slow=True)
+
+    def _place_visual_align(self, settings, *, fallback_hover=None):
         """Align at the taught hover; low confidence never authorizes release."""
         from steadyhand.vision.placement import placement_digest, placement_tracker
         cv_settings = self.place_cv_settings
@@ -1403,7 +1415,8 @@ class PartSession:
                 reference = rotate_reference(cv_settings, snapshot(self.runtime[2]))
                 self.remote_checkpoint("before_placement_centering")
                 servo = CornerServo(self.robot, self._move_place_corner,
-                    self._placement_corner_frame, self.surface, self.event)
+                    self._placement_corner_frame, self.surface, self.event,
+                    low_clearance=cv_settings.get("alignment_clearance_m") == .020)
                 result = servo.align(reference)
                 # A correction is useful only if the corrected descent and
                 # retreat are reachable. Check before accepting its XY.
@@ -1413,7 +1426,9 @@ class PartSession:
                 try:
                     seed = preflight_tcp_segmented(self.robot._kinematics, self.robot._read_joint_positions(),
                                                    aligned, release, **MOTION_STEPS)
-                    preflight_tcp_segmented(self.robot._kinematics, seed, release, aligned, **MOTION_STEPS)
+                    retreat = aligned if fallback_hover is None else Pose((*aligned.position_m[:2],
+                        self.surface(*aligned.position_m[:2]) + .100), aligned.quaternion_wxyz)
+                    preflight_tcp_segmented(self.robot._kinematics, seed, release, retreat, **MOTION_STEPS)
                 except IKError as exc:
                     raise CornerVisualError(f"Corrected placement is unreachable: {exc}") from exc
                 self.event("place_cv_result", {"method": METHOD, "result": result})
@@ -1459,13 +1474,19 @@ class PartSession:
                     "release_authorized": True,
                 })
                 print("PLACEMENT CV FALLBACK: returning to the taught release pose.", flush=True)
-                self.move(origin, slow=True)
+                if fallback_hover is not None:
+                    self._return_to_place_hover(fallback_hover)
+                else:
+                    self.move(origin, slow=True)
                 return None
             while True:
                 answer = input("Type saved to return to the taught hover and use its release pose, or abort: ").strip().lower()
                 if answer == "saved":
                     self.event("place_cv_decision", {"decision": "saved_pose", "reason": str(exc)})
-                    self.move(origin, slow=True)
+                    if fallback_hover is not None:
+                        self._return_to_place_hover(fallback_hover)
+                    else:
+                        self.move(origin, slow=True)
                     return None
                 if answer in ("abort", "stop", "q", "exit"):
                     raise KeyboardInterrupt()
@@ -1509,11 +1530,23 @@ class PartSession:
             profile.pop("placement_board", None)
             profile.pop("place_release_tcp_m", None)
         corner_settings = getattr(self, "place_cv_settings", None) or {}
+        if use_place_cv and (not corner_settings.get("enabled", False)
+                or corner_settings.get("placement_sha256") != placement_digest(settings)):
+            print("PLACEMENT CV SKIPPED: no current enabled reference; using saved placement.", flush=True)
+            use_place_cv = False
+        low_cv = bool(use_place_cv and corner_settings.get("method") == "white_board_corners_v1"
+                      and corner_settings.get("alignment_clearance_m") == .020)
+        if low_cv and settings["clearance_m"] > .020:
+            print("PLACEMENT CV SKIPPED: saved release is above 20 mm; using the saved placement.", flush=True)
+            use_place_cv, low_cv = False, False
         cv_clearance = (.100 if not use_place_cv or corner_settings.get("method") != "white_board_corners_v1"
                         else float(corner_settings["reference_clearance_m"]))
-        if not .060 <= cv_clearance <= .150:
+        if low_cv:
+            cv_clearance = .020
+        if not (low_cv or .060 <= cv_clearance <= .150):
             raise ValueError("Invalid placement corner hover clearance")
-        hover = self.profile_pose(profile, "place", clearance=cv_clearance)
+        # Low alignment never replaces the high transport/retreat waypoint.
+        hover = self.profile_pose(profile, "place", clearance=.100 if low_cv else cv_clearance)
         x, y = hover.position_m[:2]
         quat = hover.quaternion_wxyz
         release = Pose((x, y, self.surface(x, y)+settings["clearance_m"]), quat)
@@ -1529,8 +1562,25 @@ class PartSession:
         self.remote_checkpoint("before_place_hover")
         self.move(hover)
         self.remote_checkpoint("place_hover")
+        if low_cv:
+            from steadyhand.vision.board_corners import CornerVisualError
+            low = self.profile_pose(profile, "place", clearance=.020)
+            try:
+                seed = preflight_tcp_segmented(self.robot._kinematics, self.robot._read_joint_positions(),
+                                               self.robot.get_tcp_pose(), low, **MOTION_STEPS)
+                seed = preflight_tcp_segmented(self.robot._kinematics, seed, low, release, **MOTION_STEPS)
+                preflight_tcp_segmented(self.robot._kinematics, seed, release, hover, **MOTION_STEPS)
+                self._move_place_corner(low)
+                print("PLACEMENT CV: aligning at 20 mm board clearance before release.", flush=True)
+            except (IKError, CornerVisualError) as exc:
+                if self.motion_faulted:
+                    raise
+                use_place_cv = False
+                self.event("place_cv_decision", {"decision": "saved_pose_auto_fallback", "reason": str(exc)})
+                print(f"LOW PLACEMENT CV UNAVAILABLE: {exc}; using saved placement.", flush=True)
         if use_place_cv:
-            alignment = self._place_visual_align(settings)
+            alignment = (self._place_visual_align(settings, fallback_hover=hover) if low_cv
+                         else self._place_visual_align(settings))
             # Re-read the TCP after the bounded wrist alignment.  Preserve the
             # taught clearance and current orientation while using any small
             # verified XY correction.
@@ -1555,7 +1605,9 @@ class PartSession:
         self._capture_drop_evidence("competition_release_after")
         self.remote_checkpoint("place_released")
         self.remote_checkpoint("before_place_retreat")
-        self.move(hover, slow=True)
+        retreat = (Pose((*hover.position_m[:2], self.surface(*hover.position_m[:2]) + .100),
+                        hover.quaternion_wxyz) if low_cv else hover)
+        self.move(retreat, slow=True)
         self.remote_checkpoint("place_retreat_complete")
         print("Placement release completed; insertion/assembly is not inferred.")
 
@@ -1635,13 +1687,16 @@ class PartSession:
                     kin_cfg[key] = value
 
     def _teach_board_corner_reference(self, settings, selected_uvs=None):
-        """Learn at the actual release XY, at 100 mm, without changing the pose record."""
-        from steadyhand.vision.board_corners import CornerServo, draw_corners, TEACH_PROBE_M
+        """Learn at release XY and 20 mm clearance without changing the release."""
+        from steadyhand.vision.board_corners import CornerServo, draw_corners, LOW_ALIGNMENT_CLEARANCE_M
         from steadyhand.vision.placement import placement_digest
         import cv2
-        print(f"BOARD CORNER TEACHING: two {TEACH_PROBE_M * 1000:g} mm XY measurements at this hover, then return; no grip/release.", flush=True)
+        print("BOARD CORNER TEACHING: 20 mm board clearance, two 6 mm XY measurements, then return; no grip/release.", flush=True)
         servo = CornerServo(self.robot, self._move_place_corner,
-                            self._placement_corner_frame, self.surface, self.event)
+                            self._placement_corner_frame, self.surface, self.event, low_clearance=True)
+        if abs(servo.clearance - LOW_ALIGNMENT_CLEARANCE_M) > .004:
+            from steadyhand.vision.board_corners import CornerVisualError
+            raise CornerVisualError("20 mm placement teaching height was not reached")
         anchor = self.profile_pose(self.profiles["parts"][self.part], "place")
         reference, rgb = servo.teach(selected_uvs, anchor_xy=anchor.position_m[:2])
         directory = ROOT / "calibration" / "place_templates"
@@ -1652,7 +1707,7 @@ class PartSession:
         overlay = path.with_name(path.stem + "_REVIEW.png")
         if not cv2.imwrite(str(overlay), cv2.cvtColor(draw_corners(rgb, reference), cv2.COLOR_RGB2BGR)):
             raise OSError("Could not save placement corner review image")
-        reference.update(enabled=True, camera=WRIST_CAMERA,
+        reference.update(enabled=True, camera=WRIST_CAMERA, alignment_clearance_m=LOW_ALIGNMENT_CLEARANCE_M,
             reference_image=str(path.relative_to(ROOT)), reference_image_sha256=file_sha256(path),
             review_image=str(overlay.relative_to(ROOT)),
             reference_board=snapshot(self.runtime[2]),
@@ -1852,7 +1907,7 @@ class PartSession:
             "down N (mm) | up N | undo | target | image | status | release | return | abort\n"
             "release saves the physical position immediately, then lifts vertically. "
             + ("Placement CV teaching is disabled for this part." if getattr(self.args, "skip_place_cv_teaching", False)
-               else "Board corners are learned automatically at the hover."),
+               else "Board corners are learned at 20 mm, then the arm returns to the 100 mm hover."),
             flush=True,
         )
         while True:
@@ -2327,12 +2382,28 @@ class PartSession:
             raise RuntimeError("Corner refresh requires an empty gripper")
         self.part, self.action = part, "place_cv"
         hover = self.profile_pose(profile, "place")
-        print("REFRESH PLACEMENT CORNERS: saved 100 mm release hover; no pickup, descent or release.", flush=True)
+        print("REFRESH PLACEMENT CORNERS: approach at 100 mm, align at 20 mm, retreat to 100 mm; no pickup/release.", flush=True)
         self.move(hover)
         return self._finish_place_corner_teaching(profile["place"], hover)
 
     def _finish_place_corner_teaching(self, settings, hover):
         """One calibration flow; a visual rejection never repeats the pickup."""
+        from steadyhand.vision.board_corners import LOW_ALIGNMENT_CLEARANCE_M, CornerVisualError
+        if settings["clearance_m"] > LOW_ALIGNMENT_CLEARANCE_M:
+            print("BOARD CORNERS NOT TAUGHT: saved release is above 20 mm. Physical placement remains saved.", flush=True)
+            return 1
+        low = Pose((*hover.position_m[:2], self.surface(*hover.position_m[:2]) + LOW_ALIGNMENT_CLEARANCE_M),
+                   hover.quaternion_wxyz)
+        try:
+            self._move_place_corner(low)
+        except CornerVisualError as exc:
+            print(f"BOARD CORNERS NOT TAUGHT: {exc}. Physical placement remains saved.", flush=True)
+            return 1
+        result = self._teach_place_corner_loop(settings, low)
+        self._return_to_place_hover(hover)
+        return result
+
+    def _teach_place_corner_loop(self, settings, hover):
         selected_uvs = None
         while True:
             if self._optional_place_corner_teaching(settings, selected_uvs):

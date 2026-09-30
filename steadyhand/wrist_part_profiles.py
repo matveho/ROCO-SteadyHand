@@ -149,8 +149,13 @@ def _validate_place_corners(reference):
     h, w = _finite_vector(reference.get("image_shape"), 2, "placement image shape")
     if min(h, w) <= 0:
         raise ValueError("invalid placement image shape")
-    if not .060 <= _finite(reference.get("reference_clearance_m"), "corner hover") <= .150:
-        raise ValueError("placement corner hover must be 60..150 mm")
+    measured = _finite(reference.get("reference_clearance_m"), "corner hover")
+    if "alignment_clearance_m" in reference:
+        if (_finite(reference["alignment_clearance_m"], "alignment clearance") != .020
+                or not .016 <= measured <= .024):
+            raise ValueError("low placement corner reference must be taught at 20 mm (within 4 mm)")
+    elif not .060 <= measured <= .150:
+        raise ValueError("legacy placement corner hover must be 60..150 mm")
     q = _finite_vector(reference.get("reference_quaternion_wxyz"), 4, "corner orientation")
     if abs(sum(v*v for v in q) - 1.) > .01:
         raise ValueError("invalid placement corner orientation")
