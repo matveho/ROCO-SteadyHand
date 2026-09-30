@@ -302,23 +302,36 @@ class VegaAdapter(RobotAdapter):
         q = self._read_joint_positions()
         return self._kinematics.forward(q)
 
-    def stationary_tcp_pose(self):
+    def stationary_tcp_pose(self, *, settle_timeout_s=0.0):
         """Read-only recovery gate: advancing state, stopped joints, clear E-stop."""
         self._require_robot()
+        if not math.isfinite(settle_timeout_s) or not 0 <= settle_timeout_s <= 3:
+            raise ValueError("Stationary settling timeout must be 0..3 seconds")
         handle = self._active_motion_handle
         if handle is not None and handle.is_done is not True:
             raise RuntimeError("Recovery blocked: motion handle is still active")
         stamp = self._state_timestamp()
         previous = self._read_joint_positions()
-        for _ in range(3):
+        deadline = time.monotonic() + settle_timeout_s
+        stable = 0
+        while stable < 3:
+            if any(self._read_estop_status().values()):
+                raise RuntimeError("Recovery blocked: E-stop is active")
             time.sleep(.1)
             current = self._wait_for_joint_state(newer_than=stamp, timeout_s=.5)
             stamp = self._state_timestamp()
             velocity = _finite_vector(self._arm.get_joint_vel(), 7, "Vega joint velocity")
-            if (any(self._read_estop_status().values()) or
-                    max(abs(v) for v in velocity) > .005 or
-                    max(abs(a-b) for a, b in zip(current, previous)) > .0005):
-                raise RuntimeError("Recovery blocked: arm is moving or E-stop is active")
+            if any(self._read_estop_status().values()):
+                raise RuntimeError("Recovery blocked: E-stop is active")
+            speed = max(abs(v) for v in velocity)
+            delta = max(abs(a-b) for a, b in zip(current, previous))
+            if speed > .005 or delta > .0005:
+                stable = 0
+                if time.monotonic() >= deadline:
+                    raise RuntimeError(f"Recovery blocked: arm is moving (velocity={speed:.6f} rad/s, "
+                                       f"sample_delta={delta:.6f} rad)")
+            else:
+                stable += 1
             previous = current
         return self._kinematics.forward(current)
 

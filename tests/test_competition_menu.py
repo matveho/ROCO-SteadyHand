@@ -80,6 +80,16 @@ class CompetitionMenuTests(unittest.TestCase):
             self.assertEqual(self.run_menu(['2', 'usb_a', '0']), 0)
             run.assert_not_called()
 
+    def test_placement_part_selection_directly_teaches_release_and_corners(self):
+        for part in ("battery_size1", "bolt_8mm"):
+            with mock.patch.object(pipeline, '_run_drop_calibration_menu', return_value=0) as teach, \
+                    mock.patch.object(pipeline, '_run_place_cv_menu') as refresh:
+                self.assertEqual(self.run_menu(['4', part, '0']), 0)
+            teach.assert_called_once()
+            self.assertEqual(teach.call_args.kwargs, {'part': part})
+            refresh.assert_not_called()
+        self.assertNotIn('Choose placement calibration', self.output.getvalue())
+
     def test_selected_competition_uses_config_and_no_prompts_or_unselected_parts(self):
         settings = pipeline._load_competition_actions()
         settings['pipeline_speed_scale'] = .31
@@ -151,29 +161,15 @@ class CompetitionMenuTests(unittest.TestCase):
             self.assertEqual(pipeline._configured_competition_run(self.args), 2)
             run.assert_not_called()
 
-    def test_placement_submenu_calls_separate_existing_workflows(self):
-        for choice, function in (('1', '_run_drop_calibration_menu'), ('2', '_run_place_cv_menu')):
-            with self.subTest(choice=choice), mock.patch.object(pipeline, function, return_value=0) as run:
-                self.assertEqual(self.run_menu(['4', 'battery_size1', choice, '0', '0']), 0)
-                run.assert_called_once()
-                self.assertEqual(run.call_args.kwargs, {'part': 'battery_size1'})
-        self.assertEqual(self.run_menu(['4', '0', '0']), 0)
-        self.assertEqual(self.run_menu(['4', 'battery_size1', '0', '0']), 0)
+    def test_placement_back_does_not_start_teaching(self):
+        with mock.patch.object(pipeline, '_run_drop_calibration_menu') as run:
+            self.assertEqual(self.run_menu(['4', '0', '0']), 0)
+            run.assert_not_called()
 
-    def test_placement_cv_unavailable_until_physical_placement_verified(self):
-        with mock.patch.object(pipeline, '_run_place_cv_menu') as cv:
-            self.assertEqual(self.run_menu(['4', 'bolt_8mm', '2', '0', '0']), 0)
-            cv.assert_not_called()
-        self.assertIn('Placement CV unavailable', self.output.getvalue())
-
-    def test_physical_release_teaching_unlocks_cv_in_same_submenu(self):
-        def teach(args, part=None):
-            self.profiles['parts'][part].update(place={'clearance_m': .04}, place_verified=True)
-            return 0
-        with mock.patch.object(pipeline, '_run_drop_calibration_menu', side_effect=teach), \
-                mock.patch.object(pipeline, '_run_place_cv_menu', return_value=0) as cv:
-            self.assertEqual(self.run_menu(['4', 'bolt_8mm', '1', '2', '0', '0']), 0)
-            self.assertEqual(cv.call_args.kwargs, {'part': 'bolt_8mm'})
+    def test_placement_check_only_cannot_start_teaching(self):
+        with mock.patch.object(pipeline, '_run_drop_calibration_menu') as run:
+            self.assertEqual(self.run_menu(['4', '0'], check_only=True), 0)
+            run.assert_not_called()
 
     def test_calibration_dispatch_preserves_existing_commands_without_second_picker(self):
         for function, mode in ((pipeline._run_drop_calibration_menu, 'drop'), (pipeline._run_place_cv_menu, 'place-cv')):

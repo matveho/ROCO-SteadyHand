@@ -118,7 +118,7 @@ class BoardCornerTests(unittest.TestCase):
     def simulated(self, offset=(0, 0)):
         robot = mock.Mock()
         robot.pose = Pose((.4, -.1, .6), (1, 0, 0, 0))
-        robot.stationary_tcp_pose.side_effect = lambda: robot.pose
+        robot.stationary_tcp_pose.side_effect = lambda **kwargs: robot.pose
         def move(pose):
             robot.pose = pose
         motion = mock.Mock(side_effect=move)
@@ -169,6 +169,55 @@ class BoardCornerTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "E-stop"):
             CornerServo(robot, motion, capture, lambda x, y: .5)
         motion.assert_not_called()
+
+    def test_reported_battery_failure_tracks_board_not_larger_venue_floor_or_jaw(self):
+        path = IMAGE.with_name("placement_battery_failed_corners.png")
+        rgb = cv2.cvtColor(cv2.imread(str(path)), cv2.COLOR_BGR2RGB)
+        reference = make_reference(rgb)
+        expected = [(1182, 136), (486, 297), (1275, 892)]
+        self.assertEqual(len(reference["corners"]), 3)
+        for corner, uv in zip(reference["corners"], expected):
+            self.assertLess(math.dist(corner["uv"], uv), 2.)
+        # C4 is hidden by the jaw. Its hull/occlusion intersection near (542,
+        # 896) is not a board corner and must not acquire a tracking identity.
+        for dx, dy, gain in ((-20, 14, .8), (15, -21, 1.1), (.4, -.7, 1.)):
+            image = np.clip(self.translated(dx, dy, rgb).astype(float) * gain + 4,
+                            0, 255).astype(np.uint8)
+            matches = match_corners(image, reference)
+            self.assertGreaterEqual(len(matches), 2)
+            for corner in reference["corners"]:
+                if corner["id"] in matches:
+                    np.testing.assert_allclose(np.asarray(matches[corner["id"]]["uv"]) - corner["uv"],
+                                               [dx, dy], atol=1.)
+
+    def test_actual_adjacent_retreat_frame_does_not_switch_corner_identity(self):
+        rgb = cv2.cvtColor(cv2.imread(str(IMAGE.with_name("placement_battery_failed_corners.png"))),
+                           cv2.COLOR_BGR2RGB)
+        adjacent = cv2.cvtColor(cv2.imread(str(IMAGE.with_name("placement_battery_retreat.png"))),
+                               cv2.COLOR_BGR2RGB)
+        reference = make_reference(rgb)
+        matched = match_corners(adjacent, reference)
+        self.assertEqual(set(matched), {"C2", "C3"})
+        for corner in reference["corners"]:
+            if corner["id"] in matched:
+                self.assertLess(math.dist(corner["uv"], matched[corner["id"]]["uv"]), 2.)
+
+    def test_battery_image_feedback_converges_to_one_mm_without_probes(self):
+        rgb = cv2.cvtColor(cv2.imread(str(IMAGE.with_name("placement_battery_failed_corners.png"))),
+                           cv2.COLOR_BGR2RGB)
+        robot, motion, _ = self.simulated()
+        reference = make_reference(rgb)
+        matrix = np.array([[0, 2000], [1800, 0]])
+        for corner in reference["corners"]:
+            corner["jacobian_px_per_m"] = matrix.tolist()
+        reference.update(reference_clearance_m=.1, reference_quaternion_wxyz=[1, 0, 0, 0])
+        def capture():
+            shift = matrix @ (np.asarray(robot.pose.position_m[:2]) - [.4, -.1]) + [-12, 9]
+            return self.translated(*shift, image=rgb)
+        result = CornerServo(robot, motion, capture, lambda x, y: .5).align(reference)
+        self.assertEqual(result["status"], "converged")
+        self.assertLess(np.linalg.norm(np.asarray(robot.pose.position_m[:2]) - [.395, -.094]), .001)
+        self.assertLessEqual(result["error_px"], 2.)
 
     def test_motion_fault_does_not_trigger_blind_return(self):
         robot, motion, capture = self.simulated(offset=[-12, 9])

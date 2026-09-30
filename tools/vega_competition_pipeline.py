@@ -1013,29 +1013,8 @@ def _run_placement_calibration_menu(args):
     part = _choose_pickup_calibrated_part("CALIBRATE PLACEMENT")
     if part is None:
         return 0
-    while True:
-        profile = _menu_profiles()["parts"][part]
-        placement_ready = bool(profile.get("place") and profile.get("place_verified") is True)
-        print(f"\nCALIBRATE PLACEMENT: {part}")
-        print("  1. Teach/refine release — automatically learn board corners after release")
-        print("  2. Refresh board corners at saved hover (no pickup/release)" + ("" if placement_ready else
-              " — UNAVAILABLE: teach and verify physical release first"))
-        print("  0. Back")
-        choice = clean_choice(input("Choose placement calibration: "))
-        if choice in ("0", "back", ""):
-            return 0
-        if choice == "1":
-            result = _run_drop_calibration_menu(args, part=part)
-        elif choice == "2" and placement_ready:
-            result = _run_place_cv_menu(args, part=part)
-        elif choice == "2":
-            print("Placement CV unavailable; complete physical release calibration first.", flush=True)
-            continue
-        else:
-            print("Choose 1, 2, or 0.", flush=True)
-            continue
-        if result:
-            return result
+    print(f"\nCALIBRATE PLACEMENT: {part} — teach release, then learn board corners automatically.")
+    return _run_drop_calibration_menu(args, part=part)
 
 
 def _show_menu_readiness(args):

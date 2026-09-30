@@ -29,9 +29,13 @@ def _candidates(gray, saturation, threshold):
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     if not contours:
         return [], mask
-    contour = max(contours, key=cv2.contourArea)
-    if cv2.contourArea(contour) < mask.size * .035:
+    # The bright venue floor can be larger than the board in a fisheye view.
+    # It is a crescent/ring around the dark table, not a solid board surface.
+    solid = [c for c in contours if cv2.contourArea(c) >= mask.size * .035
+             and cv2.contourArea(c) / max(1., cv2.contourArea(cv2.convexHull(c))) >= .75]
+    if not solid:
         return [], mask
+    contour = max(solid, key=cv2.contourArea)
     # Interior holes/parts do not become candidate board corners.
     mask[:] = 0
     cv2.drawContours(mask, [contour], -1, 255, -1)
@@ -80,6 +84,21 @@ def _candidates(gray, saturation, threshold):
         fraction = float((patch > 0).mean())
         if not .12 < fraction < .47:
             continue
+        # The hull may bridge over a jaw and nominate the *intersection* of
+        # that occlusion with an edge. Both adjacent edges must have visible
+        # white material just inside them; a hull bridge through a jaw fails.
+        inward = (a + b) / np.linalg.norm(a + b)
+        supported = True
+        for direction in (a, b):
+            samples = np.rint(refined[0, 0] + np.array([8, 14, 20, 26])[:, None]
+                               * direction + 6 * inward).astype(int)
+            if (np.any(samples < 0) or np.any(samples[:, 0] >= w)
+                    or np.any(samples[:, 1] >= h)
+                    or np.mean(mask[samples[:, 1], samples[:, 0]] > 0) < .75):
+                supported = False
+                break
+        if not supported:
+            continue
         result.append({"uv": refined[0, 0].astype(float).tolist(),
                        "directions": [a.tolist(), b.tolist()], "angle": angle,
                        "signature": (cv2.resize(patch, (17, 17), interpolation=cv2.INTER_AREA)
@@ -99,21 +118,28 @@ def detect_board_corners(rgb):
     if len(neutral) < gray.size * .1 or float(neutral.std()) < 12:
         raise CornerVisualError("No contrasting white board silhouette")
     threshold = float(cv2.threshold(neutral, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[0])
-    groups = [_candidates(gray, saturation, np.clip(threshold + d, 40, 235))
-              for d in (-10, 0, 10)]
-    candidates, mask = groups[1]
+    groups = [_candidates(gray, saturation, t) for t in
+              sorted(set(float(np.clip(threshold + d, 40, 235)) for d in (-10, 0, 10, 20)))]
     stable = []
-    for item in candidates:
-        uv = np.asarray(item["uv"])
-        support = [other for group, _ in (groups[0], groups[2]) for other in group
-                   if np.linalg.norm(np.asarray(other["uv"]) - uv) < 4]
-        if not support:
-            continue
-        item = dict(item, uv=(uv / scale).tolist())
-        stable.append(item)
+    full_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    for group_index, (candidates, _) in enumerate(groups):
+        for item in candidates:
+            uv = np.asarray(item["uv"])
+            support = [other for i, (group, _) in enumerate(groups) if i != group_index
+                       for other in group if np.linalg.norm(np.asarray(other["uv"]) - uv) < 4]
+            if not support or any(math.dist(c["uv"], uv / scale) < 12 for c in stable):
+                continue
+            # Refine in original pixels: half-resolution quantization can be
+            # several millimetres at a shallow wrist viewing angle.
+            pixel = np.array([[uv / scale]], dtype=np.float32)
+            cv2.cornerSubPix(full_gray, pixel, (5, 5), (-1, -1),
+                (cv2.TERM_CRITERIA_EPS | cv2.TERM_CRITERIA_MAX_ITER, 30, .01))
+            if np.linalg.norm(pixel[0, 0] - uv / scale) > 4:
+                continue
+            stable.append(dict(item, uv=pixel[0, 0].astype(float).tolist()))
     if not stable:
         raise CornerVisualError("No visible, stable board corners; inspect the white-board outline")
-    return sorted(stable, key=lambda item: (item["uv"][1], item["uv"][0])), mask
+    return sorted(stable, key=lambda item: (item["uv"][1], item["uv"][0])), groups[1][1]
 
 
 def make_reference(rgb, selected_uvs=None):
@@ -233,13 +259,13 @@ class CornerServo:
     def __init__(self, robot, move, capture, surface, event=None):
         self.robot, self.move, self.capture, self.surface = robot, move, capture, surface
         self.event = event or (lambda *_: None)
-        self.origin = robot.stationary_tcp_pose()
+        self.origin = robot.stationary_tcp_pose(settle_timeout_s=2.)
         self.clearance = self.origin.position_m[2] - surface(*self.origin.position_m[:2])
         if self.clearance < .060:
             raise ValueError("Board corner alignment requires >=60 mm hover clearance")
 
     def pose(self):
-        pose = self.robot.stationary_tcp_pose()
+        pose = self.robot.stationary_tcp_pose(settle_timeout_s=2.)
         if (abs(pose.position_m[2] - self.surface(*pose.position_m[:2]) - self.clearance) > .004
                 or quaternion_angle(pose.quaternion_wxyz, self.origin.quaternion_wxyz) > .025):
             raise RuntimeError("TCP height/orientation drift invalidates board-corner alignment")
@@ -261,8 +287,9 @@ class CornerServo:
     def observe(self, reference):
         first = match_corners(self.capture(), reference)
         second = match_corners(self.capture(), reference)
-        common = {key: value for key, value in second.items() if key in first
-                  and math.dist(value["uv"], first[key]["uv"]) <= 3.}
+        common = {key: dict(value, uv=((np.asarray(value["uv"]) + first[key]["uv"]) / 2).tolist())
+                  for key, value in second.items() if key in first
+                  and math.dist(value["uv"], first[key]["uv"]) <= 2.}
         if not common:
             raise CornerVisualError("Board corner image unstable between fresh frames")
         return common, self.pose()
@@ -322,15 +349,17 @@ class CornerServo:
             raise CornerVisualError("Board corner reference was taught at a different hover height")
         if quaternion_angle(self.origin.quaternion_wxyz,
                             expected_quaternion or reference["reference_quaternion_wxyz"]) > .025:
-            raise RuntimeError("TCP orientation differs from board corner reference")
+            raise CornerVisualError("Arrival orientation differs from board corner reference")
         previous, stalled = None, 0
         for iteration in range(9):
             matches, pose = self.observe(reference)
             delta, error, ids = correction(reference, matches)
             self.event("place_corner_observation", {"iteration": iteration, "matched_corners": matches,
-                "used_corners": ids, "error_px": error, "correction_m": delta.tolist()})
-            if error <= 4 and np.linalg.norm(delta) <= .002:
+                "used_corners": ids, "error_px": error, "correction_m": delta.tolist(),
+                "estimated_error_m": float(np.linalg.norm(delta))})
+            if error <= 2 and np.linalg.norm(delta) <= .001:
                 return {"status": "converged", "iterations": iteration, "error_px": error,
+                        "estimated_error_m": float(np.linalg.norm(delta)),
                         "corners": ids, "tcp_position_m": list(pose.position_m)}
             if previous is not None:
                 stalled = stalled+1 if error >= previous-1 else 0

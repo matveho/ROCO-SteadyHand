@@ -179,6 +179,40 @@ class AdapterContractTests(unittest.TestCase):
                 adapter.stationary_tcp_pose()
         self.assertFalse(any(e[0] == "move_to_joint_pos" for e in self.events))
 
+    def test_corner_settling_waits_for_three_stable_samples_without_motion(self):
+        adapter = self.connect()
+        readings = iter([[.008]*7, [.006]*7, [0.]*7, [0.]*7, [0.]*7])
+        adapter._arm.get_joint_vel = lambda: next(readings)
+        with patch("steadyhand.adapters.vega.time.sleep") as sleep:
+            adapter.stationary_tcp_pose(settle_timeout_s=2.)
+        self.assertEqual(sleep.call_count, 5)
+        self.assertFalse(any(e[0] == "move_to_joint_pos" for e in self.events))
+
+    def test_corner_settling_timeout_is_bounded_and_reports_motion_separately(self):
+        adapter = self.connect()
+        adapter._arm.get_joint_vel = lambda: [.01]*7
+        clock = [0.]
+        def advance(_seconds):
+            clock[0] += .1
+        with patch("steadyhand.adapters.vega.time.sleep", side_effect=advance), \
+                patch("steadyhand.adapters.vega.time.monotonic", side_effect=lambda: clock[0]):
+            with self.assertRaisesRegex(RuntimeError, "arm is moving.*velocity=0.010000"):
+                adapter.stationary_tcp_pose(settle_timeout_s=.3)
+        self.assertLess(clock[0], .5)
+        self.assertFalse(any(e[0] == "move_to_joint_pos" for e in self.events))
+
+    def test_corner_settling_never_waits_through_estop_or_stale_feedback(self):
+        adapter = self.connect()
+        with patch.object(adapter, "_read_estop_status", return_value={"physical": True}), \
+                patch("steadyhand.adapters.vega.time.sleep") as sleep:
+            with self.assertRaisesRegex(RuntimeError, "E-stop is active"):
+                adapter.stationary_tcp_pose(settle_timeout_s=2.)
+            sleep.assert_not_called()
+        adapter._arm.frozen = True
+        with self.assertRaisesRegex(RuntimeError, "fresh=False"):
+            adapter.stationary_tcp_pose(settle_timeout_s=2.)
+        self.assertFalse(any(e[0] in ("move_to_joint_pos", "estop") for e in self.events))
+
     def setUp(self):
         self.events = []
         self.robot = FakeRobot(self.events)

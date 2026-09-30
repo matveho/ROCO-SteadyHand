@@ -1376,7 +1376,7 @@ class PartSession:
         using_corners = bool(cv_settings and cv_settings.get("method") == "white_board_corners_v1")
         from steadyhand.vision.board_corners import CornerVisualError
         visual_error = CornerVisualError if using_corners else ValueError
-        origin = self.robot.stationary_tcp_pose() if using_corners else self.robot.get_tcp_pose()
+        origin = self.robot.stationary_tcp_pose(settle_timeout_s=2.) if using_corners else self.robot.get_tcp_pose()
         try:
             if not cv_settings or not cv_settings.get("enabled", False):
                 raise visual_error("Placement feature reference is missing or disabled")
@@ -1389,9 +1389,20 @@ class PartSession:
             if cv_settings.get("method") == METHOD:
                 reference = rotate_reference(cv_settings, snapshot(self.runtime[2]))
                 self.remote_checkpoint("before_placement_centering")
-                servo = CornerServo(self.robot, lambda pose: self.move(pose, slow=True),
+                servo = CornerServo(self.robot, self._move_place_corner,
                     self._placement_corner_frame, self.surface, self.event)
                 result = servo.align(reference)
+                # A correction is useful only if the corrected descent and
+                # retreat are reachable. Check before accepting its XY.
+                aligned = self.robot.stationary_tcp_pose(settle_timeout_s=2.)
+                release = Pose((*aligned.position_m[:2],
+                    self.surface(*aligned.position_m[:2]) + settings["clearance_m"]), aligned.quaternion_wxyz)
+                try:
+                    seed = preflight_tcp_segmented(self.robot._kinematics, self.robot._read_joint_positions(),
+                                                   aligned, release, **MOTION_STEPS)
+                    preflight_tcp_segmented(self.robot._kinematics, seed, release, aligned, **MOTION_STEPS)
+                except IKError as exc:
+                    raise CornerVisualError(f"Corrected placement is unreachable: {exc}") from exc
                 self.event("place_cv_result", {"method": METHOD, "result": result})
                 self.remote_checkpoint("after_placement_centering")
                 return result
@@ -1419,7 +1430,7 @@ class PartSession:
                 raise
             # Hardware/motion failures always propagate. Only visual failures
             # are eligible for an explicit operator-authorized saved-pose fallback.
-            if any(word in str(exc).lower() for word in ("ik ", "tcp", "joint", "camera", "estop", "e-stop", "timeout", "motor")):
+            if not using_corners and any(word in str(exc).lower() for word in ("ik ", "tcp", "joint", "camera", "estop", "e-stop", "timeout", "motor")):
                 raise
             self.event("place_cv_low_confidence", {"reason": str(exc), "release_authorized": False})
             print(f"PLACEMENT CV NOT VERIFIED: {exc}; no descent/release authorized.", flush=True)
@@ -1585,13 +1596,24 @@ class PartSession:
         self.place_corner_image_path = path
         return rgb
 
+    def _move_place_corner(self, pose):
+        from steadyhand.vision.board_corners import CornerVisualError
+        try:
+            self.move(pose, slow=True)
+        except IKError as exc:
+            # move() preflights before commanding anything and latches faults
+            # if an executed movement fails. Never hide the latter as vision.
+            if self.motion_faulted:
+                raise
+            raise CornerVisualError(f"Optional corner correction is unreachable: {exc}") from exc
+
     def _teach_board_corner_reference(self, settings, selected_uvs=None):
         """Learn at the actual release XY, at 100 mm, without changing the pose record."""
         from steadyhand.vision.board_corners import CornerServo, draw_corners
         from steadyhand.vision.placement import placement_digest
         import cv2
         print("BOARD CORNER TEACHING: two 6 mm XY measurements at this hover, then return; no grip/release.", flush=True)
-        servo = CornerServo(self.robot, lambda pose: self.move(pose, slow=True),
+        servo = CornerServo(self.robot, self._move_place_corner,
                             self._placement_corner_frame, self.surface, self.event)
         anchor = self.profile_pose(self.profiles["parts"][self.part], "place")
         reference, rgb = servo.teach(selected_uvs, anchor_xy=anchor.position_m[:2])
@@ -1628,7 +1650,7 @@ class PartSession:
             # as annotation trouble or hidden after a part was released.
             self.event("place_corner_teaching_unavailable", {"reason": str(exc)})
             print(f"BOARD CORNERS NOT SAVED: {exc}. Physical release calibration is still saved.\n"
-                  "Use placement menu → Refresh board corners to retry without moving any part.", flush=True)
+                  "You can retry corner teaching here without picking up the part again.", flush=True)
             return None
 
     def _capture_drop_evidence(self, label):
@@ -1813,7 +1835,7 @@ class PartSession:
                     self.move(retreat, slow=True)
                     self.remote_checkpoint("drop_retreat_complete")
                     self._capture_drop_evidence("retreat_after_release")
-                    self._optional_place_corner_teaching(settings)
+                    self._finish_place_corner_teaching(settings, retreat)
                     return 0
                 except (RuntimeError, ValueError) as exc:
                     if not self.holding or self.motion_faulted:
@@ -2238,9 +2260,13 @@ class PartSession:
         hover = self.profile_pose(profile, "place")
         print("REFRESH PLACEMENT CORNERS: saved 100 mm release hover; no pickup, descent or release.", flush=True)
         self.move(hover)
+        return self._finish_place_corner_teaching(profile["place"], hover)
+
+    def _finish_place_corner_teaching(self, settings, hover):
+        """One calibration flow; a visual rejection never repeats the pickup."""
         selected_uvs = None
         while True:
-            if self._optional_place_corner_teaching(profile["place"], selected_uvs):
+            if self._optional_place_corner_teaching(settings, selected_uvs):
                 self.status = "place_corner_profile_saved"
                 return 0
             # A visual-only rejection can leave a completed 6 mm hover probe.
