@@ -28,7 +28,7 @@
     "pin": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "bolt_8mm": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "battery_size5": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
-    "rod_16mm": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
+    "rod_16mm": {"enabled": true, "pick_enabled": true, "place_enabled": false, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick"},
     "usb_a": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "hdmi": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"}
   }
