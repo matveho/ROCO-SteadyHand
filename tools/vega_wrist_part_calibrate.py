@@ -990,9 +990,12 @@ class PartSession:
         self.goal = self.goal_match = None
         self.reference_feature = None
         self.reference_match_score = None
+        self.reference_rgb = None
+        self.goal_match_score = self.goal_match_error_px = None
         self.alignment_verified = False
         self.manual_alignment_override = False
-        self.no_cv_mode = bool(no_cv)
+        manual_teaching = getattr(self.args, "mode", None) == "calibrate"
+        self.no_cv_mode = bool(no_cv or manual_teaching)
         self.no_cv_used_recorded = False
         self.alignment_fallback_used = False
         self.calibration_hash_mismatch = False
@@ -1001,9 +1004,12 @@ class PartSession:
         self.reference_pose = None
         self.yaw = float(profile["yaw_deg"]) if profile else float(initial_yaw or 0.0)
         nominal = self.targets[f"task.{part}.pick"]
-        coarse = self.profile_pose(profile, "pick", no_cv=False) if profile else _yaw_pose(nominal, self.yaw)
+        if profile:
+            coarse = self.profile_pose(profile, "pick", no_cv=manual_teaching)
+        else:
+            coarse = nominal if manual_teaching else _yaw_pose(nominal, self.yaw)
         self.grasp_target = self.profile_pose(profile, "pick", no_cv=True) if profile else coarse
-        if getattr(self.args, "head_reacquire", False):
+        if not manual_teaching and getattr(self.args, "head_reacquire", False):
             observation = self.head_observations.get(part, {})
             if observation.get("selection") != "head_detection":
                 raise ValueError("Head reacquisition has no unique nearby detection; part skipped")
@@ -1064,13 +1070,18 @@ class PartSession:
             self.gripper_open_fraction = opening
             self._set_gripper_fraction(opening)
         self.coarse = coarse
-        if no_cv:
+        if no_cv or manual_teaching:
             self.remote_checkpoint("before_coarse_hover")
             self.move(self.grasp_target)
             self._settle_pickup_hover(self.grasp_target)
             self.coarse = self.grasp_target
             self.no_cv_used_recorded = bool(profile)
-            print("NO-CV COARSE HOVER: projected taught grasp", flush=True)
+            if manual_teaching:
+                print("MANUAL TEACHING HOVER: " + (
+                    "board-projected saved grasp" if profile else "nominal task position"
+                ) + "; no feature loaded or centering commanded.", flush=True)
+            else:
+                print("NO-CV COARSE HOVER: projected taught grasp", flush=True)
             self.remote_checkpoint("coarse_hover")
             return None
         self.remote_checkpoint("before_coarse_hover")
@@ -1082,19 +1093,6 @@ class PartSession:
             try:
                 self._load_saved_feature(profile)
             except (RuntimeError, ValueError) as exc:
-                if getattr(self.args, "mode", "calibrate") == "calibrate" and _is_visual_alignment_failure(exc):
-                    # Re-teaching must never be blocked by a stale/occluded
-                    # saved template check.  The next teach_feature() prompt
-                    # captures a fresh image and asks for a new annotation.
-                    self.tracker = None
-                    self.reference_feature = None
-                    self.reference_rgb = None
-                    print(
-                        "SAVED TEMPLATE CHECK SKIPPED: feature was not reliable; "
-                        "continue with a fresh feature annotation.",
-                        flush=True,
-                    )
-                    return None
                 # Keep identity metadata for an explicit manual approval, but
                 # never call an ambiguous candidate a verified alignment.
                 self.reference_feature = tuple(profile.get("feature_uv") or (0.0, 0.0))
@@ -1811,14 +1809,13 @@ class PartSession:
         grasp = old.get("grasp_clearance_m") if old else None
         place = old.get("place") if old else None
         place_changed = False
+        feature_selected = False
         self.gripper_open_fraction = old.get("gripper_open_fraction") if old else None
-        if self.gripper_open_fraction is not None:
-            self._set_gripper_fraction(self.gripper_open_fraction)
         self.grasp_verified = False
         self.last_grasp_clearance = grasp
-        self.teach_feature()
-        self.remote_checkpoint("feature_selected")
         result = None
+        print("Adjust the hover manually; center runs only when requested. "
+              "Existing visual calibration is kept unless you use feature, then save.", flush=True)
         print("Commands:")
         print("  forward/back/left/right [N] | step N | yaw N | undo")
         print("  feature (new first annotation) | goal (second annotation of SAME feature)")
@@ -1838,64 +1835,75 @@ class PartSession:
                     if self.holding:
                         print("Type return to put the test part back before saving.")
                         continue
-                    if self.goal is None or not self.alignment_verified:
-                        print("SAVE BLOCKED: run goal, then center, and verify alignment first.")
+                    if not old and not feature_selected:
+                        print("SAVE BLOCKED: teach this new part's visual reference with feature first.")
+                        continue
+                    if not self.alignment_verified or (feature_selected and self.goal is None):
+                        print("SAVE BLOCKED: verify alignment with center, or use grab manual at the supervised grasp pose.")
                         continue
                     if grasp is None or not self.grasp_verified:
                         print("SAVE BLOCKED: teach depth, grab, and confirm the physical grasp first.")
                         continue
-                    try:
-                        rgb, path = self.frame("final taught pose")
-                        feature, final_score = self.tracker.locate(rgb)
-                    except (ValueError, RuntimeError) as exc:
-                        print(
-                            "SAVE BLOCKED: the original feature was not confidently "
-                            f"visible in the final image ({exc}); use image/feature/goal and retry.",
-                            flush=True,
-                        )
-                        continue
-                    _write_overlay(
-                        path.with_name(path.stem + "_final.png"),
-                        rgb,
-                        feature,
-                        self.goal,
-                        label=part,
-                    )
-                    # The saved template remains the uncluttered first image;
-                    # final/goal images and events provide the audit trail.
-                    template, anchor = _crop_template(self.reference_rgb, self.reference_feature)
-                    import cv2
-                    directory = default_template_dir(ROOT)
-                    directory.mkdir(parents=True, exist_ok=True)
-                    template_path = directory / f"{part}_{time.time_ns()}.png"
-                    if not cv2.imwrite(str(template_path), cv2.cvtColor(template, cv2.COLOR_RGB2BGR)):
-                        raise RuntimeError("Failed to save wrist template")
-                    cal = load_board_calibration(ROOT / "calibration/vega_board_manual.json", self.cfg)
-                    profile = {**(old or {}),
-                        "part": part, "working_arm": WORKING_ARM, "tcp_frame": TCP_FRAME, "wrist_camera": WRIST_CAMERA,
-                        "calibration_sha256": cal["sha256"], "coarse_xy_m": list(self.coarse.position_m[:2]),
-                        "feature_uv": list(self.reference_feature), "goal_uv": list(self.goal),
-                        "goal_source": (
-                            "operator_confirmed_current_pose"
-                            if self.manual_alignment_override
-                            else (
-                                "wrist_image_center"
-                                if self.goal_match is None
-                                else "same_feature_second_annotation"
+                    visual_fields = {}
+                    if feature_selected:
+                        try:
+                            rgb, path = self.frame("final taught pose")
+                            feature, final_score = self.tracker.locate(rgb)
+                        except (ValueError, RuntimeError) as exc:
+                            print(
+                                "SAVE BLOCKED: the original feature was not confidently "
+                                f"visible in the final image ({exc}); use image/feature/goal and retry.",
+                                flush=True,
                             )
-                        ),
-                        "goal_match_uv": list(self.goal_match) if self.goal_match is not None else None,
-                        "goal_match_score": self.goal_match_score,
-                        "goal_click_match_error_px": self.goal_match_error_px,
-                        "reference_match_score": self.reference_match_score,
-                        "feature_tracking_mode": self.feature_tracking_mode,
-                        "final_match_uv": list(feature), "final_match_score": float(final_score),
-                        "image_shape": list(self.reference_rgb.shape[:2]),
+                            continue
+                        _write_overlay(
+                            path.with_name(path.stem + "_final.png"),
+                            rgb, feature, self.goal, label=part,
+                        )
+                        # Replace visual calibration only after an explicit
+                        # feature selection and save, never by opening teaching
+                        # or by loading the old tracker for an explicit center.
+                        template, anchor = _crop_template(self.reference_rgb, self.reference_feature)
+                        import cv2
+                        directory = default_template_dir(ROOT)
+                        directory.mkdir(parents=True, exist_ok=True)
+                        template_path = directory / f"{part}_{time.time_ns()}.png"
+                        if not cv2.imwrite(str(template_path), cv2.cvtColor(template, cv2.COLOR_RGB2BGR)):
+                            raise RuntimeError("Failed to save wrist template")
+                        visual_fields = {
+                            "feature_uv": list(self.reference_feature), "goal_uv": list(self.goal),
+                            "goal_source": (
+                                "operator_confirmed_current_pose"
+                                if self.manual_alignment_override
+                                else (
+                                    "wrist_image_center"
+                                    if self.goal_match is None
+                                    else "same_feature_second_annotation"
+                                )
+                            ),
+                            "goal_match_uv": list(self.goal_match) if self.goal_match is not None else None,
+                            "goal_match_score": self.goal_match_score,
+                            "goal_click_match_error_px": self.goal_match_error_px,
+                            "reference_match_score": self.reference_match_score,
+                            "feature_tracking_mode": self.feature_tracking_mode,
+                            "final_match_uv": list(feature), "final_match_score": float(final_score),
+                            "image_shape": list(self.reference_rgb.shape[:2]),
+                            "template": {"path": str(template_path.relative_to(ROOT)), "sha256": file_sha256(template_path), "template_uv": list(anchor)},
+                        }
+                    else:
+                        # The retained image still belongs to its original
+                        # approach pose. Reproject that pose when recording a
+                        # new physical grasp; don't attach it to today's hover.
+                        self.reference_pose = self.profile_pose(old, "pick", no_cv=False)
+                    cal = load_board_calibration(ROOT / "calibration/vega_board_manual.json", self.cfg)
+                    profile = {**(old or {}), **visual_fields,
+                        "part": part, "working_arm": WORKING_ARM, "tcp_frame": TCP_FRAME, "wrist_camera": WRIST_CAMERA,
+                        "calibration_sha256": cal["sha256"],
+                        "coarse_xy_m": list((self.reference_pose or self.coarse).position_m[:2]),
                         "hover_clearance_m": .100, "grasp_clearance_m": grasp, "yaw_deg": self.yaw,
                         "gripper_open_fraction": self.gripper_open_fraction,
                         "place": place, "grasp_verified": self.grasp_verified,
                         "place_verified": False if place_changed else bool((old or {}).get("place_verified", False)),
-                        "template": {"path": str(template_path.relative_to(ROOT)), "sha256": file_sha256(template_path), "template_uv": list(anchor)},
                         "localization_result": result, "created_at_utc": datetime.now(timezone.utc).isoformat(),
                     }
                     profile["pickup_board"] = self.pickup_record()
@@ -1970,6 +1978,9 @@ class PartSession:
                     continue
                 if command in ("image", "capture", "snapshot"):
                     rgb, path = self.frame("manual wrist capture")
+                    if self.tracker is None:
+                        print("No active feature; use feature to teach one, or center to reuse the saved feature.")
+                        continue
                     try:
                         feature, score = self.tracker.locate(rgb)
                         _write_overlay(path.with_name(path.stem + "_tracked.png"), rgb, feature, self.goal, label=part)
@@ -1979,12 +1990,23 @@ class PartSession:
                     continue
                 if command in ("feature", "reference"):
                     self.teach_feature()
+                    feature_selected = True
+                    self.no_cv_mode = False
+                    self.remote_checkpoint("feature_selected")
                     continue
                 if command in ("goal", "target"):
                     self.teach_goal_feature()
                     continue
                 if command in ("center", "verify", "localize"):
                     try:
+                        # Loading the old image/goal is also operator initiated.
+                        # A new feature always takes precedence over the old one.
+                        if self.tracker is None and old and not feature_selected:
+                            self._load_saved_feature(old)
+                        if self.tracker is None:
+                            print("CENTER NOT STARTED: use feature to teach a visible reference feature first.")
+                            continue
+                        self.no_cv_mode = False
                         result = self.localize()
                     except RuntimeError as exc:
                         message = str(exc).lower()

@@ -1,6 +1,7 @@
 """End-to-end operator recovery and pickup traces with no hardware access."""
 import copy
 import io
+import json
 from contextlib import redirect_stdout
 from pathlib import Path
 import tempfile
@@ -11,6 +12,7 @@ from unittest import mock
 import numpy as np
 
 from steadyhand.models import Pose
+from steadyhand.board_relative import make_record, record_target, snapshot
 from steadyhand.wrist_part_profiles import load_profiles
 from tools import vega_competition_pipeline as pipeline
 from tools import vega_wrist_part_calibrate as wrist
@@ -93,6 +95,164 @@ class FinalWorkflowTests(unittest.TestCase):
         self.assertNotIn("grip", [v[0] for v in s.robot.trace])
         np.testing.assert_allclose(s.robot.pose.position_m, s.coarse.position_m)
         self.assertIn("Arm left at its current hover", self.output.getvalue())
+
+    def shifted_pickup_profile(self, s, profile):
+        """A taught approach differs from the grasp, and the board has moved."""
+        approach = s.profile_pose(profile, "pick")
+        grasp = Pose((approach.position_m[0] + .02, approach.position_m[1] - .01,
+                      approach.position_m[2]), approach.quaternion_wxyz)
+        reference = snapshot(s.runtime[2])
+        profile["pickup_board"] = make_record(reference,
+            approach=record_target(reference, approach, source="feature_image_TCP"),
+            grasp=record_target(reference, grasp, source="confirmed_grasp_hover_TCP"))
+        center, ux, uy, plane = s.runtime[2]
+        s.runtime = (*s.runtime[:2], ((center[0] + .01, center[1] - .005), ux, uy, plane), s.runtime[3])
+        xy = (grasp.position_m[0] + .01, grasp.position_m[1] - .005)
+        return Pose((*xy, s.surface(*xy) + .100), grasp.quaternion_wxyz)
+
+    def test_open_pickup_calibration_goes_to_projected_grasp_without_servo_or_probes(self):
+        s, profile = self.session(mode="calibrate")
+        expected = self.shifted_pickup_profile(s, profile)
+        original = copy.deepcopy(profile)
+        template_path = wrist.ROOT / profile["template"]["path"]
+        template_bytes = template_path.read_bytes()
+        profiles_path = Path(s.args.profiles)
+        profiles_path.write_text(json.dumps(s.profiles))
+        profile_bytes = profiles_path.read_bytes()
+        start = s.robot.pose
+        # Even a leftover head-reacquire flag cannot override the taught hover.
+        s.args.head_reacquire = True
+        with mock.patch.object(wrist, "run_xy_servo") as servo, \
+                mock.patch.object(s, "_load_saved_feature") as load_feature, \
+                mock.patch.object(s, "teach_feature") as teach_feature, \
+                mock.patch.object(s, "move", wraps=s.move) as move, \
+                mock.patch.object(wrist.time, "sleep"):
+            def first_prompt(prompt):
+                self.assertEqual(prompt, f"{s.part}> ")
+                servo.assert_not_called()
+                load_feature.assert_not_called()
+                teach_feature.assert_not_called()
+                move.assert_called_once_with(expected)
+                self.assertIsNone(s.tracker)
+                self.assertIsNone(s.reference_feature)
+                np.testing.assert_allclose(s.robot.pose.position_m, expected.position_m)
+                # Every arm waypoint is on the one approach segment; none
+                # leaves the reached hover for a probe or correction.
+                moves = [v[1].position_m for v in s.robot.trace if v[0] == "move"]
+                for index, xyz in enumerate(moves, 1):
+                    np.testing.assert_allclose(xyz, np.array(start.position_m) +
+                        (np.array(expected.position_m) - start.position_m) * index / len(moves))
+                self.assertFalse(any("probe" in call.args[0] for call in s.event.call_args_list))
+                return "abort"
+            with mock.patch("builtins.input", side_effect=first_prompt) as prompt:
+                self.assertEqual(s.teach(s.part, profile), 1)
+            prompt.assert_called_once()
+        self.assertEqual(profile, original)
+        self.assertEqual(profiles_path.read_bytes(), profile_bytes)
+        self.assertEqual(template_path.read_bytes(), template_bytes)
+
+    def test_new_pickup_calibration_opens_manual_controls_at_nominal_hover(self):
+        s, _ = self.session(mode="calibrate")
+        with mock.patch.object(wrist, "run_xy_servo") as servo, \
+                mock.patch.object(s, "_load_saved_feature") as load_feature, \
+                mock.patch.object(s, "teach_feature") as teach_feature, \
+                mock.patch.object(s, "move", wraps=s.move) as move, \
+                mock.patch.object(wrist.time, "sleep"), \
+                mock.patch("builtins.input", side_effect=["image", "center", "abort"]):
+            self.assertEqual(s.teach(s.part), 1)
+        servo.assert_not_called()
+        load_feature.assert_not_called()
+        teach_feature.assert_not_called()
+        move.assert_called_once_with(s.targets[f"task.{s.part}.pick"])
+        s.frame.assert_called_once_with("manual wrist capture")
+        self.assertTrue(s.no_cv_mode)
+        self.assertIn("CENTER NOT STARTED", self.output.getvalue())
+
+    def test_explicit_center_loads_saved_feature_only_after_operator_prompt(self):
+        s, profile = self.session(mode="calibrate")
+        def load_feature(_):
+            s.tracker = mock.Mock()
+            s.reference_feature = tuple(profile["feature_uv"])
+            s.goal = tuple(profile["goal_uv"])
+        with mock.patch.object(s, "_load_saved_feature", side_effect=load_feature) as load, \
+                mock.patch.object(wrist, "run_xy_servo", return_value={"status": "converged"}) as servo, \
+                mock.patch.object(wrist.time, "sleep"):
+            def command(prompt):
+                self.assertEqual(prompt, f"{s.part}> ")
+                if load.call_count == 0:
+                    servo.assert_not_called()
+                    return "center"
+                servo.assert_called_once()
+                self.assertTrue(s.alignment_verified)
+                return "abort"
+            with mock.patch("builtins.input", side_effect=command) as prompt:
+                self.assertEqual(s.teach(s.part, profile), 1)
+            self.assertEqual(prompt.call_count, 2)
+        load.assert_called_once_with(profile)
+
+    def test_manual_pickup_save_preserves_old_visual_and_placement_calibration(self):
+        s, profile = self.session(mode="calibrate")
+        self.shifted_pickup_profile(s, profile)
+        original = copy.deepcopy(profile)
+        approach = s.profile_pose(profile, "pick")
+        template_path = wrist.ROOT / profile["template"]["path"]
+        template_bytes = template_path.read_bytes()
+        commands = ["back 2", "depth 90", "grab manual", "yes", "return", "save"]
+        with mock.patch("builtins.input", side_effect=commands), \
+                mock.patch.object(wrist, "_crop_template") as crop, \
+                mock.patch.object(s, "_load_saved_feature") as load, \
+                mock.patch.object(wrist, "run_xy_servo") as servo, \
+                mock.patch.object(wrist.time, "sleep"):
+            self.assertEqual(s.teach(s.part, profile), 0)
+        saved = load_profiles(s.args.profiles, s.cfg)["parts"][s.part]
+        for key, value in original.items():
+            if key.startswith(("feature", "goal", "reference_match", "final_match", "place")) \
+                    or key in ("template", "image_shape"):
+                self.assertEqual(saved[key], value, key)
+        self.assertAlmostEqual(saved["grasp_clearance_m"], .01)
+        np.testing.assert_allclose(s.profile_pose(saved, "pick").position_m, approach.position_m)
+        np.testing.assert_allclose(s.profile_pose(saved, "pick", no_cv=True).position_m,
+                                   s.successful_pickup_pose.position_m)
+        self.assertEqual(profile, original)
+        self.assertEqual(template_path.read_bytes(), template_bytes)
+        crop.assert_not_called()
+        load.assert_not_called()
+        servo.assert_not_called()
+
+    def test_feature_is_replaced_only_after_explicit_selection_and_save(self):
+        for save in (False, True):
+            with self.subTest(save=save):
+                s, profile = self.session(mode="calibrate")
+                original = copy.deepcopy(profile)
+                template_path = wrist.ROOT / profile["template"]["path"]
+                template_bytes = template_path.read_bytes()
+                profiles_path = Path(s.args.profiles)
+                profiles_path.write_text(json.dumps(s.profiles))
+                profile_bytes = profiles_path.read_bytes()
+                tracker = mock.Mock()
+                tracker.locate.return_value = ((200., 210.), .99)
+                commands = ["feature"] + (["grab manual", "yes", "return", "save"] if save else ["abort"])
+                with mock.patch("builtins.input", side_effect=commands), \
+                        mock.patch.object(s, "select", return_value=(200., 210.)), \
+                        mock.patch.object(wrist, "TemplateTracker", return_value=tracker), \
+                        mock.patch.object(wrist, "run_xy_servo") as servo, \
+                        mock.patch.object(wrist, "ROOT", Path(self.temp.name)), \
+                        mock.patch.object(wrist, "load_board_calibration", return_value={"sha256": "a" * 64}), \
+                        mock.patch.object(wrist.time, "sleep"):
+                    self.assertEqual(s.teach(s.part, profile), 0 if save else 1)
+                servo.assert_not_called()
+                self.assertEqual(profile, original)
+                self.assertEqual(template_path.read_bytes(), template_bytes)
+                if save:
+                    saved = load_profiles(profiles_path, s.cfg)["parts"][s.part]
+                    self.assertEqual(saved["feature_uv"], [200., 210.])
+                    self.assertEqual(saved["goal_uv"], [200., 210.])
+                    self.assertNotEqual(saved["template"]["path"], profile["template"]["path"])
+                    self.assertEqual(saved["template"]["sha256"], wrist.file_sha256(
+                        Path(self.temp.name) / saved["template"]["path"]))
+                    self.assertEqual(saved["place"], profile["place"])
+                else:
+                    self.assertEqual(profiles_path.read_bytes(), profile_bytes)
 
     def test_pickup_hover_settles_delayed_readback_without_commanding_more_motion(self):
         s, profile = self.session()
@@ -381,9 +541,10 @@ class FinalWorkflowTests(unittest.TestCase):
                 x, y, _ = robot.pose.position_m
                 robot.pose = Pose((x + .004, y + .002, s.surface(x + .004, y + .002) + .1), robot.pose.quaternion_wxyz)
                 return {"status": "converged"}
-            with mock.patch.object(wrist, "run_xy_servo", side_effect=centered), \
+            with mock.patch.object(wrist, "run_xy_servo", side_effect=centered) as servo, \
                     mock.patch("builtins.input", side_effect=(AssertionError("competition prompted") if competition else ["grab", "yes", "return"])):
                 self.assertEqual(s.test(s.part, "pick", competition=competition), 0)
+            servo.assert_called_once()
             traces.append(s.robot.trace)
         self.assertEqual(traces[0], traces[1])
         self.assertEqual(self.output.getvalue().count("EXECUTION CENTER BACKOFF"), 2)
