@@ -398,6 +398,112 @@ class FinalWorkflowTests(unittest.TestCase):
         self.assertEqual([v[0] for v in s.robot.trace].count("grip"), 1)
         self.assertEqual([v[0] for v in s.robot.trace].count("release"), 1)
 
+    def test_release_saves_before_corner_teaching_and_lifts_at_adjusted_release_xy(self):
+        s, profile = self.session(mode="drop")
+        s._capture_drop_evidence.return_value = None
+        original = copy.deepcopy(profile)
+        def teach(settings):
+            saved = s.profiles["parts"][s.part]
+            self.assertTrue(saved["place_verified"])
+            self.assertFalse(s.holding)
+            self.assertTrue(Path(s.args.profiles).is_file())
+            np.testing.assert_allclose(s.robot.pose.position_m[:2], saved["place_release_tcp_m"][:2])
+            self.assertAlmostEqual(s.robot.pose.position_m[2] - s.surface(*s.robot.pose.position_m[:2]), .1)
+            self.assertEqual(saved["template"], original["template"])
+            self.assertEqual(saved.get("pickup_board"), original.get("pickup_board"))
+        s._optional_place_corner_teaching = mock.Mock(side_effect=teach)
+        with mock.patch("builtins.input", side_effect=["forward 5", "down 10", "release"]):
+            self.assertEqual(s.teach_drop(s.part, profile), 0)
+        s._optional_place_corner_teaching.assert_called_once()
+        self.assertEqual([v[0] for v in s.robot.trace].count("release"), 1)
+
+    def test_corner_refresh_uses_saved_hover_without_pickup_or_release(self):
+        s, profile = self.session(mode="place-cv")
+        before = copy.deepcopy(profile)
+        s._optional_place_corner_teaching = mock.Mock(return_value={"enabled": True})
+        s.begin_part = mock.Mock(side_effect=AssertionError("corner refresh attempted pickup"))
+        with mock.patch("builtins.input", side_effect=AssertionError("unnecessary annotation prompt")):
+            self.assertEqual(s.teach_place_cv(s.part, profile), 0)
+        self.assertEqual(before, profile)
+        self.assertFalse(s.holding)
+        self.assertNotIn("grip", [v[0] for v in s.robot.trace])
+        self.assertNotIn("release", [v[0] for v in s.robot.trace])
+        np.testing.assert_allclose(s.robot.pose.position_m, s.profile_pose(profile, "place").position_m)
+
+    def test_corner_reference_saves_without_changing_physical_calibration(self):
+        import cv2
+        from steadyhand.vision.board_corners import make_reference, CornerServo
+        s, profile = self.session(mode="place-cv")
+        s.robot.pose = s.profile_pose(profile, "place")
+        before = copy.deepcopy(profile)
+        rgb = cv2.cvtColor(cv2.imread(str(Path(__file__).parent / "fixtures" / "placement_board_corners.jpg")),
+                           cv2.COLOR_BGR2RGB)
+        reference = make_reference(rgb)
+        reference.update(reference_clearance_m=.1, reference_quaternion_wxyz=list(s.robot.pose.quaternion_wxyz))
+        for corner in reference["corners"]:
+            corner["jacobian_px_per_m"] = [[0, 2000], [1800, 0]]
+        s._publish_live_image = mock.Mock()
+        with mock.patch.object(wrist, "ROOT", Path(self.temp.name)), \
+                mock.patch.object(CornerServo, "teach", return_value=(reference, rgb)):
+            s._teach_board_corner_reference(profile["place"])
+        saved = s.profiles["parts"][s.part]
+        self.assertTrue(saved["place_cv"]["enabled"])
+        for key, value in before.items():
+            if key != "place_cv":
+                self.assertEqual(saved[key], value, key)
+        self.assertTrue((Path(self.temp.name) / saved["place_cv"]["reference_image"]).is_file())
+
+    def test_corner_runtime_uses_new_controller_without_legacy_servo_or_template(self):
+        from steadyhand.vision.board_corners import CornerServo
+        from steadyhand.vision.placement import placement_digest
+        s, profile = self.session(competition=True)
+        s.holding = True
+        hover = s.profile_pose(profile, "place")
+        s.place_cv_settings = {"method": "white_board_corners_v1", "enabled": True,
+            "reference_clearance_m": .1, "placement_sha256": placement_digest(profile["place"]),
+            "reference_board": snapshot(s.runtime[2]),
+            "reference_quaternion_wxyz": list(hover.quaternion_wxyz), "corners": []}
+        with mock.patch.object(CornerServo, "align", return_value={"status": "converged"}) as align, \
+                mock.patch.object(wrist, "run_xy_servo", side_effect=AssertionError("legacy probe")), \
+                mock.patch.object(wrist, "_load_place_template", side_effect=AssertionError("legacy template")), \
+                mock.patch("builtins.input", side_effect=AssertionError("competition prompt")):
+            s.place(profile["place"], use_place_cv=True)
+        align.assert_called_once()
+        self.assertFalse(s.holding)
+        self.assertEqual([v[0] for v in s.robot.trace].count("release"), 1)
+
+    def test_corner_visual_failure_preserves_old_calibration_but_motion_fault_propagates(self):
+        from steadyhand.vision.board_corners import CornerVisualError
+        s, profile = self.session(mode="drop")
+        before = copy.deepcopy(s.profiles)
+        s._teach_board_corner_reference = mock.Mock(side_effect=CornerVisualError("No stable corner"))
+        self.assertIsNone(s._optional_place_corner_teaching(profile["place"]))
+        self.assertEqual(s.profiles, before)
+        s._teach_board_corner_reference.side_effect = RuntimeError("joint timeout")
+        with self.assertRaisesRegex(RuntimeError, "joint timeout"):
+            s._optional_place_corner_teaching(profile["place"])
+
+    def test_corner_runtime_fallback_is_only_for_typed_visual_errors(self):
+        from steadyhand.vision.board_corners import CornerServo, CornerVisualError
+        from steadyhand.vision.placement import placement_digest
+        s, profile = self.session(competition=True)
+        hover = s.profile_pose(profile, "place")
+        s.robot.pose = hover
+        s.place_cv_settings = {"method": "white_board_corners_v1", "enabled": True,
+            "reference_clearance_m": .1, "placement_sha256": placement_digest(profile["place"]),
+            "reference_board": snapshot(s.runtime[2]),
+            "reference_quaternion_wxyz": list(hover.quaternion_wxyz), "corners": []}
+        s.move = mock.Mock()
+        for error in (RuntimeError("E-stop is active"), RuntimeError("subscription unavailable")):
+            with mock.patch.object(CornerServo, "align", side_effect=error), \
+                    self.assertRaises(RuntimeError):
+                s._place_visual_align(profile["place"])
+            s.move.assert_not_called()
+        with mock.patch.object(CornerServo, "align", side_effect=CornerVisualError("No visible corner")), \
+                mock.patch("builtins.input", side_effect=AssertionError("competition prompt")):
+            self.assertIsNone(s._place_visual_align(profile["place"]))
+        s.move.assert_called_once_with(hover, slow=True)
+
     def test_competition_unreachable_place_returns_source_and_keeps_pickup(self):
         s, _ = self.session(competition=True)
         s.place = mock.Mock(side_effect=wrist.PlacementPreflightError("unreachable transfer"))

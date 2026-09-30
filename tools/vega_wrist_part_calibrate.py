@@ -10,6 +10,7 @@ descends or connects the gripper.
 from __future__ import annotations
 
 import argparse
+import copy
 from datetime import datetime, timezone
 import json
 import math
@@ -1372,15 +1373,28 @@ class PartSession:
         """Align at the taught hover; low confidence never authorizes release."""
         from steadyhand.vision.placement import placement_digest, placement_tracker
         cv_settings = self.place_cv_settings
-        origin = self.robot.get_tcp_pose()
+        using_corners = bool(cv_settings and cv_settings.get("method") == "white_board_corners_v1")
+        from steadyhand.vision.board_corners import CornerVisualError
+        visual_error = CornerVisualError if using_corners else ValueError
+        origin = self.robot.stationary_tcp_pose() if using_corners else self.robot.get_tcp_pose()
         try:
             if not cv_settings or not cv_settings.get("enabled", False):
-                raise ValueError("Placement feature reference is missing or disabled")
+                raise visual_error("Placement feature reference is missing or disabled")
             if cv_settings.get("placement_sha256") != placement_digest(settings):
-                raise ValueError("Placement feature reference belongs to different place settings")
+                raise visual_error("Placement feature reference belongs to different place settings")
             clearance = origin.position_m[2] - self.surface(*origin.position_m[:2])
             if abs(clearance - float(cv_settings.get("reference_clearance_m", -1))) > .008:
-                raise ValueError("Placement feature reference was taught at a different height")
+                raise visual_error("Placement feature reference was taught at a different height")
+            from steadyhand.vision.board_corners import METHOD, CornerServo, rotate_reference
+            if cv_settings.get("method") == METHOD:
+                reference = rotate_reference(cv_settings, snapshot(self.runtime[2]))
+                self.remote_checkpoint("before_placement_centering")
+                servo = CornerServo(self.robot, lambda pose: self.move(pose, slow=True),
+                    self._placement_corner_frame, self.surface, self.event)
+                result = servo.align(reference)
+                self.event("place_cv_result", {"method": METHOD, "result": result})
+                self.remote_checkpoint("after_placement_centering")
+                return result
             template = _load_place_template(cv_settings)
             goal = tuple(float(v) for v in cv_settings["goal_uv"])
             self.remote_checkpoint("before_placement_centering")
@@ -1401,9 +1415,11 @@ class PartSession:
             self.remote_checkpoint("after_placement_centering")
             return result
         except (RuntimeError, ValueError) as exc:
+            if using_corners and not isinstance(exc, CornerVisualError):
+                raise
             # Hardware/motion failures always propagate. Only visual failures
             # are eligible for an explicit operator-authorized saved-pose fallback.
-            if any(word in str(exc).lower() for word in ("ik ", "tcp", "joint", "camera", "estop", "timeout", "motor")):
+            if any(word in str(exc).lower() for word in ("ik ", "tcp", "joint", "camera", "estop", "e-stop", "timeout", "motor")):
                 raise
             self.event("place_cv_low_confidence", {"reason": str(exc), "release_authorized": False})
             print(f"PLACEMENT CV NOT VERIFIED: {exc}; no descent/release authorized.", flush=True)
@@ -1468,7 +1484,12 @@ class PartSession:
         if previous_place and placement_digest(previous_place) != placement_digest(settings):
             profile.pop("placement_board", None)
             profile.pop("place_release_tcp_m", None)
-        hover = self.profile_pose(profile, "place")
+        corner_settings = getattr(self, "place_cv_settings", None) or {}
+        cv_clearance = (.100 if not use_place_cv or corner_settings.get("method") != "white_board_corners_v1"
+                        else float(corner_settings["reference_clearance_m"]))
+        if not .060 <= cv_clearance <= .150:
+            raise ValueError("Invalid placement corner hover clearance")
+        hover = self.profile_pose(profile, "place", clearance=cv_clearance)
         x, y = hover.position_m[:2]
         quat = hover.quaternion_wxyz
         release = Pose((x, y, self.surface(x, y)+settings["clearance_m"]), quat)
@@ -1493,7 +1514,7 @@ class PartSession:
                 aligned = self.robot.get_tcp_pose()
                 x, y = aligned.position_m[:2]
                 quat = aligned.quaternion_wxyz
-                hover = Pose((x, y, self.surface(x, y) + .100), quat)
+                hover = Pose((x, y, self.surface(x, y) + cv_clearance), quat)
                 release = Pose((x, y, self.surface(x, y) + settings["clearance_m"]), quat)
         # Placement has its own independent correction, after visual alignment
         # (or saved-pose fallback), so neither pickup nor CV can erase/double it.
@@ -1558,6 +1579,57 @@ class PartSession:
         profile["place_taught_at_utc"] = datetime.now(timezone.utc).isoformat()
         self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
         return profile
+
+    def _placement_corner_frame(self):
+        rgb, path = self.frame("placement board corners")
+        self.place_corner_image_path = path
+        return rgb
+
+    def _teach_board_corner_reference(self, settings, selected_uvs=None):
+        """Learn at the actual release XY, at 100 mm, without changing the pose record."""
+        from steadyhand.vision.board_corners import CornerServo, draw_corners
+        from steadyhand.vision.placement import placement_digest
+        import cv2
+        print("BOARD CORNER TEACHING: two 6 mm XY measurements at this hover, then return; no grip/release.", flush=True)
+        servo = CornerServo(self.robot, lambda pose: self.move(pose, slow=True),
+                            self._placement_corner_frame, self.surface, self.event)
+        anchor = self.profile_pose(self.profiles["parts"][self.part], "place")
+        reference, rgb = servo.teach(selected_uvs, anchor_xy=anchor.position_m[:2])
+        directory = ROOT / "calibration" / "place_templates"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{self.part}_{time.time_ns()}_BOARD_CORNERS.png"
+        if not cv2.imwrite(str(path), cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)):
+            raise OSError("Could not save placement corner reference image")
+        overlay = path.with_name(path.stem + "_REVIEW.png")
+        if not cv2.imwrite(str(overlay), cv2.cvtColor(draw_corners(rgb, reference), cv2.COLOR_RGB2BGR)):
+            raise OSError("Could not save placement corner review image")
+        reference.update(enabled=True, camera=WRIST_CAMERA,
+            reference_image=str(path.relative_to(ROOT)), reference_image_sha256=file_sha256(path),
+            review_image=str(overlay.relative_to(ROOT)),
+            reference_board=snapshot(self.runtime[2]),
+            placement_sha256=placement_digest(settings),
+            created_at_utc=datetime.now(timezone.utc).isoformat())
+        # Reload through save_profile; pickup/physical placement values are untouched.
+        profile = copy.deepcopy(self.profiles["parts"][self.part])
+        profile["place_cv"] = reference
+        self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
+        self.place_cv_settings = reference
+        self._publish_live_image(rgb, overlay, "PLACEMENT BOARD CORNERS SAVED")
+        print(f"PLACEMENT CORNERS SAVED: {len(reference['corners'])} observed corners. Competition uses no probe movements.\n"
+              f"CORNER REVIEW: {overlay}", flush=True)
+        return reference
+
+    def _optional_place_corner_teaching(self, settings, selected_uvs=None):
+        from steadyhand.vision.board_corners import CornerVisualError
+        try:
+            return self._teach_board_corner_reference(settings, selected_uvs)
+        except CornerVisualError as exc:
+            # Images may fail; physical motion failures must not be relabeled
+            # as annotation trouble or hidden after a part was released.
+            self.event("place_corner_teaching_unavailable", {"reason": str(exc)})
+            print(f"BOARD CORNERS NOT SAVED: {exc}. Physical release calibration is still saved.\n"
+                  "Use placement menu → Refresh board corners to retry without moving any part.", flush=True)
+            return None
 
     def _capture_drop_evidence(self, label):
         """Archive a named wrist frame without making camera capture a gate."""
@@ -1685,7 +1757,8 @@ class PartSession:
         adjustment_anchor = self.robot.get_tcp_pose()
         print(
             "Commands: forward/back/left/right N (mm) | step N | yaw N (deg) | "
-            "down N (mm) | up N | undo | target | image | status | release | return | abort",
+            "down N (mm) | up N | undo | target | image | status | release | return | abort\n"
+            "release saves the physical position immediately, then lifts vertically and learns board corners automatically.",
             flush=True,
         )
         while True:
@@ -1710,6 +1783,7 @@ class PartSession:
                     release_photo = self._capture_drop_release_photo()
                     release_result = self.robot.release_gripper(self.part)
                     self.holding = False
+                    profile = self._save_drop_profile(release_pose, settings, release_result)
                     self._capture_drop_evidence("release_after")
                     self.event("drop_release", {
                         "release_tcp": list(release_pose.position_m),
@@ -1731,15 +1805,19 @@ class PartSession:
                         "place_verified": profile["place_verified"],
                         "gripper_release": release_result,
                     }, indent=2, default=str), flush=True)
-                    try:
-                        self.remote_checkpoint("before_drop_retreat")
-                        self.move(hover, slow=True)
-                        self.remote_checkpoint("drop_retreat_complete")
-                        self._capture_drop_evidence("retreat_after_release")
-                    except Exception as exc:
-                        print(f"RETREAT AFTER DROP WARNING: {exc}", flush=True)
+                    # Lift over the actual release, including manual XY/yaw
+                    # adjustments. This is the exact reference used in runs.
+                    self.remote_checkpoint("before_drop_retreat")
+                    retreat = Pose((*release_pose.position_m[:2],
+                        self.surface(*release_pose.position_m[:2]) + .100), release_pose.quaternion_wxyz)
+                    self.move(retreat, slow=True)
+                    self.remote_checkpoint("drop_retreat_complete")
+                    self._capture_drop_evidence("retreat_after_release")
+                    self._optional_place_corner_teaching(settings)
                     return 0
                 except (RuntimeError, ValueError) as exc:
+                    if not self.holding or self.motion_faulted:
+                        raise
                     self.last_error = f"{type(exc).__name__}: {exc}"
                     print(f"RELEASE BLOCKED: {exc}; part remains held.", flush=True)
                     continue
@@ -2151,120 +2229,44 @@ class PartSession:
                 continue
 
     def teach_place_cv(self, part, profile):
-        """Teach a wrist-camera release target while holding a verified part.
-
-        This is intentionally separate from ``teach_drop``: it never edits
-        pickup fields and never releases automatically.  The operator can
-        inspect each remote-safe checkpoint, annotate a distinctive hole/peg
-        or slot feature, and then choose ``release`` or ``return``.
-        """
-        if not profile or not profile.get("grasp_verified"):
-            raise ValueError("Teach and verify pickup calibration before placement CV")
-        if not profile.get("place") or not profile.get("place_verified"):
+        """Refresh corners above a saved release without picking up any part."""
+        if not profile or not profile.get("place") or not profile.get("place_verified"):
             raise ValueError("Teach and verify the physical place position first")
+        if self.holding:
+            raise RuntimeError("Corner refresh requires an empty gripper")
         self.part, self.action = part, "place_cv"
-        print("PLACEMENT CV PICKUP: using saved pickup coordinates and depth, without wrist centering.", flush=True)
-        self.begin_part(part, profile, competition=True, no_cv=True)
-        self.grasp_verified = True
-        if not self._teaching_pickup(profile):
-            return 1
-        self.remote_checkpoint("place_cv_pickup_complete")
-        settings = profile["place"]
         hover = self.profile_pose(profile, "place")
-        x, y = hover.position_m[:2]
-        quat = hover.quaternion_wxyz
-        release = Pose((x, y, self.surface(x, y) + settings["clearance_m"]), quat)
-        self.remote_checkpoint("place_cv_before_hover")
-        self.move(hover, slow=True)
-        self.remote_checkpoint("place_cv_hover")
-        # Teach at exactly the same 100 mm hover used by runtime alignment.
-        # A release-height pixel cannot be reused at hover through this lens.
-        self._capture_drop_evidence("place_cv_reference")
+        print("REFRESH PLACEMENT CORNERS: saved 100 mm release hover; no pickup, descent or release.", flush=True)
+        self.move(hover)
+        selected_uvs = None
         while True:
-            raw = input(
-                f"place-cv {part}> select u v | image | verify | release | return | abort: "
-            ).strip().lower().split()
-            if not raw:
-                continue
-            command = raw[0]
-            if command in ("abort", "q", "exit"):
-                return 3 if self.holding else 1
-            if command in ("image", "capture"):
-                self.frame("placement CV reference")
-                continue
-            if command in ("select", "feature", "target"):
-                try:
-                    rgb, path = self.frame("placement CV target")
-                    if len(raw) == 3:
-                        selected = (float(raw[1]), float(raw[2]))
-                    else:
-                        selected = self.select(
-                            rgb, path, f"{part}: select the release hole/peg/slot feature"
-                        )
-                    template, anchor = _crop_template(rgb, selected)
-                    from steadyhand.vision.placement import placement_digest, placement_tracker
-                    reference = {
-                        "image_shape": list(rgb.shape[:2]), "goal_uv": list(selected),
-                        "template_uv": list(anchor),
-                    }
-                    placement_tracker(rgb, template, reference).locate(rgb)
-                    import cv2
-                    directory = ROOT / "calibration" / "place_templates"
-                    directory.mkdir(parents=True, exist_ok=True)
-                    template_path = directory / f"{part}_{time.time_ns()}.png"
-                    if not cv2.imwrite(str(template_path), cv2.cvtColor(template, cv2.COLOR_RGB2BGR)):
-                        raise RuntimeError("failed to save placement template")
-                    settings = dict(profile["place"])
-                    settings["place_cv"] = {
-                        "enabled": True,
-                        "camera": WRIST_CAMERA,
-                        "reference_image": str(path.relative_to(ROOT)).replace("\\", "/"),
-                        "template": str(template_path.relative_to(ROOT)).replace("\\", "/"),
-                        "template_sha256": file_sha256(template_path),
-                        "template_uv": list(anchor),
-                        "feature_uv": [float(v) for v in selected],
-                        "goal_uv": [float(v) for v in selected],
-                        "image_shape": list(rgb.shape[:2]),
-                        "method": "saved_release_target_template",
-                        "reference_clearance_m": .100,
-                        "placement_sha256": placement_digest(profile["place"]),
-                        "created_at_utc": datetime.now(timezone.utc).isoformat(),
-                    }
-                    profile_copy = dict(profile)
-                    profile_copy["place"] = settings
-                    profile_copy["place_cv"] = settings["place_cv"]
-                    self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile_copy)
-                    self.place_cv_settings = settings["place_cv"]
-                    _write_overlay(path.with_name(path.stem + "_place_cv_target.png"), rgb, selected, selected, label=part)
-                    print("PLACEMENT CV PROFILE SAVED; part remains held.", flush=True)
-                    print(json.dumps(settings["place_cv"], indent=2), flush=True)
-                except (ValueError, RuntimeError) as exc:
-                    print(f"PLACEMENT CV BLOCKED: {exc}; choose another feature.", flush=True)
-                continue
-            if command == "verify":
-                self._place_visual_align(profile["place"])
-                continue
-            if command == "release":
-                current = self.robot.get_tcp_pose()
-                release = Pose((current.position_m[0], current.position_m[1],
-                                self.surface(*current.position_m[:2]) + profile["place"]["clearance_m"]),
-                               current.quaternion_wxyz)
-                self.remote_checkpoint("place_cv_before_descent")
-                self.move(release, slow=True)
-                self.remote_checkpoint("place_cv_before_release")
-                self._capture_drop_evidence("place_cv_release_before")
-                self.robot.release_gripper(self.part)
-                self.holding = False
-                self._capture_drop_evidence("place_cv_release_after")
-                self.remote_checkpoint("place_cv_released")
-                self.move(hover, slow=True)
-                self.remote_checkpoint("place_cv_retreat_complete")
+            if self._optional_place_corner_teaching(profile["place"], selected_uvs):
+                self.status = "place_corner_profile_saved"
                 return 0
-            if command == "return":
-                self.move(self.pickup_hover, slow=True)
-                self.return_part(profile["grasp_clearance_m"])
-                return 1
-            print("Use select u v, image, release, return, or abort.", flush=True)
+            # A visual-only rejection can leave a completed 6 mm hover probe.
+            # Restore the saved view *before* asking for image coordinates.
+            self.move(hover)
+            self.inspection_image("placement board corner selection")
+            selected_uvs = None
+            while True:
+                raw = input("CORNERS [retry / image / select u v [u v ...] / skip]: ").strip().lower().split()
+                if not raw or raw[0] in ("skip", "abort", "exit", "q"):
+                    return 1
+                if raw[0] == "image":
+                    self.inspection_image("placement board corner inspection")
+                elif raw[0] == "retry":
+                    break
+                elif raw[0] == "select":
+                    try:
+                        values = [float(v) for v in raw[1:]]
+                        if len(values) not in (2, 4, 6, 8) or not all(math.isfinite(v) for v in values):
+                            raise ValueError("Use select u v for each of 1–4 visible outer board corners")
+                        selected_uvs = list(zip(values[::2], values[1::2]))
+                        break
+                    except ValueError as exc:
+                        print(exc, flush=True)
+                else:
+                    print("Use retry, image, select u v [u v ...], or skip.", flush=True)
 
     def recover_action(self, reason):
         """Dispose of a possible hold only from a freshly verified stopped pose.

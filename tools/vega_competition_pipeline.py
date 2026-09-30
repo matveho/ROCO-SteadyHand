@@ -1017,8 +1017,8 @@ def _run_placement_calibration_menu(args):
         profile = _menu_profiles()["parts"][part]
         placement_ready = bool(profile.get("place") and profile.get("place_verified") is True)
         print(f"\nCALIBRATE PLACEMENT: {part}")
-        print("  1. Teach/refine physical release position")
-        print("  2. Teach/refine placement CV" + ("" if placement_ready else
+        print("  1. Teach/refine release — automatically learn board corners after release")
+        print("  2. Refresh board corners at saved hover (no pickup/release)" + ("" if placement_ready else
               " — UNAVAILABLE: teach and verify physical release first"))
         print("  0. Back")
         choice = clean_choice(input("Choose placement calibration: "))

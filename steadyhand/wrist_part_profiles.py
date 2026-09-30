@@ -127,6 +127,9 @@ def validate_profile(profile, robot_config, *, expected_part=None):
             raise ValueError("place clearance must be below hover and above surface")
         if abs(_finite(place.get("yaw_deg"), "place yaw")) > 45:
             raise ValueError("place yaw must be within 45 degrees of ready")
+    corner_reference = profile.get("place_cv")
+    if isinstance(corner_reference, dict) and corner_reference.get("method") == "white_board_corners_v1":
+        _validate_place_corners(corner_reference)
     template = profile.get("template")
     if not isinstance(template, dict) or not isinstance(template.get("path"), str):
         raise ValueError(f"{part}: template provenance is required")
@@ -140,6 +143,48 @@ def validate_profile(profile, robot_config, *, expected_part=None):
             if not all(name in profile[key] for name in required):
                 raise ValueError(f"{part}: incomplete {key} target")
     return profile
+
+
+def _validate_place_corners(reference):
+    from steadyhand.vision.wrist_servo import PixelJacobian
+    if reference.get("camera") != WRIST_CAMERA:
+        raise ValueError("placement corner reference requires wrist_a")
+    h, w = _finite_vector(reference.get("image_shape"), 2, "placement image shape")
+    if min(h, w) <= 0:
+        raise ValueError("invalid placement image shape")
+    if not .060 <= _finite(reference.get("reference_clearance_m"), "corner hover") <= .150:
+        raise ValueError("placement corner hover must be 60..150 mm")
+    q = _finite_vector(reference.get("reference_quaternion_wxyz"), 4, "corner orientation")
+    if abs(sum(v*v for v in q) - 1.) > .01:
+        raise ValueError("invalid placement corner orientation")
+    board = reference.get("reference_board") or {}
+    axis = _finite_vector(board.get("board_x_unit_base_xy"), 2, "corner board axis")
+    if abs(sum(v*v for v in axis) - 1.) > .01:
+        raise ValueError("invalid placement corner board axis")
+    corners = reference.get("corners")
+    if not isinstance(corners, list) or not 1 <= len(corners) <= 4:
+        raise ValueError("placement needs 1..4 observed board corners")
+    ids = []
+    for corner in corners:
+        if not isinstance(corner, dict):
+            raise ValueError("placement corner must be an object")
+        if not isinstance(corner.get("id"), str) or corner["id"] in ids:
+            raise ValueError("placement corner IDs must be distinct")
+        ids.append(corner["id"])
+        u, v = _finite_vector(corner.get("uv"), 2, "corner pixel")
+        if not 0 <= u < w or not 0 <= v < h:
+            raise ValueError("placement corner is outside image")
+        if not 40 < _finite(corner.get("angle"), "corner angle") < 137:
+            raise ValueError("invalid placement corner angle")
+        for name, rows, columns in (("jacobian_px_per_m", 2, 2), ("directions", 2, 2), ("signature", 17, 17)):
+            values = corner.get(name)
+            if not isinstance(values, list) or len(values) != rows:
+                raise ValueError(f"invalid placement corner {name}")
+            for row in values:
+                _finite_vector(row, columns, name)
+        jacobian = PixelJacobian(*[v for row in corner["jacobian_px_per_m"] for v in row])
+        if not math.isfinite(jacobian.condition_number()) or jacobian.condition_number() > 30:
+            raise ValueError("invalid placement corner motion calibration")
 
 
 def _finite_vector(value, size, name):
