@@ -3,13 +3,13 @@
     "description": "Single operator-editable competition routine. Set enabled=false to skip a part; edit this file on the laptop before deployment.",
   "order": [
     "battery_size5",
-    "bolt_8mm",
     "pin",
     "rod_16mm",
     "usb_a",
     "hdmi",
     "gear_60teeth",
     "gear_20teeth",
+    "bolt_8mm",
     "battery_size1"
   ],
   "retries_per_action": 2,
@@ -20,7 +20,7 @@
   "head_reacquire_on_failure": true,
   "pipeline_speed_scale": 0.60,
   "task_clearance_mm": 100.0,
-  "visual_center_backoff_mm": 15.0,
+  "visual_center_backoff_mm": 0,
   "parts": {
     "battery_size1": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": false, "max_attempts": 3, "mode": "pick_place"},
     "gear_20teeth": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": false, "max_attempts": 3, "mode": "pick_place"},
