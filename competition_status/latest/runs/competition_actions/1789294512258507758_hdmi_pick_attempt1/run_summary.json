@@ -1,0 +1,82 @@
+{
+  "schema_version": 1,
+  "status": "pick_complete_returned",
+  "part": "hdmi",
+  "action": "pick",
+  "holding_may_be_true": false,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.43582162759263193,
+      -0.05729227262028637
+    ],
+    "board_x_unit_base_xy": [
+      0.007630241994806059,
+      -0.9999708892798334
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999708892798329,
+      -0.007630241994806056
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.0038325698982620976,
+        -0.019883731057461718
+      ],
+      "rotation_deg": -0.18801334873598685,
+      "fit_residual_m": 0.00839981488583199,
+      "edge_scale": [
+        1.0362256995392,
+        1.0271300800756749,
+        1.029424898760385,
+        1.0270706553842768
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T10:15:18.002464+00:00"
+    },
+    "captured_at_utc": "2026-09-13T10:15:54.095122+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": {
+    "schema_version": 1,
+    "pickup": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    },
+    "placement": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    }
+  },
+  "coarse_xy_m": [
+    0.5809269610479355,
+    -0.2345009488958923
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.2,
+  "alignment_verified": true,
+  "alignment_fallback_used": true,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.0010000000000000009,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789294520163282154.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T10:15:54.095654+00:00"
+}

@@ -1,15 +1,57 @@
 {
   "schema_version": 1,
-  "mode": "selected_parts",
+  "mode": "configured",
   "status": "finished",
   "actions": {
+    "bolt_8mm.pick_place": {
+      "status": "completed",
+      "attempts": 2,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789294310421588858_bolt_8mm_pick_place_attempt2",
+      "summary_status": "completed",
+      "last_error": null
+    },
+    "battery_size5.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789294355798977606_battery_size5_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    },
+    "rod_16mm.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789294410847092439_rod_16mm_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    },
+    "usb_a.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789294456519757326_usb_a_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    },
+    "hdmi.pick": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789294512258507758_hdmi_pick_attempt1",
+      "summary_status": "pick_complete_returned",
+      "last_error": null
+    },
+    "pin.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789294554105144525_pin_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    },
     "battery_size1.pick_place": {
       "status": "completed",
       "attempts": 1,
-      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1",
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789294593999099693_battery_size1_pick_place_attempt1",
       "summary_status": "completed",
       "last_error": null
     }
   },
-  "updated_at_ns": 1789289716435582121
+  "updated_at_ns": 1789294640982618662
 }

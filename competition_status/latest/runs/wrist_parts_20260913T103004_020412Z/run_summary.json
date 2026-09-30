@@ -1,0 +1,247 @@
+{
+  "schema_version": 1,
+  "status": "drop_profile_saved",
+  "part": "battery_size1",
+  "action": "drop_calibrate",
+  "holding_may_be_true": false,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.4378376369670827,
+      -0.049532878258301626
+    ],
+    "board_x_unit_base_xy": [
+      0.003649316939743154,
+      -0.9999933412207671
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999933412207672,
+      -0.0036493169397431584
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.0018165605238113186,
+        -0.012124336695476974
+      ],
+      "rotation_deg": -0.41610733111605,
+      "fit_residual_m": 0.007542666820871714,
+      "edge_scale": [
+        1.025976107689617,
+        1.0304636581986177,
+        1.0284958498088101,
+        1.0238657942984897
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T10:30:12.399520+00:00"
+    },
+    "captured_at_utc": "2026-09-13T10:32:44.753053+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.3163721269467072,
+    -0.1605722998958105
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.18999957274999468,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.006000000000000005,
+  "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295482838471595__release_before__WRIST_A.png",
+  "drop_evidence_photos": [
+    {
+      "label": "nominal_hover_100mm",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295436542569642__nominal_hover_100mm__WRIST_A.png",
+      "tcp_position_m": [
+        0.3193642053762713,
+        -0.07629636417501012,
+        0.6197020780424616
+      ],
+      "quaternion_wxyz": [
+        0.8131470530578091,
+        0.05190588206078552,
+        0.07197250163698178,
+        0.5752543859189663
+      ],
+      "captured_at_utc": "2026-09-13T10:30:36.549810+00:00"
+    },
+    {
+      "label": "initial_40mm_below_hover",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295438381442579__initial_40mm_below_hover__WRIST_A.png",
+      "tcp_position_m": [
+        0.31959734839037535,
+        -0.07489719109493836,
+        0.5824970756711465
+      ],
+      "quaternion_wxyz": [
+        0.8134472668625661,
+        0.05173087658105131,
+        0.07214227052465462,
+        0.5748242803201031
+      ],
+      "captured_at_utc": "2026-09-13T10:30:38.387686+00:00"
+    },
+    {
+      "label": "adjust_right_002",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295445638133040__adjust_right_002__WRIST_A.png",
+      "tcp_position_m": [
+        0.3186810683489012,
+        -0.092400718695674,
+        0.5817058843347684
+      ],
+      "quaternion_wxyz": [
+        0.8127514152359064,
+        0.05218896135320249,
+        0.07219043458382464,
+        0.5757603585690005
+      ],
+      "captured_at_utc": "2026-09-13T10:30:45.646018+00:00"
+    },
+    {
+      "label": "adjust_down_003",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295450649306624__adjust_down_003__WRIST_A.png",
+      "tcp_position_m": [
+        0.31944373168960516,
+        -0.09330380772469025,
+        0.5641218170866453
+      ],
+      "quaternion_wxyz": [
+        0.8133046998386161,
+        0.05165068273075794,
+        0.07220558534196816,
+        0.575025239132413
+      ],
+      "captured_at_utc": "2026-09-13T10:30:50.656577+00:00"
+    },
+    {
+      "label": "adjust_forward_004",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295456566947052__adjust_forward_004__WRIST_A.png",
+      "tcp_position_m": [
+        0.3273116766613825,
+        -0.09323976521523045,
+        0.5616174553878885
+      ],
+      "quaternion_wxyz": [
+        0.8134276942224308,
+        0.05169185693219181,
+        0.0722627745557569,
+        0.574840351412795
+      ],
+      "captured_at_utc": "2026-09-13T10:30:56.574919+00:00"
+    },
+    {
+      "label": "adjust_down_005",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295466854132166__adjust_down_005__WRIST_A.png",
+      "tcp_position_m": [
+        0.32766418273674963,
+        -0.09334287334371252,
+        0.5542136217706335
+      ],
+      "quaternion_wxyz": [
+        0.8130313671205973,
+        0.051498730770613003,
+        0.07230334327782502,
+        0.575412985044548
+      ],
+      "captured_at_utc": "2026-09-13T10:31:06.862016+00:00"
+    },
+    {
+      "label": "adjust_down_006",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295473564775149__adjust_down_006__WRIST_A.png",
+      "tcp_position_m": [
+        0.3276067634083539,
+        -0.09318023728161903,
+        0.5462599934285075
+      ],
+      "quaternion_wxyz": [
+        0.813097670465073,
+        0.05169627362626897,
+        0.07220332950088,
+        0.5753141340054293
+      ],
+      "captured_at_utc": "2026-09-13T10:31:13.572366+00:00"
+    },
+    {
+      "label": "adjust_back_007",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295480647513223__adjust_back_007__WRIST_A.png",
+      "tcp_position_m": [
+        0.3185910073873739,
+        -0.09313602809996238,
+        0.5472126525659902
+      ],
+      "quaternion_wxyz": [
+        0.812449091666465,
+        0.05212729079258804,
+        0.0729550709418086,
+        0.5760961522426935
+      ],
+      "captured_at_utc": "2026-09-13T10:31:20.653942+00:00"
+    },
+    {
+      "label": "release_before",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295482838471595__release_before__WRIST_A.png",
+      "tcp_position_m": [
+        0.31908395584591287,
+        -0.09303918742889622,
+        0.5475286895016439
+      ],
+      "quaternion_wxyz": [
+        0.8130179285254853,
+        0.0519248613706896,
+        0.07218947255448206,
+        0.5754079741540511
+      ],
+      "captured_at_utc": "2026-09-13T10:31:22.844649+00:00"
+    },
+    {
+      "label": "release_after",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295483950047505__release_after__WRIST_A.png",
+      "tcp_position_m": [
+        0.31915143977021376,
+        -0.09303339520561309,
+        0.547544453120518
+      ],
+      "quaternion_wxyz": [
+        0.8130304108056318,
+        0.05189771228787044,
+        0.07212222136513693,
+        0.5754012198022082
+      ],
+      "captured_at_utc": "2026-09-13T10:31:23.956235+00:00"
+    },
+    {
+      "label": "retreat_after_release",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789295487105128178__retreat_after_release__WRIST_A.png",
+      "tcp_position_m": [
+        0.318730051567385,
+        -0.09266228873573562,
+        0.6173673535997273
+      ],
+      "quaternion_wxyz": [
+        0.8126910887127066,
+        0.05231955332102473,
+        0.0720155259275511,
+        0.5758555571431277
+      ],
+      "captured_at_utc": "2026-09-13T10:31:27.111162+00:00"
+    }
+  ],
+  "board_scene_paths": [
+    "board_1789295414307036134.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T10:32:44.753769+00:00"
+}

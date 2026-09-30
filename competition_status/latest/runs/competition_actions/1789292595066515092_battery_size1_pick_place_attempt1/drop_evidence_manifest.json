@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "part": "battery_size1",
+  "photos": [
+    {
+      "label": "competition_release_before",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789292632955401343__competition_release_before__WRIST_A.png",
+      "tcp_position_m": [
+        0.3078209694607764,
+        -0.12335740678974288,
+        0.5504260748769652
+      ],
+      "quaternion_wxyz": [
+        0.8151544863590005,
+        0.05147394432838173,
+        0.07190805921359922,
+        0.5724533408446546
+      ],
+      "captured_at_utc": "2026-09-13T09:43:52.961727+00:00"
+    },
+    {
+      "label": "competition_release_after",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789292634033459514__competition_release_after__WRIST_A.png",
+      "tcp_position_m": [
+        0.30712837590426867,
+        -0.12274849097315949,
+        0.5497328172814668
+      ],
+      "quaternion_wxyz": [
+        0.8147017028376276,
+        0.05215495577122599,
+        0.07193965925841589,
+        0.5730320073152587
+      ],
+      "captured_at_utc": "2026-09-13T09:43:54.040774+00:00"
+    }
+  ]
+}

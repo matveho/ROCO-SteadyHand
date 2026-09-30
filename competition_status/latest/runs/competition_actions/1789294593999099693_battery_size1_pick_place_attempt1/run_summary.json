@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "status": "completed",
+  "part": "battery_size1",
+  "action": "pick_place",
+  "holding_may_be_true": false,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.4358277071801476,
+      -0.05698885421476922
+    ],
+    "board_x_unit_base_xy": [
+      0.00783413005717455,
+      -0.9999693127322693
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999693127322692,
+      -0.007834130057174541
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.003826490310746408,
+        -0.01958031265194457
+      ],
+      "rotation_deg": -0.1763310740213823,
+      "fit_residual_m": 0.008394185490292564,
+      "edge_scale": [
+        1.0361852862616212,
+        1.027039332342287,
+        1.0293811414471146,
+        1.0271320230023817
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T10:16:40.269697+00:00"
+    },
+    "captured_at_utc": "2026-09-13T10:17:20.981056+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": {
+    "schema_version": 1,
+    "pickup": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    },
+    "placement": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    }
+  },
+  "coarse_xy_m": [
+    0.3530670198184183,
+    -0.1615603142074934
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.2,
+  "alignment_verified": true,
+  "alignment_fallback_used": true,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.006000000000000005,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [
+    {
+      "label": "competition_release_before",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789294633380553961__competition_release_before__WRIST_A.png",
+      "tcp_position_m": [
+        0.31811010412495383,
+        -0.08323906008105686,
+        0.548318506680466
+      ],
+      "quaternion_wxyz": [
+        0.8122719547561632,
+        0.05104665396551568,
+        0.07206573365113791,
+        0.576554455943972
+      ],
+      "captured_at_utc": "2026-09-13T10:17:13.387162+00:00"
+    },
+    {
+      "label": "competition_release_after",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size1__1789294634435276110__competition_release_after__WRIST_A.png",
+      "tcp_position_m": [
+        0.3172813465027846,
+        -0.08266254773596467,
+        0.5476735949821511
+      ],
+      "quaternion_wxyz": [
+        0.8117956811177113,
+        0.05179787510381458,
+        0.07223987663210646,
+        0.577136164589899
+      ],
+      "captured_at_utc": "2026-09-13T10:17:14.441741+00:00"
+    }
+  ],
+  "board_scene_paths": [
+    "board_1789294602340446804.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T10:17:20.981566+00:00"
+}

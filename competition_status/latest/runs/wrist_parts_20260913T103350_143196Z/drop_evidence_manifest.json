@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "part": "battery_size5",
+  "photos": [
+    {
+      "label": "nominal_hover_100mm",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789295667755850442__nominal_hover_100mm__WRIST_A.png",
+      "tcp_position_m": [
+        0.3023837359033135,
+        -0.1367853459412082,
+        0.6230453884763298
+      ],
+      "quaternion_wxyz": [
+        0.8209404424675091,
+        0.05274446762433617,
+        0.07159535631469144,
+        0.5640469094059894
+      ],
+      "captured_at_utc": "2026-09-13T10:34:27.763400+00:00"
+    },
+    {
+      "label": "initial_40mm_below_hover",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789295669628258542__initial_40mm_below_hover__WRIST_A.png",
+      "tcp_position_m": [
+        0.30283469315253114,
+        -0.13514410645221953,
+        0.5858043654751697
+      ],
+      "quaternion_wxyz": [
+        0.8212074242436173,
+        0.05231605099902375,
+        0.07146705464158892,
+        0.5637143401368174
+      ],
+      "captured_at_utc": "2026-09-13T10:34:29.634746+00:00"
+    },
+    {
+      "label": "adjust_down_002",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789295676827699394__adjust_down_002__WRIST_A.png",
+      "tcp_position_m": [
+        0.3024956263816201,
+        -0.13507381724896908,
+        0.567330909224935
+      ],
+      "quaternion_wxyz": [
+        0.8210190982962797,
+        0.05245967167388186,
+        0.07175537906326684,
+        0.5639386390877286
+      ],
+      "captured_at_utc": "2026-09-13T10:34:36.836103+00:00"
+    },
+    {
+      "label": "adjust_down_003",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789295680523600340__adjust_down_003__WRIST_A.png",
+      "tcp_position_m": [
+        0.3028398774933621,
+        -0.13514467039261643,
+        0.5493234210866634
+      ],
+      "quaternion_wxyz": [
+        0.8211801345839884,
+        0.0522196663791848,
+        0.0715237631397718,
+        0.5637558374989966
+      ],
+      "captured_at_utc": "2026-09-13T10:34:40.532024+00:00"
+    },
+    {
+      "label": "adjust_down_004",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789295689324649933__adjust_down_004__WRIST_A.png",
+      "tcp_position_m": [
+        0.3026750256040016,
+        -0.135174650945826,
+        0.541263538998163
+      ],
+      "quaternion_wxyz": [
+        0.8210677674214933,
+        0.05224555746119584,
+        0.07176687664324788,
+        0.5638861928119242
+      ],
+      "captured_at_utc": "2026-09-13T10:34:49.332053+00:00"
+    },
+    {
+      "label": "release_before",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789295698507089983__release_before__WRIST_A.png",
+      "tcp_position_m": [
+        0.30238722980543725,
+        -0.1349440414359395,
+        0.5408580861605978
+      ],
+      "quaternion_wxyz": [
+        0.8209734763621642,
+        0.05263326845018463,
+        0.0717145815301148,
+        0.5639940681940144
+      ],
+      "captured_at_utc": "2026-09-13T10:34:58.514833+00:00"
+    },
+    {
+      "label": "release_after",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789295699676226227__release_after__WRIST_A.png",
+      "tcp_position_m": [
+        0.3023615009410769,
+        -0.13495286244179494,
+        0.5408500746506966
+      ],
+      "quaternion_wxyz": [
+        0.8209525372128234,
+        0.052629990371901615,
+        0.07173572886847582,
+        0.5640221635370278
+      ],
+      "captured_at_utc": "2026-09-13T10:34:59.683590+00:00"
+    },
+    {
+      "label": "retreat_after_release",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__battery_size5__1789295703437901833__retreat_after_release__WRIST_A.png",
+      "tcp_position_m": [
+        0.30206144205180047,
+        -0.13481309203769928,
+        0.6206989536333145
+      ],
+      "quaternion_wxyz": [
+        0.8205927225099638,
+        0.052834663173013656,
+        0.07170241390111282,
+        0.5645306421903363
+      ],
+      "captured_at_utc": "2026-09-13T10:35:03.445256+00:00"
+    }
+  ]
+}

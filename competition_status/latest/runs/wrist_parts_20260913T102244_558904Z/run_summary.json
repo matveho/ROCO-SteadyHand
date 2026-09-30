@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "status": "profile_saved",
+  "part": "gear_60teeth",
+  "action": "localize",
+  "holding_may_be_true": false,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.43649779249766946,
+      -0.056141612815485936
+    ],
+    "board_x_unit_base_xy": [
+      0.004569536362570019,
+      -0.9999895596142151
+    ],
+    "board_y_unit_base_xy": [
+      -0.999989559614215,
+      -0.004569536362570027
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.0031564049932245584,
+        -0.01873307125266128
+      ],
+      "rotation_deg": -0.36338219490488916,
+      "fit_residual_m": 0.007694489057469546,
+      "edge_scale": [
+        1.0244797518897126,
+        1.0228418722789605,
+        1.030845041428864,
+        1.0312052945588897
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T10:22:51.436361+00:00"
+    },
+    "captured_at_utc": "2026-09-13T10:25:04.865161+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.5321594364195806,
+    -0.14696310041478555
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.24,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": -0.0049999999999999906,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789294976342570556.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T10:25:04.865652+00:00"
+}

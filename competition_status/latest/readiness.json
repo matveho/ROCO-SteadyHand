@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "report_kind": "vega_competition_onsite_readiness",
-  "generated_at_utc": "2026-09-13T09:08:42.148834+00:00",
-  "git_revision": "1338f3e33f19c8078125de7ac35e5745716faafd",
+  "generated_at_utc": "2026-09-13T10:36:36.931434+00:00",
+  "git_revision": "b6fb6ffcb798d0a5a8f9fab9a6f652403a16f040",
   "hardware_accessed": false,
   "calibration_or_task_files_modified": [
     "calibration/wrist_part_profiles.json"
@@ -48,9 +48,12 @@
       "max_retries_per_part": 2,
       "eligible_actions_now": [
         "battery_size1.pick_place",
+        "gear_60teeth.pick_place",
+        "pin.pick_place",
         "bolt_8mm.pick_place",
         "battery_size5.pick_place",
         "rod_16mm.pick_place",
+        "usb_a.pick_place",
         "hdmi.pick_place"
       ]
     },
@@ -58,15 +61,15 @@
       "passed": true,
       "competition": {
         "order": [
-          "battery_size1",
-          "gear_20teeth",
-          "gear_60teeth",
-          "pin",
           "bolt_8mm",
           "battery_size5",
           "rod_16mm",
           "usb_a",
-          "hdmi"
+          "hdmi",
+          "gear_20teeth",
+          "gear_60teeth",
+          "pin",
+          "battery_size1"
         ],
         "retries_per_action": 2,
         "max_attempts_per_action": 3,
@@ -80,7 +83,7 @@
         "parts": {
           "gear_60teeth": {
             "enabled": false,
-            "mode": "auto",
+            "mode": "pick_place",
             "pick_enabled": true,
             "place_enabled": true,
             "use_wrist_pick_cv": true,
@@ -88,26 +91,26 @@
             "max_attempts": 3
           },
           "gear_20teeth": {
-            "enabled": true,
-            "mode": "pick",
+            "enabled": false,
+            "mode": "pick_place",
             "pick_enabled": true,
-            "place_enabled": false,
+            "place_enabled": true,
             "use_wrist_pick_cv": true,
             "use_place_cv": true,
             "max_attempts": 3
           },
           "rod_16mm": {
             "enabled": true,
-            "mode": "pick",
+            "mode": "pick_place",
             "pick_enabled": true,
-            "place_enabled": false,
+            "place_enabled": true,
             "use_wrist_pick_cv": true,
             "use_place_cv": true,
             "max_attempts": 3
           },
           "bolt_8mm": {
-            "enabled": false,
-            "mode": "auto",
+            "enabled": true,
+            "mode": "pick_place",
             "pick_enabled": true,
             "place_enabled": true,
             "use_wrist_pick_cv": true,
@@ -115,8 +118,8 @@
             "max_attempts": 3
           },
           "usb_a": {
-            "enabled": false,
-            "mode": "auto",
+            "enabled": true,
+            "mode": "pick_place",
             "pick_enabled": true,
             "place_enabled": true,
             "use_wrist_pick_cv": true,
@@ -125,16 +128,16 @@
           },
           "hdmi": {
             "enabled": true,
-            "mode": "pick",
+            "mode": "pick_place",
             "pick_enabled": true,
-            "place_enabled": false,
+            "place_enabled": true,
             "use_wrist_pick_cv": true,
             "use_place_cv": true,
             "max_attempts": 3
           },
           "pin": {
-            "enabled": false,
-            "mode": "auto",
+            "enabled": true,
+            "mode": "pick_place",
             "pick_enabled": true,
             "place_enabled": true,
             "use_wrist_pick_cv": true,
@@ -192,12 +195,12 @@
         "reason": "ready"
       },
       "pick_place": {
-        "ready": false,
-        "reason": "place settings missing"
+        "ready": true,
+        "reason": "ready"
       },
-      "grasp_clearance_mm": 5.000000000000004,
-      "jaw_open_fraction": 0.25,
-      "board_reference": "assumed_calibration_reference",
+      "grasp_clearance_mm": -4.99999999999999,
+      "jaw_open_fraction": 0.24,
+      "board_reference": "taught",
       "template_integrity_ok": true
     },
     "gear_20teeth": {
@@ -252,11 +255,11 @@
         "reason": "ready"
       },
       "pick_place": {
-        "ready": false,
-        "reason": "place settings missing"
+        "ready": true,
+        "reason": "ready"
       },
       "grasp_clearance_mm": 2.0000000000000018,
-      "jaw_open_fraction": 0.1246576659332208,
+      "jaw_open_fraction": 0.1,
       "board_reference": "taught",
       "template_integrity_ok": true
     },
@@ -282,12 +285,12 @@
         "reason": "ready"
       },
       "pick_place": {
-        "ready": false,
-        "reason": "place settings missing"
+        "ready": true,
+        "reason": "ready"
       },
       "grasp_clearance_mm": 0.0,
       "jaw_open_fraction": 0.1,
-      "board_reference": "reconstructed_teaching_frame",
+      "board_reference": "taught",
       "template_integrity_ok": true
     },
     "battery_size1": {
@@ -335,14 +338,14 @@
   ],
   "reference_hovers_m": {
     "task.gear_60teeth.pick": [
-      0.6058892310134474,
-      -0.137461385875499,
-      0.5570833900589546
+      0.5535368614658357,
+      -0.12579151040224124,
+      0.5686498328602204
     ],
     "task.gear_60teeth.place": [
-      0.5651768877277155,
-      0.01321297400761556,
-      0.566724475630773
+      0.5321640261562236,
+      0.013586719313865889,
+      0.5739635744264592
     ],
     "task.gear_20teeth.pick": [
       0.5215230111474931,
@@ -375,14 +378,14 @@
       0.6154991139282548
     ],
     "task.usb_a.pick": [
-      0.48551547148912144,
-      0.07814362263389232,
-      0.5842240126439584
+      0.48557437508165596,
+      0.10455215964328714,
+      0.5842289957862384
     ],
     "task.usb_a.place": [
-      0.45504690809804055,
-      0.07891021844002401,
-      0.5908359142385804
+      0.41466670321175375,
+      0.07590977316292587,
+      0.5995569904288984
     ],
     "task.hdmi.pick": [
       0.5388283599716723,
@@ -390,19 +393,19 @@
       0.5715103564362648
     ],
     "task.hdmi.place": [
-      0.40921525660493013,
-      0.03825741110685943,
-      0.6007439969331644
+      0.41964283124223534,
+      0.03802521561256844,
+      0.5984967350517636
     ],
     "task.pin.pick": [
-      0.4984872405480355,
-      0.010652546785888943,
-      0.5813373592524956
+      0.46085889587652745,
+      -0.0031451882143606474,
+      0.5895414850985272
     ],
     "task.pin.place": [
-      0.5004262670708797,
-      0.0547951542532128,
-      0.5809609681245895
+      0.46097344174309124,
+      0.05507394938590014,
+      0.5895475985424165
     ],
     "task.battery_size1.pick": [
       0.3189983010670894,
@@ -410,9 +413,9 @@
       0.6195357702618233
     ],
     "task.battery_size1.place": [
-      0.3270835443782427,
-      -0.08224570189775364,
-      0.6180950991824513
+      0.3212737757847859,
+      -0.08175311951751649,
+      0.6193421856746135
     ],
     "task.battery_size5.pick": [
       0.3100042359945441,
@@ -420,9 +423,9 @@
       0.6212830549867558
     ],
     "task.battery_size5.place": [
-      0.30755974579019685,
-      -0.11103482112981769,
-      0.6221646846595098
+      0.3076907973424079,
+      -0.11121922118526516,
+      0.6221357150857088
     ]
   },
   "tests": {

@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "status": "ready",
+  "part": "gear_20teeth",
+  "action": "drop_calibrate",
+  "holding_may_be_true": true,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.423431933535635,
+      -0.09627410820550643
+    ],
+    "board_x_unit_base_xy": [
+      -0.005354180279794799,
+      -0.999985666274038
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999856662740376,
+      0.005354180279794813
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.016222263955259025,
+        -0.05886556664268178
+      ],
+      "rotation_deg": -0.9319716524869949,
+      "fit_residual_m": 0.008334578774347961,
+      "edge_scale": [
+        1.034669000036953,
+        1.0102931308902316,
+        1.036597062177359,
+        1.028357684557595
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T10:00:15.839713+00:00"
+    },
+    "captured_at_utc": "2026-09-13T10:00:47.157145+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.5047307814275936,
+    -0.13197724181389128
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.2,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.0010000000000000009,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [
+    {
+      "label": "nominal_hover_100mm",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_20teeth__1789293637718825509__nominal_hover_100mm__WRIST_A.png",
+      "tcp_position_m": [
+        0.5879399924170912,
+        -0.06066122551461206,
+        0.5615531843807082
+      ],
+      "quaternion_wxyz": [
+        0.8208860824105335,
+        0.05300092510356818,
+        0.07077841209632359,
+        0.564205067350494
+      ],
+      "captured_at_utc": "2026-09-13T10:00:37.725394+00:00"
+    },
+    {
+      "label": "initial_40mm_below_hover",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_20teeth__1789293640388919978__initial_40mm_below_hover__WRIST_A.png",
+      "tcp_position_m": [
+        0.5898161624509224,
+        -0.06004716756219365,
+        0.5239031395899247
+      ],
+      "quaternion_wxyz": [
+        0.8214589429411199,
+        0.05238138556579821,
+        0.07043588308011157,
+        0.563471544874264
+      ],
+      "captured_at_utc": "2026-09-13T10:00:40.395848+00:00"
+    }
+  ],
+  "board_scene_paths": [
+    "board_1789293617911444363.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T10:00:47.157641+00:00"
+}

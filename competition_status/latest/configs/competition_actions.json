@@ -2,15 +2,15 @@
   "schema_version": 1,
     "description": "Single operator-editable competition routine. Set enabled=false to skip a part; edit this file on the laptop before deployment.",
   "order": [
-    "battery_size1",
-    "gear_20teeth",
-    "gear_60teeth",
-    "pin",
     "bolt_8mm",
     "battery_size5",
     "rod_16mm",
     "usb_a",
-    "hdmi"
+    "hdmi",
+    "gear_20teeth",
+    "gear_60teeth",
+    "pin",
+    "battery_size1"
   ],
   "retries_per_action": 2,
   "max_attempts_per_action": 3,
@@ -23,13 +23,13 @@
   "visual_center_backoff_mm": 15.0,
   "parts": {
     "battery_size1": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
-    "gear_20teeth": {"enabled": true, "pick_enabled": true, "place_enabled": false, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick"},
-    "gear_60teeth": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
-    "pin": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
-    "bolt_8mm": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
+    "gear_20teeth": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
+    "gear_60teeth": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
+    "pin": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
+    "bolt_8mm": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
     "battery_size5": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
-    "rod_16mm": {"enabled": true, "pick_enabled": true, "place_enabled": false, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick"},
-    "usb_a": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
-    "hdmi": {"enabled": true, "pick_enabled": true, "place_enabled": false, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick"}
+    "rod_16mm": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
+    "usb_a": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
+    "hdmi": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"}
   }
 }

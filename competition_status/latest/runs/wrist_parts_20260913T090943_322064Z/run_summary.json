@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "status": "starting",
+  "part": "bolt_8mm",
+  "action": "localize",
+  "holding_may_be_true": false,
+  "pickup_completed": false,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.4297861699389756,
+      -0.06582398136531073
+    ],
+    "board_x_unit_base_xy": [
+      0.008255878096794097,
+      -0.9999659196576907
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999659196576907,
+      -0.008255878096794081
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.009868027551918391,
+        -0.028415439802486075
+      ],
+      "rotation_deg": -0.15216590913148104,
+      "fit_residual_m": 0.008736494359086097,
+      "edge_scale": [
+        1.030927638722603,
+        1.0244533460993979,
+        1.03221418234095,
+        1.0356701107591895
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T09:09:47.550393+00:00"
+    },
+    "captured_at_utc": "2026-09-13T09:09:50.812106+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": null,
+  "coarse_xy_m": null,
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": null,
+  "alignment_verified": false,
+  "alignment_fallback_used": false,
+  "grasp_verified": false,
+  "grasp_clearance_m": null,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T09:09:50.812686+00:00"
+}

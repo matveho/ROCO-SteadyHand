@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "mode": "configured",
+  "status": "finished",
+  "actions": {
+    "battery_size1.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789292001056502338_battery_size1_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    },
+    "gear_20teeth.pick": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789292043521515016_gear_20teeth_pick_attempt1",
+      "summary_status": "pick_complete_returned",
+      "last_error": null
+    },
+    "battery_size5.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789292082425735748_battery_size5_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    },
+    "rod_16mm.pick": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789292128402294806_rod_16mm_pick_attempt1",
+      "summary_status": "pick_complete_returned",
+      "last_error": null
+    },
+    "hdmi.pick": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789292165567563472_hdmi_pick_attempt1",
+      "summary_status": "pick_complete_returned",
+      "last_error": null
+    }
+  },
+  "updated_at_ns": 1789292206479711952
+}

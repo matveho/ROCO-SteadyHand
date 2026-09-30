@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "status": "profile_saved",
+  "part": "pin",
+  "action": "localize",
+  "holding_may_be_true": false,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.4235336684121871,
+      -0.09783176554366302
+    ],
+    "board_x_unit_base_xy": [
+      -0.002015224160593292,
+      -0.9999979694337294
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999979694337298,
+      0.002015224160593292
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.01612052907870691,
+        -0.06042322398083836
+      ],
+      "rotation_deg": -0.7406621712930802,
+      "fit_residual_m": 0.008636153032813114,
+      "edge_scale": [
+        1.0297974742360414,
+        1.0118026543462435,
+        1.0354890340311698,
+        1.0400502484007026
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T09:53:30.437616+00:00"
+    },
+    "captured_at_utc": "2026-09-13T09:56:06.610726+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.4829830639012866,
+    -0.05053520600063754
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.1,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.0,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789293212578866992.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T09:56:06.611261+00:00"
+}

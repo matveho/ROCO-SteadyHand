@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "mode": "selected_parts",
+  "status": "finished",
+  "actions": {
+    "battery_size1.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    }
+  },
+  "updated_at_ns": 1789289716435582121
+}

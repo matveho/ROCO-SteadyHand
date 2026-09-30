@@ -2,6 +2,6 @@
     "videos":  [
 
                ],
-    "note":  "Battery corner detection failed; bolt corner teaching blocked by motion/E-stop check",
-    "captured_at_utc":  "2026-09-30T13:15:25.1140222Z"
+    "note":  "Battery entered slot corner-first; corner teaching stopped",
+    "captured_at_utc":  "2026-09-30T14:43:12.4997957Z"
 }

@@ -1,0 +1,311 @@
+{
+  "schema_version": 1,
+  "status": "drop_profile_saved",
+  "part": "gear_60teeth",
+  "action": "drop_calibrate",
+  "holding_may_be_true": false,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.4371717508401345,
+      -0.049632882160515486
+    ],
+    "board_x_unit_base_xy": [
+      0.000902218217765826,
+      -0.9999995930010606
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999995930010609,
+      -0.0009022182177658168
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.0024824466507595276,
+        -0.012224340597690836
+      ],
+      "rotation_deg": -0.5735049508750648,
+      "fit_residual_m": 0.007821628274680543,
+      "edge_scale": [
+        1.0310471214487384,
+        1.0264994756284,
+        1.0269527362657438,
+        1.0283552180467361
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T10:25:22.468264+00:00"
+    },
+    "captured_at_utc": "2026-09-13T10:27:24.554428+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.5501640509050472,
+    -0.1391513185908927
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.24,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": -0.0049999999999999906,
+  "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295206986874697__release_before__WRIST_A.png",
+  "drop_evidence_photos": [
+    {
+      "label": "nominal_hover_100mm",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295146989507407__nominal_hover_100mm__WRIST_A.png",
+      "tcp_position_m": [
+        0.5178704924803231,
+        0.01859878482959155,
+        0.5771571395854675
+      ],
+      "quaternion_wxyz": [
+        0.8173141027206487,
+        0.053611537785290195,
+        0.06683072556808424,
+        0.5697869028244514
+      ],
+      "captured_at_utc": "2026-09-13T10:25:46.997395+00:00"
+    },
+    {
+      "label": "initial_40mm_below_hover",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295148793914872__initial_40mm_below_hover__WRIST_A.png",
+      "tcp_position_m": [
+        0.5180744495183984,
+        0.01922306417038567,
+        0.5398580474323197
+      ],
+      "quaternion_wxyz": [
+        0.8178710696899083,
+        0.05288270555288992,
+        0.06695560292701418,
+        0.5690406664328761
+      ],
+      "captured_at_utc": "2026-09-13T10:25:48.801209+00:00"
+    },
+    {
+      "label": "adjust_forward_002",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295155477290793__adjust_forward_002__WRIST_A.png",
+      "tcp_position_m": [
+        0.5259186239735906,
+        0.019235725502040148,
+        0.5371229979740699
+      ],
+      "quaternion_wxyz": [
+        0.8177559506791876,
+        0.052720617658847314,
+        0.0670943305543311,
+        0.5692047895177216
+      ],
+      "captured_at_utc": "2026-09-13T10:25:55.484421+00:00"
+    },
+    {
+      "label": "adjust_right_003",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295158828789701__adjust_right_003__WRIST_A.png",
+      "tcp_position_m": [
+        0.5248282223288876,
+        0.007676850139109466,
+        0.5367624034801184
+      ],
+      "quaternion_wxyz": [
+        0.816479308701589,
+        0.05352340980970829,
+        0.06756221673130157,
+        0.5709046592338077
+      ],
+      "captured_at_utc": "2026-09-13T10:25:58.835155+00:00"
+    },
+    {
+      "label": "adjust_forward_004",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295162516959222__adjust_forward_004__WRIST_A.png",
+      "tcp_position_m": [
+        0.5325054063148887,
+        0.006306721454677651,
+        0.5362449681002113
+      ],
+      "quaternion_wxyz": [
+        0.817665702725969,
+        0.05259119827864663,
+        0.06657932132931044,
+        0.569406847886985
+      ],
+      "captured_at_utc": "2026-09-13T10:26:02.523862+00:00"
+    },
+    {
+      "label": "adjust_back_005",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295168827899195__adjust_back_005__WRIST_A.png",
+      "tcp_position_m": [
+        0.5229383256207409,
+        0.007742786741147603,
+        0.5375162944277183
+      ],
+      "quaternion_wxyz": [
+        0.8164001719067551,
+        0.05417029733130199,
+        0.06730245702622105,
+        0.5709874932744964
+      ],
+      "captured_at_utc": "2026-09-13T10:26:08.834465+00:00"
+    },
+    {
+      "label": "adjust_down_006",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295173182851755__adjust_down_006__WRIST_A.png",
+      "tcp_position_m": [
+        0.5242585981256569,
+        0.006169576833517612,
+        0.5202841193379932
+      ],
+      "quaternion_wxyz": [
+        0.8177974237979304,
+        0.052767617367186076,
+        0.06682835092097754,
+        0.5691721389000356
+      ],
+      "captured_at_utc": "2026-09-13T10:26:13.189787+00:00"
+    },
+    {
+      "label": "adjust_down_007",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295176544367615__adjust_down_007__WRIST_A.png",
+      "tcp_position_m": [
+        0.5245748688578856,
+        0.0059650766434497515,
+        0.5021910189686498
+      ],
+      "quaternion_wxyz": [
+        0.8178345858166693,
+        0.05237964723231183,
+        0.06666997235941337,
+        0.5691731525498114
+      ],
+      "captured_at_utc": "2026-09-13T10:26:16.550480+00:00"
+    },
+    {
+      "label": "adjust_down_008",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295179045563176__adjust_down_008__WRIST_A.png",
+      "tcp_position_m": [
+        0.5247096961780596,
+        0.0057934764403353295,
+        0.4941394723385703
+      ],
+      "quaternion_wxyz": [
+        0.8180056215005567,
+        0.052261294441058335,
+        0.06668319583135755,
+        0.5689366499800743
+      ],
+      "captured_at_utc": "2026-09-13T10:26:19.052840+00:00"
+    },
+    {
+      "label": "adjust_forward_009",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295183170588543__adjust_forward_009__WRIST_A.png",
+      "tcp_position_m": [
+        0.5304695623659762,
+        0.005687479111606622,
+        0.49221656246607903
+      ],
+      "quaternion_wxyz": [
+        0.8179635094655839,
+        0.05220854510180324,
+        0.06677964917893232,
+        0.5689907235242391
+      ],
+      "captured_at_utc": "2026-09-13T10:26:23.177286+00:00"
+    },
+    {
+      "label": "adjust_right_010",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295192415866432__adjust_right_010__WRIST_A.png",
+      "tcp_position_m": [
+        0.5283683327379044,
+        0.002824197197981937,
+        0.49181302994856724
+      ],
+      "quaternion_wxyz": [
+        0.8161137051095719,
+        0.05494252352885445,
+        0.06699341804535024,
+        0.571359450240572
+      ],
+      "captured_at_utc": "2026-09-13T10:26:32.422149+00:00"
+    },
+    {
+      "label": "adjust_up_011",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295204048501577__adjust_up_011__WRIST_A.png",
+      "tcp_position_m": [
+        0.529302175228602,
+        0.0013279721709293854,
+        0.49793017082210067
+      ],
+      "quaternion_wxyz": [
+        0.8169074944153707,
+        0.05396752969804102,
+        0.06694491948387267,
+        0.5703227411401288
+      ],
+      "captured_at_utc": "2026-09-13T10:26:44.055835+00:00"
+    },
+    {
+      "label": "release_before",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295206986874697__release_before__WRIST_A.png",
+      "tcp_position_m": [
+        0.5302037716923044,
+        0.00042124346925631606,
+        0.49848023706676264
+      ],
+      "quaternion_wxyz": [
+        0.817428036486325,
+        0.05295683119610674,
+        0.06670792003466174,
+        0.5696990719673215
+      ],
+      "captured_at_utc": "2026-09-13T10:26:46.994180+00:00"
+    },
+    {
+      "label": "release_after",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295208103426331__release_after__WRIST_A.png",
+      "tcp_position_m": [
+        0.5301941761573034,
+        0.0004240458919942819,
+        0.4984775955745311
+      ],
+      "quaternion_wxyz": [
+        0.8174335052116909,
+        0.05297881069135456,
+        0.06671620181974573,
+        0.5696882117349853
+      ],
+      "captured_at_utc": "2026-09-13T10:26:48.109581+00:00"
+    },
+    {
+      "label": "retreat_after_release",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__gear_60teeth__1789295211260481134__retreat_after_release__WRIST_A.png",
+      "tcp_position_m": [
+        0.5295777154732773,
+        0.0013243916041031784,
+        0.5716087225786036
+      ],
+      "quaternion_wxyz": [
+        0.8166201556454971,
+        0.053444480902637134,
+        0.06661259274499177,
+        0.570822188901554
+      ],
+      "captured_at_utc": "2026-09-13T10:26:51.268066+00:00"
+    }
+  ],
+  "board_scene_paths": [
+    "board_1789295124490240524.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T10:27:24.554993+00:00"
+}

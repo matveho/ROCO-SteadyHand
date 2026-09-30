@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "part": "usb_a",
+  "action": "drop_calibrate",
+  "holding_may_be_true": false,
+  "pickup_completed": true,
+  "recovery_state_verified": false,
+  "recovery_release_attempted": false,
+  "recovery_blocked": false,
+  "motion_faulted": false,
+  "cleanup_error": null,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.43009061163077084,
+      -0.06510548063942778
+    ],
+    "board_x_unit_base_xy": [
+      0.0074882891762851865,
+      -0.9999719623695519
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999719623695522,
+      -0.00748828917628519
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        -0.009563585860123167,
+        -0.02769693907660313
+      ],
+      "rotation_deg": -0.19614687852246648,
+      "fit_residual_m": 0.008605912750499775,
+      "edge_scale": [
+        1.024981585892999,
+        1.0249958860200845,
+        1.0364233161073881,
+        1.0323604915984037
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T09:19:55.909919+00:00"
+    },
+    "captured_at_utc": "2026-09-13T09:21:33.330896+00:00"
+  },
+  "last_error": "RuntimeError: Recovery blocked: arm is moving or E-stop is active",
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.4764965087070584,
+    0.07669718546189444
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.2,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.0020000000000000018,
+  "drop_release_photo": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291283977373733__release_before__WRIST_A.png",
+  "drop_evidence_photos": [
+    {
+      "label": "nominal_hover_100mm",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291216381889808__nominal_hover_100mm__WRIST_A.png",
+      "tcp_position_m": [
+        0.4476008001078935,
+        0.05679862728260372,
+        0.592359187402089
+      ],
+      "quaternion_wxyz": [
+        0.8172063823230995,
+        0.05722304656171907,
+        0.06524975691311734,
+        0.5697733943028288
+      ],
+      "captured_at_utc": "2026-09-13T09:20:16.388918+00:00"
+    },
+    {
+      "label": "initial_40mm_below_hover",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291218202104680__initial_40mm_below_hover__WRIST_A.png",
+      "tcp_position_m": [
+        0.4463069218620221,
+        0.05059065481988727,
+        0.5553541124427521
+      ],
+      "quaternion_wxyz": [
+        0.8173433802640759,
+        0.05251299465751798,
+        0.07147866234679214,
+        0.5692828690200569
+      ],
+      "captured_at_utc": "2026-09-13T09:20:18.208615+00:00"
+    },
+    {
+      "label": "adjust_back_002",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291224773714336__adjust_back_002__WRIST_A.png",
+      "tcp_position_m": [
+        0.4177957114478287,
+        0.05185099892467741,
+        0.5607530720611331
+      ],
+      "quaternion_wxyz": [
+        0.8163537544614752,
+        0.053102386044312375,
+        0.07095964527372368,
+        0.5707113218744498
+      ],
+      "captured_at_utc": "2026-09-13T09:20:24.780060+00:00"
+    },
+    {
+      "label": "adjust_back_003",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291228240976304__adjust_back_003__WRIST_A.png",
+      "tcp_position_m": [
+        0.4037765036837487,
+        0.05168790540224502,
+        0.5633995397016982
+      ],
+      "quaternion_wxyz": [
+        0.8161762672984384,
+        0.05343831648413194,
+        0.07173780027891785,
+        0.5708365221683627
+      ],
+      "captured_at_utc": "2026-09-13T09:20:28.247134+00:00"
+    },
+    {
+      "label": "adjust_right_004",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291231080684640__adjust_right_004__WRIST_A.png",
+      "tcp_position_m": [
+        0.4037665968215852,
+        0.04577664137112537,
+        0.5636928481955119
+      ],
+      "quaternion_wxyz": [
+        0.8162806997880786,
+        0.053346002156127066,
+        0.07153482755776754,
+        0.5707212906960138
+      ],
+      "captured_at_utc": "2026-09-13T09:20:31.086656+00:00"
+    },
+    {
+      "label": "adjust_left_005",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291235628897202__adjust_left_005__WRIST_A.png",
+      "tcp_position_m": [
+        0.4052580964119563,
+        0.055662840087475005,
+        0.5635270713483129
+      ],
+      "quaternion_wxyz": [
+        0.8171736711875367,
+        0.05241611670705304,
+        0.07078869421503949,
+        0.5696215433062255
+      ],
+      "captured_at_utc": "2026-09-13T09:20:35.635909+00:00"
+    },
+    {
+      "label": "adjust_down_006",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291241057505227__adjust_down_006__WRIST_A.png",
+      "tcp_position_m": [
+        0.40496787557896263,
+        0.05610977915907952,
+        0.5458660288602107
+      ],
+      "quaternion_wxyz": [
+        0.8169562206937071,
+        0.05250953852818464,
+        0.07107375980764305,
+        0.569889289687232
+      ],
+      "captured_at_utc": "2026-09-13T09:20:41.064095+00:00"
+    },
+    {
+      "label": "adjust_down_007",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291247188729211__adjust_down_007__WRIST_A.png",
+      "tcp_position_m": [
+        0.40511731342122453,
+        0.05568932925839783,
+        0.5276688397257854
+      ],
+      "quaternion_wxyz": [
+        0.8171524765305104,
+        0.05226442388424992,
+        0.0712498509185989,
+        0.569608390774029
+      ],
+      "captured_at_utc": "2026-09-13T09:20:47.194784+00:00"
+    },
+    {
+      "label": "adjust_down_008",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291254177286944__adjust_down_008__WRIST_A.png",
+      "tcp_position_m": [
+        0.4048405701742389,
+        0.05554638382227626,
+        0.5144882835022249
+      ],
+      "quaternion_wxyz": [
+        0.8171094716524597,
+        0.05231894787156782,
+        0.07164583837465124,
+        0.5696154078613427
+      ],
+      "captured_at_utc": "2026-09-13T09:20:54.183168+00:00"
+    },
+    {
+      "label": "adjust_up_009",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291259426863901__adjust_up_009__WRIST_A.png",
+      "tcp_position_m": [
+        0.4037640681047858,
+        0.056999084012433955,
+        0.521431511903887
+      ],
+      "quaternion_wxyz": [
+        0.8164443295802662,
+        0.05357015968985233,
+        0.07126210965455204,
+        0.5705003123703055
+      ],
+      "captured_at_utc": "2026-09-13T09:20:59.433203+00:00"
+    },
+    {
+      "label": "adjust_right_010",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291263402623274__adjust_right_010__WRIST_A.png",
+      "tcp_position_m": [
+        0.4040871357786589,
+        0.04924518587181544,
+        0.5225283911225689
+      ],
+      "quaternion_wxyz": [
+        0.816346487322876,
+        0.053458795494521455,
+        0.07112972628194685,
+        0.5706672689570796
+      ],
+      "captured_at_utc": "2026-09-13T09:21:03.410257+00:00"
+    },
+    {
+      "label": "adjust_forward_011",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291268368324433__adjust_forward_011__WRIST_A.png",
+      "tcp_position_m": [
+        0.41095819283930385,
+        0.047916605261199625,
+        0.5207686797305339
+      ],
+      "quaternion_wxyz": [
+        0.8172179033280894,
+        0.052616216763455285,
+        0.07112047271313932,
+        0.5694982972534707
+      ],
+      "captured_at_utc": "2026-09-13T09:21:08.375783+00:00"
+    },
+    {
+      "label": "adjust_down_012",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291274209339610__adjust_down_012__WRIST_A.png",
+      "tcp_position_m": [
+        0.410996403204639,
+        0.04781102707465118,
+        0.5132666911226824
+      ],
+      "quaternion_wxyz": [
+        0.8169386613189726,
+        0.05227572042864193,
+        0.07138780442646214,
+        0.5698967047414828
+      ],
+      "captured_at_utc": "2026-09-13T09:21:14.217202+00:00"
+    },
+    {
+      "label": "adjust_back_013",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291279936140182__adjust_back_013__WRIST_A.png",
+      "tcp_position_m": [
+        0.4056100918819431,
+        0.04809066581757193,
+        0.5135600702654652
+      ],
+      "quaternion_wxyz": [
+        0.8164836674248703,
+        0.0524772236191734,
+        0.07137968591996327,
+        0.5705308951035207
+      ],
+      "captured_at_utc": "2026-09-13T09:21:19.942574+00:00"
+    },
+    {
+      "label": "release_before",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291283977373733__release_before__WRIST_A.png",
+      "tcp_position_m": [
+        0.4055206028586638,
+        0.048309764753054485,
+        0.5138659588666776
+      ],
+      "quaternion_wxyz": [
+        0.8167526560557972,
+        0.05289420114587578,
+        0.07125553083307304,
+        0.5701227513760854
+      ],
+      "captured_at_utc": "2026-09-13T09:21:23.984859+00:00"
+    },
+    {
+      "label": "release_after",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291285096377263__release_after__WRIST_A.png",
+      "tcp_position_m": [
+        0.4049321516728497,
+        0.048593430551241414,
+        0.5139252407271083
+      ],
+      "quaternion_wxyz": [
+        0.8164460790671897,
+        0.053321399857589505,
+        0.07156810696242019,
+        0.5704828081185753
+      ],
+      "captured_at_utc": "2026-09-13T09:21:25.103743+00:00"
+    },
+    {
+      "label": "retreat_after_release",
+      "path": "runs/drop_release_positions/DROP_EVIDENCE__usb_a__1789291289181804138__retreat_after_release__WRIST_A.png",
+      "tcp_position_m": [
+        0.40494592129193163,
+        0.04855535460428868,
+        0.5989893524162222
+      ],
+      "quaternion_wxyz": [
+        0.8164349554632141,
+        0.05332899159409322,
+        0.07151593238087298,
+        0.5705045605155413
+      ],
+      "captured_at_utc": "2026-09-13T09:21:29.188703+00:00"
+    }
+  ],
+  "board_scene_paths": [
+    "board_1789291197777478471.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T09:21:33.331468+00:00"
+}
