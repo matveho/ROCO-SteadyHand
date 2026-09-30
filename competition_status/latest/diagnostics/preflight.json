@@ -1,0 +1,10 @@
+{
+  "command": [
+    "/home/dexmate/miniconda3/bin/python3",
+    "tools/vega_preflight.py",
+    "--json"
+  ],
+  "returncode": 0,
+  "stdout": "{\n  \"python\": \"3.13.12\",\n  \"executable\": \"/home/dexmate/miniconda3/bin/python3\",\n  \"machine\": \"aarch64\",\n  \"robot_name_env_set\": true,\n  \"dexcontrol_version\": \"0.5.0\",\n  \"dexcontrol_module\": true,\n  \"pinocchio_module\": true,\n  \"numpy_module\": true,\n  \"python_can_module\": true,\n  \"wrist_cameras_module\": false,\n  \"can1_present\": true,\n  \"gripper_driver_path\": \"/home/dexmate/ROCO-SteadyHand-live/vendor/dexmate_setup/gripper.py\",\n  \"gripper_driver_exists\": true,\n  \"urdf_path\": \"/home/dexmate/ROCO-SteadyHand-live/configs/robots/vega_1u_competition_kinematics.urdf\",\n  \"urdf_exists\": true,\n  \"working_arm\": \"right\",\n  \"ee_frame\": \"tip_r\",\n  \"base_frame\": \"vega_1u_base_link\",\n  \"step_wait_time_s\": null,\n  \"control_hz\": 100,\n  \"joint_reached_tolerance_rad\": 0.005,\n  \"joint_timeout_s\": 30,\n  \"max_joint_speed_rad_s\": null,\n  \"grip_current_a\": 1,\n  \"min_tcp_z_m\": 0.4560002716867571,\n  \"table_contact_tip_z_m\": 0.4460002716867571,\n  \"dexcontrol_matches_expected\": true\n}\n",
+  "stderr": ""
+}

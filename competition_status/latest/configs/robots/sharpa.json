@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "robot_id": "sharpa",
+  "robot_name": null,
+  "working_arm": null,
+  "host": null,
+  "sdk_version": null,
+  "urdf_path": null,
+  "joint_names": [],
+  "joint_limits_rad": null,
+  "max_joint_speed_rad_s": null,
+  "hand_joint_names": [],
+  "hand_command_units": null,
+  "notes": "Awaiting the actual SDK/runner and robot model. Do not copy demonstration joint vectors into hardware commands."
+}

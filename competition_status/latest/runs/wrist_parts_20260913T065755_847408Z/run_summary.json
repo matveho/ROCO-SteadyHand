@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "part": "gear_60teeth",
+  "action": "drop_calibrate",
+  "holding_may_be_true": false,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.4596667069941792,
+      -0.03438002200354408
+    ],
+    "board_x_unit_base_xy": [
+      -0.0165745766974351,
+      -0.9998626322687038
+    ],
+    "board_y_unit_base_xy": [
+      -0.9998626322687039,
+      0.016574576697435103
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        0.02001250950328521,
+        0.003028519559280572
+      ],
+      "rotation_deg": -1.574895032240349,
+      "fit_residual_m": 0.007612065429126312,
+      "edge_scale": [
+        1.0277722879914164,
+        1.0424151527394183,
+        1.0154888836641727,
+        1.0205274694411066
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T06:58:01.723246+00:00"
+    },
+    "captured_at_utc": "2026-09-13T06:58:27.805044+00:00"
+  },
+  "last_error": "RuntimeError: VegaWristCameras is not connected",
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.623089129181006,
+    -0.1389638159292344
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.25,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.0050000000000000044,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789282683919899635.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T06:58:27.805529+00:00"
+}

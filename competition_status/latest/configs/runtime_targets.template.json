@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "robot_id": "vega",
+  "pose_frame": "robot_base",
+  "generated_at": null,
+  "parts": {
+    "gear_60teeth": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "gear_20teeth": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "rod_16mm": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "bolt_8mm": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "usb_a": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "hdmi": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "pin": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "battery_size1": {
+      "pick_pose": null,
+      "place_pose": null
+    },
+    "battery_size5": {
+      "pick_pose": null,
+      "place_pose": null
+    }
+  },
+  "_pose_example": {
+    "position_m": [
+      0,
+      0,
+      0
+    ],
+    "quaternion_wxyz": [
+      1,
+      0,
+      0,
+      0
+    ]
+  },
+  "_note": "pose_type='object' is the normal competition form: pick/place are part poses in base_frame and execution applies T_part_tcp. For rapid onsite bring-up only, pose_type='tcp' makes pick/place explicit measured TCP poses and bypasses object->TCP calibration. All TCP targets remain subject to the hard min_tcp_z_m floor.",
+  "base_frame": null,
+  "position_units": "m",
+  "quaternion_order": "wxyz",
+  "pose_type": "object"
+}

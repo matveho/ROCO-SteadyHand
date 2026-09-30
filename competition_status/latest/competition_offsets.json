@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "_help": [
+    "Global last-minute corrections for every pickup / placement in competition and task tests. Teaching ignores this file.",
+    "All values are millimetres, between -100 and 100. Zero leaves calibration unchanged.",
+    "forward_mm: positive = away from robot, negative = toward robot (base X).",
+    "right_mm: positive = robot-right, negative = robot-left (minus base Y).",
+    "down_mm: positive = deeper grasp/release, negative = higher. Hover clearance stays unchanged; XY follows the calibrated surface.",
+    "Pickup and placement corrections are independent, added AFTER visual centering. Returning a pickup to its source uses the pickup correction.",
+    "Edit between runs. Each run reads this file once; edits take effect on the next run. Reset all six numbers to zero to remove corrections."
+  ],
+  "pickup": {
+    "forward_mm": 0,
+    "right_mm": 0,
+    "down_mm": 0
+  },
+  "placement": {
+    "forward_mm": 0,
+    "right_mm": 0,
+    "down_mm": 0
+  }
+}

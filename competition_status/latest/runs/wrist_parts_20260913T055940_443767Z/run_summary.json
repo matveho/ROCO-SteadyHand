@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "part": "battery_size1",
+  "action": "pick",
+  "holding_may_be_true": false,
+  "last_error": "RuntimeError: Feature lost/ambiguous: score=0.835, margin=0.021",
+  "execution_offsets": {
+    "schema_version": 1,
+    "pickup": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    },
+    "placement": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    }
+  },
+  "coarse_xy_m": [
+    0.33549622360149634,
+    -0.1547814638541431
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.18999957274999468,
+  "alignment_verified": false,
+  "alignment_fallback_used": false,
+  "grasp_verified": false,
+  "grasp_clearance_m": null,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789279187559362742.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T05:59:59.936964+00:00"
+}

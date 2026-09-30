@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "robot_id": "vega",
+  "pose_frame": "robot_base",
+  "pose_type": "tcp",
+  "generated_at": null,
+  "base_frame": "vega_1u_base_link",
+  "position_units": "m",
+  "quaternion_order": "wxyz",
+  "parts": {
+    "battery_size1": {
+      "pick_pose": null,
+      "place_pose": null
+    }
+  },
+  "_note": "Bring-up file only. Fill pick_pose and place_pose with measured tip_l TCP poses. Both z values must be >= 0.4560002716867571 m. Normal competition perception should use pose_type='object' plus calibrated T_part_tcp."
+}

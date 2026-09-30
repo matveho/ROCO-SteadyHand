@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "robot_id": "vega",
+  "source": {
+    "type": "port_from_submitted_sim_policy",
+    "note": "Hover/search values and legacy EE offsets come from the simulation setup. They are starting points, not verified real-robot calibration."
+  },
+  "defaults": {
+    "hover_pick_m": 0.1,
+    "hover_place_m": 0.1,
+    "retract_m": 0.1,
+    "legacy_ee_orientation_wxyz": [
+      0,
+      1,
+      0,
+      0
+    ],
+    "legacy_ee_offset_m": [
+      0,
+      0.016,
+      0.196
+    ],
+    "gripper_open_fraction": 1,
+    "grip_current_a": null,
+    "search": null,
+    "preinsert_m": 0.012,
+    "grasp_settle_s": 0.5,
+    "release_settle_s": 0.1,
+    "max_cartesian_step_m": 0.025,
+    "max_orientation_step_rad": 0.12,
+    "insertion_reached_tolerance_m": 0.004,
+    "insertion_reached_tolerance_rad": 0.08,
+    "T_part_tcp": null,
+    "legacy_geometry_verified": false,
+    "max_contact_step_m": null
+  },
+  "parts": {
+    "gear_60teeth": {
+      "hover_pick_m": 0.08,
+      "hover_place_m": 0.08,
+      "retract_m": 0.15,
+      "legacy_ee_offset_m": [
+        0,
+        0.016,
+        0.2
+      ]
+    },
+    "gear_20teeth": {
+      "hover_pick_m": 0.05,
+      "hover_place_m": 0.05,
+      "retract_m": 0.1,
+      "legacy_ee_offset_m": [
+        0,
+        0.016,
+        0.197
+      ]
+    },
+    "rod_16mm": {
+      "legacy_ee_offset_m": [
+        0,
+        0.016,
+        0.21
+      ],
+      "search": {
+        "type": "grid",
+        "n": 5,
+        "extent_xy_m": [
+          0.002,
+          0.002
+        ]
+      }
+    },
+    "bolt_8mm": {
+      "hover_pick_m": 0.05,
+      "hover_place_m": 0.05,
+      "retract_m": 0.1,
+      "legacy_ee_offset_m": [
+        0,
+        0.0147,
+        0.2045
+      ],
+      "search": {
+        "type": "grid",
+        "n": 6,
+        "extent_xy_m": [
+          0.006,
+          0.006
+        ]
+      }
+    },
+    "usb_a": {
+      "hover_pick_m": 0.02,
+      "hover_place_m": 0.02,
+      "retract_m": 0.02,
+      "search": {
+        "type": "grid",
+        "n": 5,
+        "extent_xy_m": [
+          0.002,
+          0.002
+        ]
+      }
+    },
+    "hdmi": {
+      "search": {
+        "type": "grid",
+        "n": 5,
+        "extent_xy_m": [
+          0.002,
+          0.002
+        ]
+      }
+    },
+    "pin": {
+      "legacy_ee_offset_m": [
+        0,
+        0.017,
+        0.185
+      ],
+      "search": {
+        "type": "grid",
+        "n": 5,
+        "extent_xy_m": [
+          0.002,
+          0.002
+        ]
+      }
+    },
+    "battery_size1": {
+      "legacy_ee_offset_m": [
+        0,
+        0.015,
+        0.185
+      ]
+    },
+    "battery_size5": {
+      "legacy_ee_offset_m": [
+        -0.001,
+        0.015,
+        0.1875
+      ]
+    }
+  },
+  "safety": {
+    "force_delta_limit": null,
+    "note": "Task-floor guard remains 0.4560002716867571 m in vega_1u_base_link during the right-arm migration. This numeric guard comes from the prior onsite contact bring-up and must be revalidated with tip_r before any contact/insertion work. Normal Cartesian targets/waypoints must not go below it. Insertion remains gated by measured force_delta_limit, wrench_units=N,Nm, wrench_frame and max_contact_step_m. Force is checked between blocking moves, not continuously. Overload stops without automatic retract.",
+    "force_axes": [
+      0,
+      1,
+      2
+    ],
+    "wrench_units": null,
+    "wrench_frame": null,
+    "min_tcp_z_m": 0.4560002716867571,
+    "table_contact_tip_z_m": 0.4460002716867571,
+    "table_floor_margin_m": 0.01
+  }
+}

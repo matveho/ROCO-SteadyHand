@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "mode": "configured",
+  "status": "active",
+  "actions": {
+    "battery_size1.pick_place": {
+      "status": "pending",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_recoveries/1789288841740221136_battery_size1_pick_place",
+      "summary_status": "running:battery_size1.pick_place",
+      "recovery_from_output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789285146539149721_battery_size1_pick_place_attempt1",
+      "machine_recovered_at_ns": 1789288847065567980,
+      "recovery_summary": {
+        "schema_version": 1,
+        "status": "failed_recovered_empty",
+        "part": "battery_size1",
+        "action": "pick_place",
+        "holding_may_be_true": false,
+        "pickup_completed": false,
+        "recovery_state_verified": true,
+        "recovery_release_attempted": false,
+        "recovery_blocked": false,
+        "motion_faulted": false,
+        "cleanup_error": null,
+        "automatic_continuation_safe": true,
+        "board_reference": {
+          "center_base_xy_m": [
+            0.439654197490894,
+            -0.03740854156282465
+          ],
+          "board_x_unit_base_xy": [
+            0.01091155147271351,
+            -0.9999404672501551
+          ],
+          "board_y_unit_base_xy": [
+            -0.9999404672501551,
+            -0.01091155147271351
+          ],
+          "board_size_m": 0.386,
+          "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+          "registration": {
+            "status": "reference",
+            "source": "/home/dexmate/ROCO-SteadyHand-live/calibration/vega_board_manual.json"
+          },
+          "captured_at_utc": "2026-09-13T08:40:47.064160+00:00"
+        },
+        "last_error": "interrupted competition action",
+        "execution_offsets": null,
+        "coarse_xy_m": null,
+        "yaw_deg": 0.0,
+        "gripper_open_fraction": null,
+        "alignment_verified": false,
+        "alignment_fallback_used": false,
+        "grasp_verified": false,
+        "grasp_clearance_m": null,
+        "drop_release_photo": null,
+        "drop_evidence_photos": [],
+        "board_scene_paths": [],
+        "events_path": "events.jsonl",
+        "calibration_path": "calibration/vega_board_manual.json",
+        "profiles_path": "calibration/wrist_part_profiles.json",
+        "created_at_utc": "2026-09-13T08:40:47.064642+00:00"
+      }
+    },
+    "gear_60teeth.pick": {
+      "status": "pending",
+      "attempts": 0
+    },
+    "battery_size5.pick": {
+      "status": "pending",
+      "attempts": 0
+    }
+  },
+  "updated_at_ns": 1789288841740336915
+}

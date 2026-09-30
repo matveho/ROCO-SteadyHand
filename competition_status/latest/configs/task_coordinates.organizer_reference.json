@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "source_pose_frame": "roco_organizer_sim_stage",
+  "position_units": "m",
+  "quaternion_order": "wxyz",
+  "board_width_m": 0.386,
+  "board_height_m": 0.386,
+  "board_motion_model": "horizontal_translation_only_fixed_table_plane",
+  "board_plane_z_m": 0.4560002716867571,
+  "task_coordinate_rotation_deg": 90,
+  "task_coordinate_rotation_convention": "CCW in source board XY about the declared source board center before live board-axis mapping",
+  "source_board_center_xy_m": [0.193, 0.037],
+  "registration_notes": "Source XY is registered to the calibrated physical board by subtracting source_board_center_xy_m and applying the live board X/Y axes. Edit the source center only if the organizer board registration changes. Source Z is never sent to the robot.",
+  "official_order": ["gear_60teeth", "gear_20teeth", "rod_16mm", "bolt_8mm", "usb_a", "hdmi", "pin", "battery_size1", "battery_size5"],
+  "parts": {
+    "gear_60teeth": {"pick": [0.1228066612, -0.0878892550, 1.03788], "place": [0.208220, -0.056290, 1.05293], "grade": [0.2085374709, -0.0561461276, 1.0315798359]},
+    "gear_20teeth": {"pick": [0.143660, -0.043000, 1.04000], "place": [0.1972314985, -0.0959888238, 1.05798], "grade": [0.1972314985, -0.0959888238, 1.0337703224]},
+    "rod_16mm": {"pick": [0.0886327389, 0.0581531809, 1.04000], "place": [0.246810, 0.169820, 1.05700], "connect": [0.246810, 0.169820, 1.04500]},
+    "bolt_8mm": {"pick": [0.044150, 0.000930, 1.03900], "place": [0.215310, 0.131350, 1.06000], "connect": [0.215310, 0.131350, 1.04000]},
+    "usb_a": {"pick": [0.025060, -0.070270, 1.04000], "place": [0.237680, 0.051430, 1.05000], "connect": [0.237680, 0.051430, 1.04000]},
+    "hdmi": {"pick": [0.272850, -0.019490, 1.03854], "place": [0.274690, 0.049000, 1.05500], "connect": [0.274690, 0.049000, 1.03900]},
+    "pin": {"pick": [0.186000, -0.014760, 1.04437], "place": [0.249450, 0.006160, 1.06500], "connect": [0.2494453615, 0.0061634262, 1.0567751180]},
+    "battery_size1": {"pick": [0.033620, 0.155540, 1.04700], "place": [0.135000, 0.156390, 1.06423], "grade": [0.129140, 0.156150, 1.046010]},
+    "battery_size5": {"pick": [-0.010710, 0.164900, 1.04000], "place": [0.090290, 0.168000, 1.06000], "grade": [0.087010, 0.167420, 1.035780]}
+  }
+}

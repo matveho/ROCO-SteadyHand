@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "status": "profile_saved",
+  "part": "gear_20teeth",
+  "action": null,
+  "holding_may_be_true": false,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.48178374991168316,
+      -0.005874568245528164
+    ],
+    "board_x_unit_base_xy": [
+      0.0030183198880425095,
+      -0.9999954448621521
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999954448621517,
+      -0.003018319888042514
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        0.04212955242078916,
+        0.03153397331729649
+      ],
+      "rotation_deg": -0.45226100057624397,
+      "fit_residual_m": 0.003647952639919386,
+      "edge_scale": [
+        1.0158448011815526,
+        0.9914143811248224,
+        1.0166509058419517,
+        0.9923248982355042
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T08:25:41.175286+00:00"
+    },
+    "captured_at_utc": "2026-09-13T08:27:47.739487+00:00"
+  },
+  "last_error": "RuntimeError: teach the first feature before selecting the goal",
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.5655578628257911,
+    -0.05898546544575231
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.170000640875008,
+  "alignment_verified": true,
+  "alignment_fallback_used": false,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.0010000000000000009,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789287943401851519.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T08:27:47.739989+00:00"
+}

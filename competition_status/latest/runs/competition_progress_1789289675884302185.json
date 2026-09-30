@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "mode": "configured",
+  "status": "finished",
+  "actions": {
+    "battery_size1.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    },
+    "battery_size5.pick_place": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1",
+      "summary_status": "completed",
+      "last_error": null
+    },
+    "rod_16mm.pick": {
+      "status": "completed",
+      "attempts": 1,
+      "output": "/home/dexmate/ROCO-SteadyHand-live/runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1",
+      "summary_status": "pick_complete_returned",
+      "last_error": null
+    }
+  },
+  "updated_at_ns": 1789289248191082019
+}

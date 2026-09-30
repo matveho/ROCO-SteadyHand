@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "part": "usb_a",
+  "action": null,
+  "holding_may_be_true": false,
+  "automatic_continuation_safe": true,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.48388612988555924,
+      -0.005801423237298875
+    ],
+    "board_x_unit_base_xy": [
+      0.0016621847127276297,
+      -0.9999986185700364
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999986185700362,
+      -0.0016621847127276286
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        0.044231932394665226,
+        0.031607118325525776
+      ],
+      "rotation_deg": -0.5299620413013866,
+      "fit_residual_m": 0.0035374125535503425,
+      "edge_scale": [
+        1.0179480926565978,
+        0.9971196558536026,
+        1.0159631047154813,
+        0.9941116719805984
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T08:24:35.447447+00:00"
+    },
+    "captured_at_utc": "2026-09-13T08:24:40.843980+00:00"
+  },
+  "last_error": "IKError: waypoint 10/11 xyz_m=(0.524479, 0.11169, 0.576953): IK did not converge after 500 iterations (position_error=0.04968 m, orientation_error=0.06102 rad)",
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.532146110935943,
+    0.12861035322560663
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.17465766593322085,
+  "alignment_verified": false,
+  "alignment_fallback_used": false,
+  "grasp_verified": false,
+  "grasp_clearance_m": null,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789287877344037005.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T08:24:40.844461+00:00"
+}

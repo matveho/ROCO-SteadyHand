@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "robot_id": "vega",
+  "measured_at": "2026-09-27",
+  "base_frame": "vega_1u_base_link",
+  "camera_frame": null,
+  "wrist_frame": "R_ee",
+  "tcp_frame": "tip_r",
+  "T_base_camera": null,
+  "T_base_board": null,
+  "T_wrist_tcp": null,
+  "notes": "Right-arm migration uses R_ee / tip_r from the tracked competition kinematics URDF. The existing numeric task-floor value is retained as a conservative bring-up guard; it has not yet been independently remeasured with tip_r. Camera/board extrinsics and T_wrist_tcp remain unset because organizer calibration was for a different Vega serial.",
+  "table_contact_tip_z_m": 0.4460002716867571,
+  "normal_task_min_tcp_z_m": 0.4560002716867571
+}

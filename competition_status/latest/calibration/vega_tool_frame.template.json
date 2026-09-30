@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "purpose": "offline calibration of modeled tip_r to operator-defined physical claw center/frame",
+  "frame_convention": {
+    "base_axes": "x forward/away from robot, y robot-left, z up",
+    "physical_claw_center": "center used by operator for alignment",
+    "physical_claw_axis_base": "unit vector from wrist toward fingertips",
+    "physical_claw_x_axis_base": "unit vector along a marked jaw/reference direction; required only to resolve yaw/full frame"
+  },
+  "historical_context": {
+    "measured_table_light_contact": {
+      "historical_left_arm_joints_rad": [
+        0.3743644059,
+        0.8141838908,
+        1.5522208214,
+        -0.9500368237,
+        -1.3224359751,
+        0.453961879,
+        -0.5846381783
+      ],
+      "historical_modeled_tip_l_position_base_m": [
+        0.6531807699,
+        0.2234521549,
+        0.4460002717
+      ],
+      "interpretation": "HISTORICAL LEFT-ARM EVIDENCE ONLY: some physical left-claw geometry first touched the table at this joint state; do not use this as a measured tip_r/right-claw floor or tool-frame calibration"
+    },
+    "forward_rise_measurement": {
+      "near_robot_edge_physical_claw_clearance_m": 0.039,
+      "far_edge_physical_claw_clearance_m": 0.061,
+      "forward_span_m": 0.383,
+      "derived_rise_angle_deg": 3.287529,
+      "direction": "+base X / away from robot",
+      "note": "this measured 39/61 mm over 383 mm result supersedes the earlier visual estimate of about 10 degrees",
+      "identifiability": "clearance is claw-center minus board-surface height; by itself it cannot distinguish claw-path slope from board-plane slope"
+    },
+    "board_width_operator_measured_m": 0.383
+  },
+  "measurement_protocol": [
+    "A_REFERENCE: safe hover. Record modeled tip_r pose. Measure physical claw axis in base; also measure a jaw/reference axis if a unique yaw correction is desired. Align physical claw center to a fixed mark used by C and D.",
+    "B_FORWARD: keep the same commanded tip quaternion, translate 50-100 mm in +base X, and measure the physical claw-center displacement including height change. Do not use B as a pivot pose. This short local repeat is needed to distinguish a true fixed-frame effect from the older long-span 39/61 mm observation.",
+    "C_PIVOT_PITCH: return the physical claw center to the exact A mark, change orientation about one horizontal axis by roughly 8-12 deg, and record modeled tip_r pose.",
+    "D_PIVOT_ROLL: keep the physical claw center on the same A mark, change orientation about a second nonparallel horizontal axis by roughly 8-12 deg, and record modeled tip_r pose."
+  ],
+  "observations": [
+    {
+      "label": "A_REFERENCE",
+      "pivot_group": "center_mark",
+      "modeled_tip_pose": {
+        "position_m": [null, null, null],
+        "quaternion_wxyz": [null, null, null, null]
+      },
+      "physical_claw_axis_base": [null, null, null],
+      "physical_claw_x_axis_base": [null, null, null]
+    },
+    {
+      "label": "B_FORWARD",
+      "modeled_tip_pose": {
+        "position_m": [null, null, null],
+        "quaternion_wxyz": [null, null, null, null]
+      }
+    },
+    {
+      "label": "C_PIVOT_PITCH",
+      "pivot_group": "center_mark",
+      "modeled_tip_pose": {
+        "position_m": [null, null, null],
+        "quaternion_wxyz": [null, null, null, null]
+      }
+    },
+    {
+      "label": "D_PIVOT_ROLL",
+      "pivot_group": "center_mark",
+      "modeled_tip_pose": {
+        "position_m": [null, null, null],
+        "quaternion_wxyz": [null, null, null, null]
+      }
+    }
+  ],
+  "translation_checks": [
+    {
+      "from": "A_REFERENCE",
+      "to": "B_FORWARD",
+      "measured_physical_center_delta_m": [null, null, null],
+      "explanation_tolerance_m": 0.003
+    }
+  ]
+}

@@ -1,0 +1,484 @@
+{
+  "gear_60teeth": {
+    "expected_xy_m": [
+      0.5967007528628716,
+      -0.13758821004359337
+    ],
+    "detected_xy_m": [
+      0.3040560781639242,
+      -0.15088076888311297
+    ],
+    "selected_xy_m": [
+      0.5886344523412206,
+      -0.14920839003847292
+    ],
+    "selection": "head_detection",
+    "distance_to_expected_m": 0.014145451114014928,
+    "detection_index": 3,
+    "rejection_reason": null,
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      0.10175638746450662,
+      -0.14394480474253346
+    ],
+    "candidates": [
+      {
+        "detection_index": 3,
+        "distance_m": 0.014145451114014928
+      },
+      {
+        "detection_index": 4,
+        "distance_m": 0.06299374803045078
+      },
+      {
+        "detection_index": 2,
+        "distance_m": 0.06761396623584047
+      },
+      {
+        "detection_index": 1,
+        "distance_m": 0.07044440973417335
+      },
+      {
+        "detection_index": 6,
+        "distance_m": 0.08284631704452021
+      },
+      {
+        "detection_index": 7,
+        "distance_m": 0.13461643287046987
+      },
+      {
+        "detection_index": 5,
+        "distance_m": 0.23578712032416865
+      },
+      {
+        "detection_index": 10,
+        "distance_m": 0.24732963797568522
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.24897641875176146
+      },
+      {
+        "detection_index": 11,
+        "distance_m": 0.2558160578974812
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.33203610508240483
+      }
+    ]
+  },
+  "gear_20teeth": {
+    "expected_xy_m": [
+      0.5623842661259496,
+      -0.07533928013767772
+    ],
+    "detected_xy_m": [
+      0.32667167295921873,
+      -0.0844231919720263
+    ],
+    "selected_xy_m": [
+      0.5652051024647918,
+      -0.08303331753223506
+    ],
+    "selection": "head_detection",
+    "distance_to_expected_m": 0.008194835512649377,
+    "detection_index": 4,
+    "rejection_reason": null,
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      0.03913671729717057,
+      -0.11030959336322166
+    ],
+    "candidates": [
+      {
+        "detection_index": 4,
+        "distance_m": 0.008194835512649377
+      },
+      {
+        "detection_index": 1,
+        "distance_m": 0.05252491910350879
+      },
+      {
+        "detection_index": 6,
+        "distance_m": 0.09690679058804146
+      },
+      {
+        "detection_index": 7,
+        "distance_m": 0.10894307782170898
+      },
+      {
+        "detection_index": 2,
+        "distance_m": 0.13388679713011203
+      },
+      {
+        "detection_index": 5,
+        "distance_m": 0.16733441634628277
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.20922968107285536
+      },
+      {
+        "detection_index": 10,
+        "distance_m": 0.22252679686153298
+      },
+      {
+        "detection_index": 11,
+        "distance_m": 0.24352400340833444
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.2616061196556637
+      }
+    ]
+  },
+  "rod_16mm": {
+    "expected_xy_m": [
+      0.4505725192235489,
+      -0.1084850464465133
+    ],
+    "detected_xy_m": [
+      0.4291388372496531,
+      -0.12051677483227004
+    ],
+    "selected_xy_m": [
+      0.46318853312702,
+      -0.12038149100783843
+    ],
+    "selection": "head_detection",
+    "distance_to_expected_m": 0.017340392152810708,
+    "detection_index": 7,
+    "rejection_reason": null,
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      0.0710604707158125,
+      0.0018571688136023359
+    ],
+    "candidates": [
+      {
+        "detection_index": 7,
+        "distance_m": 0.017340392152810708
+      },
+      {
+        "detection_index": 6,
+        "distance_m": 0.08494442518549603
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.10003059078224015
+      },
+      {
+        "detection_index": 10,
+        "distance_m": 0.10590917890361572
+      },
+      {
+        "detection_index": 11,
+        "distance_m": 0.1306369534724012
+      },
+      {
+        "detection_index": 1,
+        "distance_m": 0.1685868513435392
+      },
+      {
+        "detection_index": 2,
+        "distance_m": 0.17384459765491775
+      },
+      {
+        "detection_index": 5,
+        "distance_m": 0.21416640678830695
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.24508411543766892
+      }
+    ]
+  },
+  "bolt_8mm": {
+    "expected_xy_m": [
+      0.5126182196820974,
+      -0.15891973549460164
+    ],
+    "detected_xy_m": [
+      0.3755704855063638,
+      -0.16189498818175962
+    ],
+    "selected_xy_m": [
+      0.5172605771733958,
+      -0.1610992868855068
+    ],
+    "selection": "head_detection",
+    "distance_to_expected_m": 0.005128540469042825,
+    "detection_index": 6,
+    "rejection_reason": null,
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      0.12216917210238823,
+      -0.05963451718822323
+    ],
+    "candidates": [
+      {
+        "detection_index": 6,
+        "distance_m": 0.005128540469042825
+      },
+      {
+        "detection_index": 2,
+        "distance_m": 0.09451984238147756
+      },
+      {
+        "detection_index": 1,
+        "distance_m": 0.13564892384168478
+      },
+      {
+        "detection_index": 10,
+        "distance_m": 0.16436054242615686
+      },
+      {
+        "detection_index": 11,
+        "distance_m": 0.16928595673996125
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.1756249884333009
+      },
+      {
+        "detection_index": 5,
+        "distance_m": 0.24905754778961386
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.3108781870191164
+      }
+    ]
+  },
+  "usb_a": {
+    "expected_xy_m": [
+      0.5161703127800572,
+      0.09893554628844745
+    ],
+    "detected_xy_m": [
+      0.3571140478626247,
+      0.08832797236740893
+    ],
+    "selected_xy_m": [
+      0.5326453022917685,
+      0.08933130291837503
+    ],
+    "selection": "head_detection",
+    "distance_to_expected_m": 0.01907004903304074,
+    "detection_index": 5,
+    "rejection_reason": null,
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      -0.13563199999999997,
+      -0.06599999999999999
+    ],
+    "candidates": [
+      {
+        "detection_index": 5,
+        "distance_m": 0.01907004903304074
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.11815417685022661
+      },
+      {
+        "detection_index": 1,
+        "distance_m": 0.1950326888540335
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.24552991169885247
+      },
+      {
+        "detection_index": 10,
+        "distance_m": 0.29117911142791797
+      },
+      {
+        "detection_index": 2,
+        "distance_m": 0.3141787135353035
+      },
+      {
+        "detection_index": 11,
+        "distance_m": 0.3322597882792872
+      }
+    ]
+  },
+  "hdmi": {
+    "expected_xy_m": [
+      0.5885544221017592,
+      -0.20224714224755042
+    ],
+    "detected_xy_m": [
+      0.2983349891389995,
+      -0.20692864501630548
+    ],
+    "selected_xy_m": [
+      0.5950428376641804,
+      -0.20518184692854968
+    ],
+    "selection": "head_detection",
+    "distance_to_expected_m": 0.007121237819041665,
+    "detection_index": 2,
+    "rejection_reason": null,
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      0.16632258123701388,
+      -0.13509342968797824
+    ],
+    "candidates": [
+      {
+        "detection_index": 2,
+        "distance_m": 0.007121237819041665
+      },
+      {
+        "detection_index": 1,
+        "distance_m": 0.13532300006934578
+      },
+      {
+        "detection_index": 11,
+        "distance_m": 0.24354721360296722
+      },
+      {
+        "detection_index": 10,
+        "distance_m": 0.2472068128431708
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.26285050256269915
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.3823364973835035
+      }
+    ]
+  },
+  "pin": {
+    "expected_xy_m": [
+      0.5060139172596286,
+      -0.0018193523092989734
+    ],
+    "detected_xy_m": null,
+    "selected_xy_m": [
+      0.5060139172596286,
+      -0.0018193523092989734
+    ],
+    "selection": "expected_coordinate",
+    "distance_to_expected_m": 0.12790642989141843,
+    "detection_index": null,
+    "rejection_reason": "outside_radius",
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      -0.03499392165092583,
+      -0.05474481685554793
+    ],
+    "candidates": [
+      {
+        "detection_index": 1,
+        "distance_m": 0.12790642989141843
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.16896316287410093
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.17376933482225365
+      },
+      {
+        "detection_index": 10,
+        "distance_m": 0.2087016421118848
+      },
+      {
+        "detection_index": 11,
+        "distance_m": 0.24440747479301483
+      }
+    ]
+  },
+  "battery_size1": {
+    "expected_xy_m": [
+      0.3450848756981775,
+      -0.14400469510721214
+    ],
+    "detected_xy_m": [
+      0.543175865789534,
+      -0.13847822330122161
+    ],
+    "selected_xy_m": [
+      0.34938048294297425,
+      -0.13974086141635444
+    ],
+    "selection": "head_detection",
+    "distance_to_expected_m": 0.00605248042911697,
+    "detection_index": 10,
+    "rejection_reason": null,
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      0.1054269709420907,
+      0.10772610684413395
+    ],
+    "candidates": [
+      {
+        "detection_index": 10,
+        "distance_m": 0.00605248042911697
+      },
+      {
+        "detection_index": 11,
+        "distance_m": 0.04216126478730508
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.05972062854263009
+      },
+      {
+        "detection_index": 1,
+        "distance_m": 0.279615695502288
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.2818353320281246
+      }
+    ]
+  },
+  "battery_size5": {
+    "expected_xy_m": [
+      0.35060961640047117,
+      -0.16451510501129918
+    ],
+    "detected_xy_m": [
+      0.5475868191881826,
+      -0.18485024458766153
+    ],
+    "selected_xy_m": [
+      0.345538862502606,
+      -0.18616351558936814
+    ],
+    "selection": "head_detection",
+    "distance_to_expected_m": 0.022234347880011298,
+    "detection_index": 11,
+    "rejection_reason": null,
+    "association_frame": "board",
+    "expected_board_xy_m": [
+      0.12599644329762216,
+      0.10242549543824134
+    ],
+    "candidates": [
+      {
+        "detection_index": 11,
+        "distance_m": 0.022234347880011298
+      },
+      {
+        "detection_index": 9,
+        "distance_m": 0.07970121239845077
+      },
+      {
+        "detection_index": 1,
+        "distance_m": 0.28056491910405124
+      },
+      {
+        "detection_index": 8,
+        "distance_m": 0.3009363243032945
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "status": "profile_saved",
+  "part": "bolt_8mm",
+  "action": null,
+  "holding_may_be_true": false,
+  "last_error": null,
+  "coarse_xy_m": [
+    0.525545865453352,
+    -0.15788828921382442
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.1,
+  "alignment_verified": true,
+  "alignment_fallback_used": true,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.010000000000000009,
+  "drop_release_photo": null,
+  "board_scene_paths": [
+    "board_1789238017261066036.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-12T18:35:32.326262+00:00"
+}

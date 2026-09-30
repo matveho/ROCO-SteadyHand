@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "status": "pick_complete_returned",
+  "part": "pin",
+  "action": "pick",
+  "holding_may_be_true": false,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.45985982411195714,
+      -0.034370063229608755
+    ],
+    "board_x_unit_base_xy": [
+      -0.003494919716050828,
+      -0.9999938927494396
+    ],
+    "board_y_unit_base_xy": [
+      -0.99999389274944,
+      0.003494919716050831
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        0.020205626621063125,
+        0.003038478333215898
+      ],
+      "rotation_deg": -0.8254428110807344,
+      "fit_residual_m": 0.005507303151462617,
+      "edge_scale": [
+        1.0258965945818626,
+        1.0246828863383124,
+        1.0121824442022282,
+        1.0074888194697844
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T07:12:17.157347+00:00"
+    },
+    "captured_at_utc": "2026-09-13T07:13:17.741156+00:00"
+  },
+  "last_error": null,
+  "execution_offsets": {
+    "schema_version": 1,
+    "pickup": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    },
+    "placement": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    }
+  },
+  "coarse_xy_m": [
+    0.5466714792490794,
+    0.015735567311191453
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.2,
+  "alignment_verified": true,
+  "alignment_fallback_used": true,
+  "grasp_verified": true,
+  "grasp_clearance_m": 0.0,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789283539358204140.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T07:13:17.741711+00:00"
+}

@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "part": "bolt_8mm",
+  "action": "pick",
+  "holding_may_be_true": false,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.45990413432356214,
+      -0.03451710208303651
+    ],
+    "board_x_unit_base_xy": [
+      -0.006343803936910526,
+      -0.9999798778733548
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999798778733548,
+      0.006343803936910522
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        0.020249936832668115,
+        0.0028914394797881424
+      ],
+      "rotation_deg": -0.9886738835801713,
+      "fit_residual_m": 0.005154395736100841,
+      "edge_scale": [
+        1.0201171398620987,
+        1.023637192499335,
+        1.0118481718842267,
+        1.0152540709748423
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T07:13:23.191522+00:00"
+    },
+    "captured_at_utc": "2026-09-13T07:13:40.632881+00:00"
+  },
+  "last_error": "ServoWaypointError: TCP missed servo waypoint by >8 mm (probe_y: 9.94 mm after read-only settling); centering stopped at the measured pose",
+  "execution_offsets": {
+    "schema_version": 1,
+    "pickup": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    },
+    "placement": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    }
+  },
+  "coarse_xy_m": [
+    0.5437041663020831,
+    -0.1564609533418047
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.2,
+  "alignment_verified": false,
+  "alignment_fallback_used": false,
+  "grasp_verified": false,
+  "grasp_clearance_m": null,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789283605406024014.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T07:13:40.633425+00:00"
+}

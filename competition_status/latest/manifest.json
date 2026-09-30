@@ -1,0 +1,1242 @@
+{
+  "calibration/battery_size1_grasp.template.json": {
+    "bytes": 684,
+    "sha256": "f5b278f84a2e9522dd69971b4a53d6b1432c1547c32a45c478c7abe62f1239ee"
+  },
+  "calibration/sharpa.json": {
+    "bytes": 345,
+    "sha256": "5fc8aa474d431aca435e8d17bbb9a678ed4aa9a8f445d90400483a9bb7459bbd"
+  },
+  "calibration/task_geometry_audit.json": {
+    "bytes": 14987,
+    "sha256": "4c619ec514395b2bcaacbb6231bbae9d5d959ab7f29685f7d4b341bd4efd9771"
+  },
+  "calibration/vega.json": {
+    "bytes": 712,
+    "sha256": "6d65075b104aeb98ee229897b9a5f188f0f71ff08ff8846adaa2d99bcda44b80"
+  },
+  "calibration/vega_board_live.json": {
+    "bytes": 2539,
+    "sha256": "38ac6b475815a7c2704e428e97237a1cb553f5b895fbb18fb019a1dc0d38328f"
+  },
+  "calibration/vega_board_manual.json": {
+    "bytes": 10632,
+    "sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f"
+  },
+  "calibration/vega_board_manual_fallback.json": {
+    "bytes": 10632,
+    "sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f"
+  },
+  "calibration/vega_tool_frame.template.json": {
+    "bytes": 3768,
+    "sha256": "80a8bb293df9d42a0b151b2e68e6b6cb79057edcb8c24c73a1dffd2f9c6c722e"
+  },
+  "calibration/wrist_part_profiles.json": {
+    "bytes": 84952,
+    "sha256": "93bfae5aa8ca39acdce172f8d3bc3debd118469fc41caae386cd1450333cab90"
+  },
+  "calibration/place_templates/battery_size5_1789286886382416102.png": {
+    "bytes": 1889,
+    "sha256": "649dc2aa1359076fb6673ee24956ec640c74ba386e6e1ee7f333b1469fd6e6fa"
+  },
+  "calibration/wrist_templates/battery_size1_1789221410916229607.png": {
+    "bytes": 2086,
+    "sha256": "6b3276f3554e42d969cebfeb8906c45ef33c12b0a86329c969b2a62c9ccd8c7b"
+  },
+  "calibration/wrist_templates/battery_size1_1789221733976184794.png": {
+    "bytes": 2635,
+    "sha256": "77657934dc2b1bb5aefd587a1568205034aa92a7922fd49a79003b86d6e86300"
+  },
+  "calibration/wrist_templates/battery_size1_1789223752966384320.png": {
+    "bytes": 2608,
+    "sha256": "e076635b55ae1510895b415d795b8c7cf0d65be06f12797003430d3aa3d2ba30"
+  },
+  "calibration/wrist_templates/battery_size1_1789238921385769641.png": {
+    "bytes": 2222,
+    "sha256": "1175c50b5fe2bb8c4406329cd8ff243e9557f95f95f4d4ade36ac4d85e977cad"
+  },
+  "calibration/wrist_templates/battery_size1_1789284490090854796.png": {
+    "bytes": 2215,
+    "sha256": "3725d7ccebe68b5c0edb6b532bd1b8a6803ca660138d5fb5874f24c710c70d86"
+  },
+  "calibration/wrist_templates/battery_size5_1789226172843202326.png": {
+    "bytes": 2598,
+    "sha256": "14aee1de0360f74f7f7da6416f5852574e697acbf9b17e1b5ba895a2fa4193e2"
+  },
+  "calibration/wrist_templates/battery_size5_1789239126817730840.png": {
+    "bytes": 2314,
+    "sha256": "150b158ef17692c6909faae8290f8992cf0476a38eba62abdc491228d737343d"
+  },
+  "calibration/wrist_templates/battery_size5_1789286604684315901.png": {
+    "bytes": 2736,
+    "sha256": "d69b1816cc82681d8ef74f681ba6c64a4a17d0a3ae1e166e840804cf35ff630e"
+  },
+  "calibration/wrist_templates/bolt_8mm_1789224956927728477.png": {
+    "bytes": 2754,
+    "sha256": "a7cf1ea5760ffe1d5f31b0f64505fd17be68041d06fd3b2d5c1b213508d65771"
+  },
+  "calibration/wrist_templates/bolt_8mm_1789238128388232652.png": {
+    "bytes": 2605,
+    "sha256": "dd039989d5e0a713e7630fa0829513b13430da19add8f5c50dc6e4cb42212baa"
+  },
+  "calibration/wrist_templates/gear_20teeth_1789235982341767810.png": {
+    "bytes": 2483,
+    "sha256": "1f8e32ab1b9bb44c087b02f859657eaf0e7b643d7f17f84cf4fcf4b530e293a6"
+  },
+  "calibration/wrist_templates/gear_20teeth_1789236948672574425.png": {
+    "bytes": 2434,
+    "sha256": "c6dbb6e74f0d24649c678a5321e53ef1b79e9a15b7373a139e63de1142bbe873"
+  },
+  "calibration/wrist_templates/gear_60teeth_1789223108847969929.png": {
+    "bytes": 2450,
+    "sha256": "2f61965f1efb51c801b95f156ed03380a9af20819b214018cfb89b24c0ebbfe2"
+  },
+  "calibration/wrist_templates/gear_60teeth_1789223488014072835.png": {
+    "bytes": 2523,
+    "sha256": "b8aa2fdb06c5bff3983191626b15d5309457a178a457b423003fd2bbd72ec630"
+  },
+  "calibration/wrist_templates/gear_60teeth_1789237789272767734.png": {
+    "bytes": 2760,
+    "sha256": "714f30ea1e96bcdd1977376d91cacee443e0e6eb12c57c50c651736bffa76cbb"
+  },
+  "calibration/wrist_templates/hdmi_1789226372861148022.png": {
+    "bytes": 2740,
+    "sha256": "4e7cbecb4834a170006951d0ca05dcf571a6bc0d766e4fecd02b725462bc6ca1"
+  },
+  "calibration/wrist_templates/hdmi_1789239793291401573.png": {
+    "bytes": 2311,
+    "sha256": "d94d5ec82894636b8134e01b7b11e43e3abff6565e11a7c19e9fc07c33e9e0c0"
+  },
+  "calibration/wrist_templates/pin_1789225140236191009.png": {
+    "bytes": 2940,
+    "sha256": "9da9d56d48eb3dda3d5d1bda0df727d1f76dc65ab0d006cc8affb3499455fbd2"
+  },
+  "calibration/wrist_templates/pin_1789240406699115552.png": {
+    "bytes": 2428,
+    "sha256": "57744f86dcd7267388adc0ad414ed35644f657b2179968fe7a32740ed0d280c9"
+  },
+  "calibration/wrist_templates/rod_16mm_1789224345056526097.png": {
+    "bytes": 2407,
+    "sha256": "bf5dd32f97f620c38e85717a2f6308757423891d1ab7402f8399afd3ccda236c"
+  },
+  "calibration/wrist_templates/rod_16mm_1789237993804706156.png": {
+    "bytes": 2348,
+    "sha256": "1f4b630dff8e37b915bfa0da0d560ed8af104ee52dde579e06753de3fef455d2"
+  },
+  "calibration/wrist_templates/rod_16mm_1789283061705325280.png": {
+    "bytes": 2429,
+    "sha256": "abe2f96c9e4d968e7355cdbd2e7e2cee802e5594404c27ae0f1a6e0f3da9ea37"
+  },
+  "calibration/wrist_templates/rod_16mm_1789289526267759605.png": {
+    "bytes": 2549,
+    "sha256": "389680dcb7e7e0d66e58c771b797029a15a8a837954c0a32c705d5fa0925b2c6"
+  },
+  "calibration/wrist_templates/usb_a_1789240122678577797.png": {
+    "bytes": 2295,
+    "sha256": "c23727acc5a59759aed58bb427face3d8490ed5d0aaaa8526f5331e84d8b93df"
+  },
+  "calibration/wrist_templates/usb_a_1789288776913657333.png": {
+    "bytes": 2177,
+    "sha256": "f0dff8f428a75884d8d7973f64a120f7934abcf38035ba79ef96e9de8870dae8"
+  },
+  "configs/competition_actions.json": {
+    "bytes": 2172,
+    "sha256": "4991c18a3aebeadc539ee940666f49afc2bf09cb4790281eb1cea4f25e8652e2"
+  },
+  "configs/competition_plan.json": {
+    "bytes": 967,
+    "sha256": "af957eb88514b59b76a81a517cabaa17507d7344957a80193537ce31ed9396e4"
+  },
+  "configs/runtime_targets.tcp_bringup.json": {
+    "bytes": 543,
+    "sha256": "642d0ea7403a27c718b523aa57723b2e27048c5ed9025482f30e35a0effa0ff5"
+  },
+  "configs/runtime_targets.template.json": {
+    "bytes": 1379,
+    "sha256": "908534790f299cee49c89ce0e5d41a5f66154b859883a28ae7be2178bfb31f31"
+  },
+  "configs/task_board.json": {
+    "bytes": 1921,
+    "sha256": "02ef5e45368719bfe4d2d805d94c3946a7222e2c531404f1b2e81188a618197f"
+  },
+  "configs/task_coordinates.json": {
+    "bytes": 5636,
+    "sha256": "c27f46c47334a1398e325e7bfd7ab09ee09681e47c5a5208bb6edf7184a42c45"
+  },
+  "configs/task_coordinates.organizer_reference.json": {
+    "bytes": 2269,
+    "sha256": "f46c75251b1a16667b521a6f90e0db89afeefcdc3671234109e3e5a4408394b9"
+  },
+  "configs/robots/sharpa.json": {
+    "bytes": 419,
+    "sha256": "795e632f51571ac041234aa7578dc347ac3bd20d798cfd65405b4b8c58d68213"
+  },
+  "configs/robots/vega.json": {
+    "bytes": 8512,
+    "sha256": "ffabdf9f11cde8449f858d5d81268641945774af64ee3a053d8d0bdc16243e46"
+  },
+  "configs/robots/vega_1u_competition.urdf": {
+    "bytes": 37029,
+    "sha256": "428c22730230554ef8dd7f14ae025656fe7bc983d154c735c650a5d68e3f6ce4"
+  },
+  "configs/robots/vega_1u_competition_kinematics.urdf": {
+    "bytes": 6476,
+    "sha256": "9160d2861696161f1cbc280cc5d7a3ff68212c8b1cd1f0ec99d0bacaa96335fd"
+  },
+  "configs/skills/vega.json": {
+    "bytes": 3514,
+    "sha256": "395573414e7c5815424a11bf638ba5b6097b3314a69fe913ba6086fbb82fa9cd"
+  },
+  "poses/ARM_POSES_README.md": {
+    "bytes": 5144,
+    "sha256": "70f18175cd6f4b69ec345da2fed57816a15afd38fd362a1592fd2097f944adb5"
+  },
+  "poses/goto_home.py": {
+    "bytes": 4142,
+    "sha256": "e03c2f0e444245db5270d799421dd2f229d46cbaff41651f437b31f6d8f0e56b"
+  },
+  "poses/goto_pose.py": {
+    "bytes": 15608,
+    "sha256": "2222276e4a170dd2b8c4b0322cb7dc5f3a3205e44f07a680a106c959985ac70a"
+  },
+  "poses/goto_ready.py": {
+    "bytes": 1180,
+    "sha256": "d4791be21cbb7a5072e5bf1705df7707211234bff9793825818622f6b351c2a4"
+  },
+  "poses/goto_rest.py": {
+    "bytes": 947,
+    "sha256": "a9acbb09e4d790031b16629cd9b2a3ebb63943b1cabcf8d130ee377ad300943e"
+  },
+  "poses/head_pose.py": {
+    "bytes": 4788,
+    "sha256": "72759c3d48647b3aa4dd158a4b42f49785ed4867f15d9110c3b0a7df03cd4c4e"
+  },
+  "poses/inspect_joints.py": {
+    "bytes": 1450,
+    "sha256": "0b341b5beacb6638d2c9ff76a9a2fdda1dde420d0435352fe03cc56f1e06f20c"
+  },
+  "poses/path_compare.py": {
+    "bytes": 2362,
+    "sha256": "45dd5d34639e93818a5d88b3f9bdf62da5c5711750190dc98e0fb6186948d71f"
+  },
+  "poses/sensor_only.py": {
+    "bytes": 1886,
+    "sha256": "d577743a2b9795ded2f5b454213e3699e2b4ec4f6a31d5047e0b4358fcec81f8"
+  },
+  "competition_offsets.json": {
+    "bytes": 1027,
+    "sha256": "754cf3dadd3e38182af787d71e65e127d061e11720d4ee7565133b656b55e6fb"
+  },
+  "runs/competition_progress.json": {
+    "bytes": 423,
+    "sha256": "8fee4c90da342109d15701365a6642a822aa88f4554bd0d0ce6b3a3fb9582762"
+  },
+  "runs/competition_progress_1789288847065668432.json": {
+    "bytes": 2659,
+    "sha256": "a163935e20adf686a5a9bb73690bea0ad927b9a62a0814ca8e1b7dba91775c94"
+  },
+  "runs/competition_progress_1789289120948946453.json": {
+    "bytes": 3068,
+    "sha256": "75f1bd0cd74f537fa70db1b5d1f6e2db8d6f2883e37e68702ce3290fc9af1524"
+  },
+  "runs/competition_progress_1789289675884302185.json": {
+    "bytes": 982,
+    "sha256": "6fd43999eae138a38c40d6c8d165947c1856645dce5647f11944c52224cab465"
+  },
+  "runs/wrist_parts_20260913T085633_922047Z/events.jsonl": {
+    "bytes": 2330,
+    "sha256": "09b6434abdff5e27d2c46960fb83d577407cdd3d881104651ce758699b1fd74d"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/run_summary.json": {
+    "bytes": 3260,
+    "sha256": "a58cbb2d822f98895614bc6bce90bf37f13ca713a59c002df04c7a6c01ec1ad6"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/events.jsonl": {
+    "bytes": 6286,
+    "sha256": "7b57b74a53bd188ce60df770137c9f3a09c6b97f910f4cbc4ccb3fceb65d999f"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/run_summary.json": {
+    "bytes": 7169,
+    "sha256": "549427b161c037a5f438e14e1adb0458c9fd1c3fde7f611560aa4d8a528480ec"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/events.jsonl": {
+    "bytes": 4419,
+    "sha256": "6054a83486aec4ce6dbcefb41483214482211d3408698dde8dff0513162442b9"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/run_summary.json": {
+    "bytes": 2023,
+    "sha256": "9075ea81f8fe9cbf8b7d0211ea48ff9f2ce82c12664a51cb8d8e6e08ed0c77bf"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/events.jsonl": {
+    "bytes": 7022,
+    "sha256": "7715baf6ee51282d2e66d2870c395e82e83264a682cfbbe924ad9690106b10f9"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/run_summary.json": {
+    "bytes": 2213,
+    "sha256": "d2a7d08f84ac80184084bb69057abcb837311927af5839c9e3d3d220575ee802"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/events.jsonl": {
+    "bytes": 6545,
+    "sha256": "ed55332fef673180014ddc7663d1c115e98d611820cbccfc92acea25c16465c9"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/run_summary.json": {
+    "bytes": 3239,
+    "sha256": "6741f5271224e655a42f7a3caec0d49de7372d3b6eb6b8285e237e2b1824d9ca"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/events.jsonl": {
+    "bytes": 4456,
+    "sha256": "3843a12858485bc629eb1295efd3c5b7608ef671055ddc6d8a8f3dcb0c8a8a40"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/run_summary.json": {
+    "bytes": 3261,
+    "sha256": "4a4fd472258a4eb6891ec51678e7e591667ab359cd23c53e71ff91b259922f07"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/events.jsonl": {
+    "bytes": 5216,
+    "sha256": "f3cd81e265f070e49363f7da35aa1f5daeaba21b6f02f8f7526c354899c21640"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/run_summary.json": {
+    "bytes": 1844,
+    "sha256": "0adf1271387a5a6a61ed8753722b62d8166d6f76f7df421f7b0434fe04d2aa75"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/events.jsonl": {
+    "bytes": 8643,
+    "sha256": "8b225b3c83d48a4d9bca7cb5460aa7b961b20d5712dbee0bf62796c98cb0a286"
+  },
+  "runs/wrist_parts_20260913T083413_423923Z/run_summary.json": {
+    "bytes": 2178,
+    "sha256": "d2cb983689c78ba7e0ff0aa8f305c8f94f99958b86d43a3b8f337687f1bb6aa1"
+  },
+  "runs/wrist_parts_20260913T083413_423923Z/events.jsonl": {
+    "bytes": 7234,
+    "sha256": "02239e162d655824fded1ff7eb656eee770dd2e3c4198eb91ea7091b2dadba7a"
+  },
+  "runs/wrist_parts_20260913T082752_305296Z/run_summary.json": {
+    "bytes": 3328,
+    "sha256": "0ef13258c1c53275db7d39ee69a6f9b3f9022c2ca087ec366f3cb43fbe0313c3"
+  },
+  "runs/wrist_parts_20260913T082752_305296Z/events.jsonl": {
+    "bytes": 3722,
+    "sha256": "906f62eed066d38c60dbe9cda0863620033406768aca5d417b8f08087952570e"
+  },
+  "runs/wrist_parts_20260913T082535_590138Z/run_summary.json": {
+    "bytes": 1901,
+    "sha256": "197f94ca2ea5de8af792f3d4a6a4be4dab1981ce6521f10146ddd60f39163719"
+  },
+  "runs/wrist_parts_20260913T082535_590138Z/events.jsonl": {
+    "bytes": 6001,
+    "sha256": "715652abba8ce60ce3409ea62078ab1fbf56b54dff1a986e80386596110f8604"
+  },
+  "runs/wrist_parts_20260913T082428_792951Z/run_summary.json": {
+    "bytes": 1970,
+    "sha256": "0651af092a7c2604bd1fc129c3168e19b978c2604aa9f3f1d8ac2031f46e60b9"
+  },
+  "runs/wrist_parts_20260913T082428_792951Z/events.jsonl": {
+    "bytes": 1593,
+    "sha256": "2bd0e4e91e1a09bd19ee691edbe0ace03e00f219f30468f57652104df9bce9a2"
+  },
+  "runs/wrist_parts_20260913T082002_054947Z/run_summary.json": {
+    "bytes": 12775,
+    "sha256": "dc15d7ff2efe8aa01f56f09e62bd973fd7c761477514ab9bd1c1f24bb474aac3"
+  },
+  "runs/wrist_parts_20260913T082002_054947Z/events.jsonl": {
+    "bytes": 4168,
+    "sha256": "4ba1e992e43a7491056acad07da1d514df3abf4343faa48fda384b8b2c41be20"
+  },
+  "runs/wrist_parts_20260913T081743_175545Z/run_summary.json": {
+    "bytes": 1832,
+    "sha256": "66dfb29ac651ad6fd842f9667766aded5091707eb6a1bde37cd324b88ca27a93"
+  },
+  "runs/wrist_parts_20260913T081743_175545Z/events.jsonl": {
+    "bytes": 5935,
+    "sha256": "060f230c7ff5fffd427bf5e126d103204d8407871326c64b4524a2b5977ade6c"
+  },
+  "runs/wrist_parts_20260913T081112_955199Z/run_summary.json": {
+    "bytes": 3342,
+    "sha256": "e89239a4e50f648920854f2258e1ffa65afde390e96bd32861025730c068f7a8"
+  },
+  "runs/wrist_parts_20260913T081112_955199Z/events.jsonl": {
+    "bytes": 4016,
+    "sha256": "5d4c97b67d9387c4231b332ff75ab76390f05adc3576aebe3bc6517e67124e21"
+  },
+  "runs/wrist_parts_20260913T080902_796432Z/run_summary.json": {
+    "bytes": 10489,
+    "sha256": "16ca5d977881888bbac8e6a5d18cbbf50660522aa1d050bcfcfa13404c0aa352"
+  },
+  "runs/wrist_parts_20260913T080902_796432Z/events.jsonl": {
+    "bytes": 4263,
+    "sha256": "65bca92a797749aee09d8d9187cf5ceaac0bfb685208e0e05535d52721647169"
+  },
+  "runs/wrist_parts_20260913T080000_166077Z/run_summary.json": {
+    "bytes": 1805,
+    "sha256": "51a111a36fd9f3d797b79b30bba644a3b3fb786ddb19168c830ecf006a18796f"
+  },
+  "runs/wrist_parts_20260913T080000_166077Z/events.jsonl": {
+    "bytes": 8802,
+    "sha256": "a66e878892a36cbd088bc79f49855ad7319afc2e85538dbdf983c2415ccad0bf"
+  },
+  "runs/wrist_parts_20260913T074959_139722Z/run_summary.json": {
+    "bytes": 1847,
+    "sha256": "e2509b0a8b47a221f8dff73d2e8af0939c818091b0f581955c1c7d39540b2313"
+  },
+  "runs/wrist_parts_20260913T074959_139722Z/events.jsonl": {
+    "bytes": 25038,
+    "sha256": "7696fe1c292a8eb7653c1af0a200107349697f5cabf6fc9ae8410ce7c4757fa0"
+  },
+  "runs/wrist_parts_20260913T074508_389469Z/run_summary.json": {
+    "bytes": 2062,
+    "sha256": "173391c983dacbde60e30424137ccab678d43fbdbe3dafb4e2e0fb20530aadd5"
+  },
+  "runs/wrist_parts_20260913T074508_389469Z/events.jsonl": {
+    "bytes": 15087,
+    "sha256": "2df6ed8f499108d5a3a46876a557ebf3877f864fcc1293da93420b00930e6b50"
+  },
+  "runs/wrist_parts_20260913T072423_104372Z/run_summary.json": {
+    "bytes": 1838,
+    "sha256": "7b005579049fff35b6a37d8b91b86e73ceba093feb98c26091a4d553e34d29d2"
+  },
+  "runs/wrist_parts_20260913T072423_104372Z/events.jsonl": {
+    "bytes": 4150,
+    "sha256": "547f4f3ebb0ba031f350ab9cad60c3e038a11bea16e139e349f48ed517cc4f9d"
+  },
+  "runs/competition_actions/1789283597742787605_bolt_8mm_pick_attempt1/run_summary.json": {
+    "bytes": 2136,
+    "sha256": "772ee7764e2a7e9d2bf8b026a5f871df578c9d2152904f8ab9e31a8a5e1503c4"
+  },
+  "runs/competition_actions/1789283597742787605_bolt_8mm_pick_attempt1/events.jsonl": {
+    "bytes": 3136,
+    "sha256": "3e45fd683869fa5f31ed19b0d179dba98b25dc2529dce8a68b6ee5ff4bfa206d"
+  },
+  "runs/competition_actions/1789283532256347787_pin_pick_attempt1/run_summary.json": {
+    "bytes": 2007,
+    "sha256": "531752cb31443b37f7ac93c3fefb5c86bc90cb0f96c981b754d38e1a5a254310"
+  },
+  "runs/competition_actions/1789283532256347787_pin_pick_attempt1/events.jsonl": {
+    "bytes": 12223,
+    "sha256": "e064b2c7bbe4ce40d2e22a6eb210becaf05ee3a5a3dc966d0a42e21e8b2f2ba0"
+  },
+  "runs/competition_actions/1789283502606085719_gear_60teeth_pick_attempt3/run_summary.json": {
+    "bytes": 2223,
+    "sha256": "06ae43d9969b551e60aa4eb1915c0736ef60a8d2945f90fc21dbc78d4390dd9d"
+  },
+  "runs/competition_actions/1789283502606085719_gear_60teeth_pick_attempt3/events.jsonl": {
+    "bytes": 4773,
+    "sha256": "5146b9ae90d43aa583d44f1e117e9947cd15a5a3a6ffa2a6e96ed994c97c53fd"
+  },
+  "runs/competition_actions/1789283364376185651_gear_20teeth_pick_attempt1/run_summary.json": {
+    "bytes": 2031,
+    "sha256": "dbf621fe5f43ae8ec2bf1b17c5ae5b09de668c5494580eb8d29448d44859dcd6"
+  },
+  "runs/competition_actions/1789283364376185651_gear_20teeth_pick_attempt1/events.jsonl": {
+    "bytes": 16289,
+    "sha256": "6b1c63a8e3dbb081a2c0f6ed201df99a9f67375ef0f32c5b503fff7b340a0f44"
+  },
+  "runs/wrist_parts_20260913T070430_930491Z/run_summary.json": {
+    "bytes": 13390,
+    "sha256": "3dbc5f1055749ca9692368a712381832de8824f306c8f5534a63cb2a32a7db7c"
+  },
+  "runs/wrist_parts_20260913T070430_930491Z/events.jsonl": {
+    "bytes": 3466,
+    "sha256": "7ba4195fe0f700c5ab3b79b65ccf5682fc2bf2af8b3ed8b011e9dff9c3216483"
+  },
+  "runs/wrist_parts_20260913T070145_043701Z/run_summary.json": {
+    "bytes": 1835,
+    "sha256": "39c026a8c92e85aa943987be3fd54f373f10100bc6caa6250503a71d0c5f28ed"
+  },
+  "runs/wrist_parts_20260913T070145_043701Z/events.jsonl": {
+    "bytes": 5336,
+    "sha256": "21545a97d8cb70722c0fce790c114763c9c9cc443e67cc0379c22c6c0c053a48"
+  },
+  "runs/wrist_parts_20260913T065755_847408Z/run_summary.json": {
+    "bytes": 1869,
+    "sha256": "069e4e6567b322de3048f59cb6875a1dc8fe7a5ad2224218905c318ac3f9703e"
+  },
+  "runs/wrist_parts_20260913T065755_847408Z/events.jsonl": {
+    "bytes": 2263,
+    "sha256": "29c884fd6b8388f42bb195dfb7793c37cd61ae50a2bcec161bda0ead0084a4cb"
+  },
+  "runs/wrist_parts_20260913T055940_443767Z/run_summary.json": {
+    "bytes": 1036,
+    "sha256": "73aef4c94d37547789174c0336d89bb6045619b38bbb74a4d185147ed216e8af"
+  },
+  "runs/wrist_parts_20260913T055940_443767Z/events.jsonl": {
+    "bytes": 5834,
+    "sha256": "9549bb6847f86e86466e62d483d85cea1483ff832aa057e2f33ae53d04fa641a"
+  },
+  "runs/wrist_parts_20260912T183330_922523Z/run_summary.json": {
+    "bytes": 712,
+    "sha256": "a57aff92dc0e3364f1a43cd091c569f483db1b8f59512cf2b4fe8e895c456b67"
+  },
+  "runs/wrist_parts_20260912T183330_922523Z/events.jsonl": {
+    "bytes": 3588,
+    "sha256": "6374782f8e1c52b2c6e5324ff61d44643d2d85df6918f043ba2a8ca496e63087"
+  },
+  "runs/wrist_parts_20260912T182226_446614Z/run_summary.json": {
+    "bytes": 716,
+    "sha256": "bae07df4848f4b3a412f82fa77b6b5ecd466c4da6dcc5f08a0bb2e79b5f6bfe5"
+  },
+  "runs/wrist_parts_20260912T182226_446614Z/events.jsonl": {
+    "bytes": 10657,
+    "sha256": "c9027b65c307b0413b3d29f2df7d14ae84160fa459ce46d4a0e62a21e9b9576c"
+  },
+  "runs/wrist_parts_20260913T085633_922047Z/BOARD_PROJECTED_TARGETS.png": {
+    "bytes": 592808,
+    "sha256": "a542952bd7fa4e501add9f1e15715bc08429439a05f1bdf58b6a1e500b4ba12f"
+  },
+  "runs/wrist_parts_20260913T085633_922047Z/board_1789289799901974769.json": {
+    "bytes": 12183,
+    "sha256": "61658395f0b1bde5a0b6bd8470a3357a04a0e260ce8e184d52ab1f7a6a0615eb"
+  },
+  "runs/wrist_parts_20260913T085633_922047Z/board_projected_targets.json": {
+    "bytes": 6420,
+    "sha256": "75f82c96f30ede252c1485f065f61152ac03b8d5d2d0dc9650cda0b682ac0321"
+  },
+  "runs/wrist_parts_20260913T085633_922047Z/head_board_1789289797914964619.json": {
+    "bytes": 11167,
+    "sha256": "37b99dddc148e5a69c8b7a29ede2337e0438d8117292cc7a5d6fa623964e52e5"
+  },
+  "runs/wrist_parts_20260913T085633_922047Z/head_board_1789289797914964619.png": {
+    "bytes": 571919,
+    "sha256": "23cc6a5ed9554738599ca288103b2b6aaa62be74b53f0d88f3a7d3528d83cb2c"
+  },
+  "runs/wrist_parts_20260913T085633_922047Z/head_observations.json": {
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/000_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "cea6790ccfb93ba4b7a69b596086525acc720cecd31652d30ea0e20d970968a7"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/000_wrist_a.png": {
+    "bytes": 4103624,
+    "sha256": "e0c318a9b16ab1366ed2df525070f82c9ae71bc8d46fe1bb882bb09704732636"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/000_wrist_a_match.png": {
+    "bytes": 4108000,
+    "sha256": "fc56764835f60be2d961216565e6502a65b4e452aec6db9daf0103c78095534f"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/001_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "7804a36177be72c7c8e79454e2600370d90f7bf04f37d046f21ce700b507f631"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/001_wrist_a.png": {
+    "bytes": 4112282,
+    "sha256": "11c0de3fb468ee6de67717f58ae59db84c87ab1a28aff31a03a10b6f28ecf356"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/001_wrist_a_tracked.png": {
+    "bytes": 4116631,
+    "sha256": "48b0dbea54187d206b85e5a32f22b1a80c0f2783989317baa43856e3695ff1c4"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/002_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "b39e9d0b66443e321ef1fe14931ff3b12ce8711e1e4e11f9f629c603df372a4a"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/002_wrist_a.png": {
+    "bytes": 4108564,
+    "sha256": "3863a689179ba5d374d218dd5227b17a90a5635a12105e5538734b5b3e21c1dd"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/002_wrist_a_tracked.png": {
+    "bytes": 4112965,
+    "sha256": "1edf7401663681cec4269603572b38170d439f0a0c2d351f5b817cdb2678e4cb"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/003_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "c0977a3034195956a23120b76822f043011977764efb9acb5b1123dcaa769d83"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/003_wrist_a.png": {
+    "bytes": 4112438,
+    "sha256": "cd0f039873180d22570e60017cbcb284018c19555af44c86f4e17d2b4c7a1159"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/003_wrist_a_tracked.png": {
+    "bytes": 4116637,
+    "sha256": "b231b30ec0127ee50c99cb1525e9d2f1ff89f2f203d44bdf7eaa654544ad55cc"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/004_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "76e5e17730b93b6529a0a7077b6db559c231a7a3621b82d8a53eafcc68544231"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/004_wrist_a.png": {
+    "bytes": 4116432,
+    "sha256": "857ec39a8b1b6cd48b12900074844459833e57d675d1473a2dd2e69c21138170"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/004_wrist_a_tracked.png": {
+    "bytes": 4120700,
+    "sha256": "5588992c021eea49f63870cfd39045f8d124a038e8fccf99229ee76213bdedae"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/005_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "da17de61f39f854306932b16b9efaf8615592b98f3410d305d09f8bac21446da"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/005_wrist_a.png": {
+    "bytes": 4116140,
+    "sha256": "52b446a5a110e7679a7fc7ca7145c2140a650a9fd68e815aecffcac22af3d1a8"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/005_wrist_a_tracked.png": {
+    "bytes": 4120241,
+    "sha256": "b869693885a69bc384af1cfcb77a5a30be39793419670732e7e09e85c6126fdd"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/006_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "0b7e7311ba9e573be6534ac125a96acbe58662f850d1e18a874723888a0e3b5f"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/006_wrist_a.png": {
+    "bytes": 3965072,
+    "sha256": "12b5ec0ddfbc841c44a173f9e5f6b98fc3b7dc5980af89e20a1a303364481883"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/007_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "b03d58b2cd98967cdfb4ebe8f44c2afdc7c77e5df3db5da666f6e2921f20e6ff"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/007_wrist_a.png": {
+    "bytes": 3928026,
+    "sha256": "0089fa971b08cf5851c53f8eb9e51875ac0f6a0fe8433113618b15c868f7d49a"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/BOARD_PROJECTED_TARGETS.png": {
+    "bytes": 591504,
+    "sha256": "7399cfcba08c797c71d18fe04956526da4ee9f9e2db8093dd841f7bb3838a535"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/board_1789289681687506223.json": {
+    "bytes": 11244,
+    "sha256": "3ea8da3c0a4e38b47e57cdfb2ceebcd4693e2eedd282cd999a2457c2f4d38e1c"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/board_projected_targets.json": {
+    "bytes": 6413,
+    "sha256": "7e54520479ed083258964676d4699692b5e1a4024a7cfd8eff514e2c1c540932"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/capture_events.jsonl": {
+    "bytes": 1799,
+    "sha256": "014b4f5e54e3d0961d830a1f5be6bc5182c013dfb7495f8db7fd0bcc2f732575"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/drop_evidence_manifest.json": {
+    "bytes": 1115,
+    "sha256": "ce7e3448b8ffb09ce088e18492e6fe807f9b2692653150a13ebf702c9e13d50b"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/head_board_1789289679714567249.json": {
+    "bytes": 10224,
+    "sha256": "a3c74f8bd761177b79efdc767464811396304e6f7861534bc429eb8749cb6de6"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/head_board_1789289679714567249.png": {
+    "bytes": 569941,
+    "sha256": "b4d1735d7de9f54087cd9b5bbf2e309a160deabe127c5583c34e9aa66dda9c9f"
+  },
+  "runs/competition_actions/1789289675888309703_battery_size1_pick_place_attempt1/head_observations.json": {
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/000_wrist_a.json": {
+    "bytes": 258,
+    "sha256": "2df8353c13402e5d94841e267074e1ad687af2fd9c90e3c5c32de557a1b1128c"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/000_wrist_a.png": {
+    "bytes": 4041711,
+    "sha256": "b533c7416a28495b6637548e6ce77c6e9c0540b7eda0358e06698a517a509c94"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/001_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "856abd4adb4bf01f3dbae0b90921e2acfebce695aa2db042194829696048f897"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/001_wrist_a.png": {
+    "bytes": 4023450,
+    "sha256": "e769ce955f42358876e22e5b49320e312bf160de4e70a9497efce6c001c33c86"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/002_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "60c9eeddf22cd09436b0adc4cb7f29e58552a81a4ff373190bceb8a4d64999b9"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/002_wrist_a.png": {
+    "bytes": 3989811,
+    "sha256": "a9dcb1eef7813ad216573690b7ce6c1f74170c90059809b461601f426c4c02c0"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/003_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "3251444cbbcee3b5dab362cc558b72120ffa321704cf27bd0feb46eeb23f9c81"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/003_wrist_a.png": {
+    "bytes": 3969026,
+    "sha256": "71180b0a30ea68227fea534108007fc4c17feccc4c9faf5eb0dcf6b7dde98e9f"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/004_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "717844897a724a133bbfa9770fa36e7c133c53c718c929accf91673a7de3419d"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/004_wrist_a.png": {
+    "bytes": 3966069,
+    "sha256": "5c4861b51d6b47c7455f9e604b63f6df298d4e4603bb5187fdf5fa22ed99ca71"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/005_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "2f4922fbdad43688ad73051611f984d0d2a52876a615ed07bf98d5394a85116b"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/005_wrist_a.png": {
+    "bytes": 3935056,
+    "sha256": "07a47fc72ffa2eeea276e63335283e76572cb3fc64f9d56932c3ce4c91c99fec"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/006_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "e58ba6ea599ea7227806b0f879c720819c3ece7cd4d50a7a00596a66ea1408cc"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/006_wrist_a.png": {
+    "bytes": 3896435,
+    "sha256": "67289267861309cba2fa672fe232194812d436642c048b425cef9d8566ab5c74"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/007_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "6af32f2136a962c607e6e8e6cc5ea5e2363c645e2e2f9136536cccf48edaf4a6"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/007_wrist_a.png": {
+    "bytes": 3907397,
+    "sha256": "aff25326ed67f701d6a28592db158a91b542bf92b4d5147459b9ed4dc616facf"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/008_wrist_a.json": {
+    "bytes": 263,
+    "sha256": "fb3ed2c7ebbfe635aabda70eafdd0a5cb19f3bcff22b70e5c45d44fc29234b7b"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/008_wrist_a.png": {
+    "bytes": 3895733,
+    "sha256": "8e52cb3ace9dfb8211ef41797278d6104920f32a9af8ef0f5cdb49e47e901f6a"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/009_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "693b7c31ae0c4b5a9d011e5fd13b447ef462de228ca64ab08494b4a8db146d4f"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/009_wrist_a.png": {
+    "bytes": 3976490,
+    "sha256": "57b647d72dfdb986b9337746c78d5bfffbedcce792b2a96923e96b6fc7c47384"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/010_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "e426510202d472a360d339e56f0d3c8b00cfc03d4954a57798179041e0ca2900"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/010_wrist_a.png": {
+    "bytes": 3990602,
+    "sha256": "14f222fdf007a44a9ef681225b8ef276d0953d753c8158620b2231f7835abd6c"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/011_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "7ebc6474671596cba43339fe3aff06f66de85cbf6059076b360c6e5249733106"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/011_wrist_a.png": {
+    "bytes": 4035990,
+    "sha256": "5af0e36869ffa230e031632369ea87d71f8b5a541b5bb6f8c2a609579fce72fa"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/BOARD_PROJECTED_TARGETS.png": {
+    "bytes": 606088,
+    "sha256": "f263d1c005cf3529c0db5bfd85f22db541c3594ef6e54feb732d79c27a312744"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/board_1789289586397835905.json": {
+    "bytes": 11181,
+    "sha256": "6bfa94efe2fefc4febf70717b994593ef21df6f863c5b2286dd398a807bf6507"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/board_projected_targets.json": {
+    "bytes": 6429,
+    "sha256": "d0afd5ff7f9601194c85c121560e30be1a9c413c19b1c5b2200813c45c50d813"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/capture_events.jsonl": {
+    "bytes": 2705,
+    "sha256": "1a2745223d4ac11dbb984947e1ac4f6c1811f190dfe9ce239dfb7c5cd3913d44"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/drop_evidence_manifest.json": {
+    "bytes": 5112,
+    "sha256": "05ef13b89445e47c52c0b0ce53fc3b09f0359fd5e1f5a072b8413c3216429e9d"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/head_board_1789289583946848558.json": {
+    "bytes": 10167,
+    "sha256": "05812eee15856106ad252e8496ba2d999d8f51c36e5a39b64472822cf9d7b7ec"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/head_board_1789289583946848558.png": {
+    "bytes": 585359,
+    "sha256": "e1241f618437929126aeaa7e6e26ba3cb57e4363df84e9d863ac76ed6fd4d5bb"
+  },
+  "runs/wrist_parts_20260913T085257_639456Z/head_observations.json": {
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/000_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "4326864d6b58ca42c81108467817e49f83d04b4065bb323638346ac2ef82a816"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/000_wrist_a.png": {
+    "bytes": 4053444,
+    "sha256": "16bc11914409255aa5332fed0622a8d62dae04685bad7e7724e276322dca63b7"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/000_wrist_a_reference.png": {
+    "bytes": 4057125,
+    "sha256": "0c8cafb14b8bfdf26bc5f01b8031dcf8b159b97cfb2b8cd52f15064d16a3414f"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/000_wrist_a_tracked.png": {
+    "bytes": 4057125,
+    "sha256": "0c8cafb14b8bfdf26bc5f01b8031dcf8b159b97cfb2b8cd52f15064d16a3414f"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/001_wrist_a.json": {
+    "bytes": 263,
+    "sha256": "ddeb007edce637bfdc37c22455c1a23c164ea3439f2532994f21d092618a027e"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/001_wrist_a.png": {
+    "bytes": 4057040,
+    "sha256": "7d3109b6468f53c2ef9e0e0ac644867fda5544a05a42b87f604acca7ab1dab77"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/002_wrist_a.json": {
+    "bytes": 263,
+    "sha256": "6bddf1417825eacdf9575b10498179401296d2016a1a684db86af79d822f0551"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/002_wrist_a.png": {
+    "bytes": 4060291,
+    "sha256": "a6847ebcfef740dd9bb2af2f25de40dcca042885ce4b4a6449119f881356e004"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/003_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "932ba2d3f02f2222c992393685b67874622f4bd39111901f8f77c64e2a876a67"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/003_wrist_a.png": {
+    "bytes": 4073073,
+    "sha256": "1d9f43d72bd2f8fd8dd70ce63fee7139138e138c07472fd0ee9d2e0deaaf9329"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/004_wrist_a.json": {
+    "bytes": 264,
+    "sha256": "49b444d96242bd3b805e8c18f606901975a0da69a56be8412797dfb1c889d952"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/004_wrist_a.png": {
+    "bytes": 4059102,
+    "sha256": "2cfc76a857fc7f70614db42d42d1f682d383fd53d0feccfa2e94ad0ac1029242"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/004_wrist_a_goal.png": {
+    "bytes": 4062429,
+    "sha256": "3f225c578b657f65d2cb99e3045cbb79cae72aac71db692e534eccf51b3d01ed"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/005_wrist_a.json": {
+    "bytes": 264,
+    "sha256": "731251697fa13091b4c4ee7e1757b694a9f57dfdd81c06f99867e7743bd5d740"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/005_wrist_a.png": {
+    "bytes": 4058924,
+    "sha256": "10aeaa60fe7935f2de7f274eda506cf4abd9d7dfc7022f369115340c96d68de0"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/005_wrist_a_manual_goal.png": {
+    "bytes": 4062564,
+    "sha256": "bfbb79e62d4f25630ccea01eb574575443d267b2ade2e4b111e239faae93f539"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/006_wrist_a.json": {
+    "bytes": 264,
+    "sha256": "8b29af98cb6a76f1541dbb44f90868c203fded46a59dd9eff54369b0f44b57c3"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/006_wrist_a.png": {
+    "bytes": 4037498,
+    "sha256": "863419dc81094afd75b91612aee90c78e319b3914e2e774772d498bcd11729d2"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/007_wrist_a.json": {
+    "bytes": 265,
+    "sha256": "ea437194cf7bcae344b90cd189126391b47c89697d868feaa565cb9a1ba09bd3"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/007_wrist_a.png": {
+    "bytes": 4059673,
+    "sha256": "e7f44d38213fe93f5840cdfcf39e8b9577b971e4681a67b3fe283e7248b9bf37"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/007_wrist_a_goal.png": {
+    "bytes": 4063223,
+    "sha256": "b4155b4b95b1ee630adcdc5c694e5acffc55e284d3e8ab78641f805677b64f35"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/008_wrist_a.json": {
+    "bytes": 264,
+    "sha256": "b9e52b3a036a6f4c15d8b9ba860e86590bc5bca63b4557ff5c2ed6452f9edceb"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/008_wrist_a.png": {
+    "bytes": 4058375,
+    "sha256": "7666df04b4d44e8c171f7c464193fcb84b04fdf15c5701ee395c6120461542e3"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/008_wrist_a_manual_goal.png": {
+    "bytes": 4062123,
+    "sha256": "597a99d2fad28224a0e76da74cab1de870f7ea0cf6e28954d3796990fb198eb7"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/009_wrist_a.json": {
+    "bytes": 265,
+    "sha256": "019ad6e9580ace295ac7b290a3409bd0abd187f93a1cf35e7b1fa166a935a01a"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/009_wrist_a.png": {
+    "bytes": 4090346,
+    "sha256": "d56a0669bd1d13ebd530daadf25437fb4332d16fef6da2b4e40e641f07b099ff"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/009_wrist_a_final.png": {
+    "bytes": 4093739,
+    "sha256": "3f4d65b4c0c1315cd7b5f69fc36f8bc26af765671dc7b7865a6fc8c3f8edd7f0"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/BOARD_PROJECTED_TARGETS.png": {
+    "bytes": 595971,
+    "sha256": "d4808bcbaa91176876f8bc2f0f039ba6a87a5280402a08aad7af3db2b771990a"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/board_1789289286583429322.json": {
+    "bytes": 11161,
+    "sha256": "683e1026c6978d1014665b6a7f99c327f38d6f8911ae1970cec6978247df9a74"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/board_projected_targets.json": {
+    "bytes": 6406,
+    "sha256": "bdeb7a5ac5a90e82332e08d36d0491dc02b02b9471d249a368000085e96d2101"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/capture_events.jsonl": {
+    "bytes": 2276,
+    "sha256": "35a2e1d649f6bd89c68cd144f89fc4c8c55bd4723e105a2e45c582a2bba53916"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/head_board_1789289284617421974.json": {
+    "bytes": 10146,
+    "sha256": "525f50702a66b38fd4ca7f99894903cc6cea94bd5dfdc7ce9c30fb18fc1e3e0a"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/head_board_1789289284617421974.png": {
+    "bytes": 575359,
+    "sha256": "da917acff8108ab9d3276ab42d40ab780284118ae6c69f13b58fcc5c83c46224"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/head_observations.json": {
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "runs/wrist_parts_20260913T084800_864257Z/rod_16mm_handoff.json": {
+    "bytes": 16664,
+    "sha256": "e3ad7fa379672e5939e7b1be23a7be4612801167f61bfb7dab2634efdc690aa3"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/000_wrist_a.json": {
+    "bytes": 259,
+    "sha256": "247fbe756137bbda3c6b1c8a502c69a6408337418359918da7d94fb0be1b3990"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/000_wrist_a.png": {
+    "bytes": 4043917,
+    "sha256": "38a0965f1f4513b1b076cb5006c0dbef59240b268a2ac100fa7c59b35ae9798b"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/000_wrist_a_match.png": {
+    "bytes": 4047758,
+    "sha256": "ba09947d41b40e12739b2d2c7b9fde3c1e1167097da604d093528a52b8c42b18"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/001_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "99726b9d446e5cfe55529953aa508643a23f021fcd1a9bc73e29391182fb1696"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/001_wrist_a.png": {
+    "bytes": 4044126,
+    "sha256": "c2f5e73f5161bd604d757322fbeb8e2da0be6fcec99addbd77113f529be387ea"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/001_wrist_a_tracked.png": {
+    "bytes": 4048063,
+    "sha256": "99d4aa7fca86b61a58ce4a1e909369a9a3539f2f5730369e2b4d6f9696495695"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/002_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "ba0538c7458242f1fa74541778dfb8dcc4fed40292ec30b3cba9c5f44cbd3454"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/002_wrist_a.png": {
+    "bytes": 4053969,
+    "sha256": "caf3c38d872c2ed92984e892de4d9cdf0c8ed4d9400f55eadf10b9abf90a56ea"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/002_wrist_a_tracked.png": {
+    "bytes": 4057761,
+    "sha256": "1ca1830d3e774ee665ace9936cb48e244bbf576d6b76a1e3f4345502c9eb27f6"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/003_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "be469cbab1e0b5282cd07b3362ace33a128f8d5986daacfda0cba04f998e6935"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/003_wrist_a.png": {
+    "bytes": 4068282,
+    "sha256": "a1e721326026702b8327997feb95218a8a61e71e406e3b5508c8eec538d0e1dc"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/003_wrist_a_tracked.png": {
+    "bytes": 4072220,
+    "sha256": "f1172f72c981afa77aa9ceced09929fb3f11e80b381dc687c03181c9a3e0b6bd"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/004_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "b0b8697ba53f5aac5d25a4c8fe2aa9070ab3f5fc0dc708861f7342ebc36d65f4"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/004_wrist_a.png": {
+    "bytes": 4054254,
+    "sha256": "e2dcc8648a08df5f968a8c9f95332b0a4084ed02593f624813de943537c7f66d"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/004_wrist_a_tracked.png": {
+    "bytes": 4058011,
+    "sha256": "ee507438c31c02e33d26b77c918a2afabad52447c405294999f4d1beda3bd332"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/005_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "861cb0d3b6792220bf9056a1f3a06a6236f7188293f43b059b95d302d91ac300"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/005_wrist_a.png": {
+    "bytes": 4058860,
+    "sha256": "1d41577ddf0a5184629c7e45b3c373ff6d61109b6335c03713c0e653c1250e94"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/005_wrist_a_tracked.png": {
+    "bytes": 4062521,
+    "sha256": "9757a9f0de6912f6a4efc02066ce06d71b417117f996af3ce1913a1ef8f41256"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/BOARD_PROJECTED_TARGETS.png": {
+    "bytes": 597794,
+    "sha256": "baf12a6d25501ab238ab3fdb9aff1183419fba6569408210797a58395c646878"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/board_1789289213506282252.json": {
+    "bytes": 12256,
+    "sha256": "986da573409b51be48a54af1319688cefe43830e9f4fab87c8d31285769ea589"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/board_projected_targets.json": {
+    "bytes": 6435,
+    "sha256": "ac699c6034e766d1a5f5c6962ba79965511d8d1a179b22ff262604b1ec21e305"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/capture_events.jsonl": {
+    "bytes": 1346,
+    "sha256": "c374d07d195cf2ca1b97d5ce6ad5d18217cf585a311f23df03164793d156646a"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/head_board_1789289211485558076.json": {
+    "bytes": 11240,
+    "sha256": "41d7cb900b236c48fcbf403bfc6cbb49d52e12d80c2fbe80431b8ead577690c8"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/head_board_1789289211485558076.png": {
+    "bytes": 576307,
+    "sha256": "93e354919d6dfe2a1fa9897862d5de2606a6e0bde785ca3c43d3196f52b50cd1"
+  },
+  "runs/competition_actions/1789289206119241499_rod_16mm_pick_attempt1/head_observations.json": {
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/000_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "645b54ab9b1f2e33852e41e0d5dca7085187076f9beadb2f2cc4666029dae538"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/000_wrist_a.png": {
+    "bytes": 4083611,
+    "sha256": "336cfe031c5370c88d1348b36fbfc3e82cc623130eb7cf0874233980798d5680"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/000_wrist_a_match.png": {
+    "bytes": 4088609,
+    "sha256": "968c7f1a1403c4cbb16004ffa22214d21bd76005dd5be0a5fcd3497dd52693ce"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/001_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "74e1a0d11416d5b12e54491c07dc9fe90b2a90d2a48ad3edcbbe14d7e1b62169"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/001_wrist_a.png": {
+    "bytes": 4101776,
+    "sha256": "196a0e7842ca42ffcc3c0c177b160982ed8d709f5805390423234032691ac683"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/002_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "102ba9888673f0bf129e4d3a19c736cad0a0b50d69c9d83f2b7a7d343f2d503e"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/002_wrist_a.png": {
+    "bytes": 4102830,
+    "sha256": "90804864dbf0c7c9b613bcc68582ec9e3fd3b3e0a74558c839772f3fdfd467e3"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/002_wrist_a_tracked.png": {
+    "bytes": 4108527,
+    "sha256": "38fcf3ab5022c2300131b5577c715a72c6b1ee9acb1bc27d9d785e3a510f82c4"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/003_wrist_a.json": {
+    "bytes": 258,
+    "sha256": "8932b9f0d496f73bab2c284ed29f6fb623cf57330c8df148426eab4a67f33ebb"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/003_wrist_a.png": {
+    "bytes": 4100520,
+    "sha256": "42dec9061cf6012d46127c4eb7711cdbee5b2730f3dfbb89ecfe9dc4e6dd2808"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/004_wrist_a.json": {
+    "bytes": 263,
+    "sha256": "3831cae78280809a40dbb3a46548b39d6ee89e0628873cee4eda956904998d79"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/004_wrist_a.png": {
+    "bytes": 4026118,
+    "sha256": "85f7b0ab2f3cd12aec3be2d7032dd40201e40b5ef25f4f349caf5297f2fd485d"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/005_wrist_a.json": {
+    "bytes": 263,
+    "sha256": "c374fbb31f966b6dae26402140d7f95dee3e384b4cb10c454a10c9e65498e30e"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/005_wrist_a.png": {
+    "bytes": 3992770,
+    "sha256": "ebf998aaecc626e499836d1698c9dffc9de4ef67ee99d583698dc0bb0e3db7b3"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/BOARD_PROJECTED_TARGETS.png": {
+    "bytes": 604275,
+    "sha256": "ecf2c2f33af244b894b48a3ce125226801c38d2a2b5bab65a4475e4b68e58bc9"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/board_1789289170281034182.json": {
+    "bytes": 12237,
+    "sha256": "76a9bd512cdc9ecc312191ba8ab0463cdf8b0c695d266ab4cf453385af1f93a5"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/board_projected_targets.json": {
+    "bytes": 6425,
+    "sha256": "522e75cb7800c53101d5c9702a36bbf81925439ccc53805ea77d974767160eed"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/capture_events.jsonl": {
+    "bytes": 1349,
+    "sha256": "4f015035d291b3e81816e7571871ced34308d3bdeb917fcf1dc2be889c04a4cd"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/drop_evidence_manifest.json": {
+    "bytes": 1114,
+    "sha256": "a2a95dbfd0619790cf977b75b4e223796914bb67843966e632f2f878948c33d8"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/head_board_1789289167932807471.json": {
+    "bytes": 11220,
+    "sha256": "457f6fa683b22dbaa63619eea16c623ec3c7d2bd7a6647924e4c254627facb1e"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/head_board_1789289167932807471.png": {
+    "bytes": 582480,
+    "sha256": "548653403308156069b25a8c522fb738c1dba1a0276775ab9a8b9116b616f72e"
+  },
+  "runs/competition_actions/1789289162069215934_battery_size5_pick_place_attempt1/head_observations.json": {
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/000_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "eb8683c03644cec823d3c10f8789b6c15b9bd59f0e0e9128cc2c1c6ecc39b878"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/000_wrist_a.png": {
+    "bytes": 4142358,
+    "sha256": "22010a2d5492f9b9d1be0dab8848e0a670d069c64d9e1113bfe741753e1df643"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/001_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "4a0db8a2e9991751ff5e955ac7413d393f584a3a96c1f717417d69b926ce8507"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/002_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "4d65857a136ca6d4a054e6f71eefc3772f893dbb86877431f785749aae56d720"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/003_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "57f0b4948c5f0394599b299578d1751b8e2c5e6938eee1c12136e3094102d97a"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/004_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "c0419921841b092690a1643ed76d9c7a33622a24de220d88ff3f5eda4cc09f96"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/005_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "7225d3a2b107158e2f042de44c2df246a25e72e64721734d049ae895b5bd3b87"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/BOARD_PROJECTED_TARGETS.png": {
+    "bytes": 588100,
+    "sha256": "6758c1c70474fb20b56151d2720267c961738d0320b8342b6023f5f53f29da7e"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/board_1789289126641564874.json": {
+    "bytes": 13276,
+    "sha256": "19ddf36670f0679dc8ab8df61dfca86b5e7b4938822caaa925304dba53e09800"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/board_projected_targets.json": {
+    "bytes": 6428,
+    "sha256": "86ef64fd9158520c0da4caec48d5422814dc840c77879ceecfaa1e4a115f9361"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/capture_events.jsonl": {
+    "bytes": 1352,
+    "sha256": "7ca12b317af277530e92e740c92b32fc4a00571303246eea9a309a014be22ed7"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/drop_evidence_manifest.json": {
+    "bytes": 1116,
+    "sha256": "85bd75877d7ba58f7e97aa2d8d96435b4667dcce5a285a650281336e62d809b0"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/head_board_1789289124666422435.json": {
+    "bytes": 12257,
+    "sha256": "e34adba6375d1064ac7aa3eedf726fa2afe2c86c84ad7f9af17883e647ecc893"
+  },
+  "runs/competition_actions/1789289120953049620_battery_size1_pick_place_attempt1/head_observations.json": {
+    "bytes": 3,
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/000_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "ef90af14168ab37f1c94cc6c4609be61187469830a24479d1117d4d5cee6b98c"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/001_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "e177edabe4c41fcee1e4a6a19e83f915cffb289b6a083a4344402f4855963b77"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/002_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "ba25c1af52aced6f679049b71ccc91ea8126e79edbdeb5f464ad38cdd5c438b2"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/003_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "a9fe997b283b221cdd84bc3dde99f37530a0fd20a907f116031181cbe632c305"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/004_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "ce764ac3d45e2aa2de39887a5548bed3d47697b88ee9a4ef1a9ac9ad6b2d602f"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/005_wrist_a.json": {
+    "bytes": 260,
+    "sha256": "26105da8bbd08da2d33c25d16031d1272d91d6710bccdd2267cd27e3c1d835a8"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/006_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "626a7f3c5b76e76dea06641c81472c59a6c16a5c018048ef4a8cd36f0ad2ad8f"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/007_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "c34df9c9b279a3d4d218c0742dfc2bf2762e294daf0a9d18def1957bac41d2d4"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/008_wrist_a.json": {
+    "bytes": 261,
+    "sha256": "231510eb6d9cc6ba0192e0251e097ea7950f05f320ca2eef594458bbbb3c1d0d"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/009_wrist_a.json": {
+    "bytes": 262,
+    "sha256": "2f54b91a3cc840c4e202f7ae8cfe7cfbfe5c696f881d1b91fc651f26bd90ab27"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/board_1789289076476999374.json": {
+    "bytes": 13921,
+    "sha256": "b84c21eeb922282dd62ee22832b92076acd58e64cfdc59fdea292218f8d74395"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/board_projected_targets.json": {
+    "bytes": 6053,
+    "sha256": "aec0c9bfbcb1b53e1bce4cf8da9d0cf218f832e2e5fbd13c4644c022c8474de3"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/capture_events.jsonl": {
+    "bytes": 2249,
+    "sha256": "3e8e330203bfa96e56083db282f837900d27e84a0ac2c4060d020597eb36bb61"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/head_board_1789289073365325179.json": {
+    "bytes": 13303,
+    "sha256": "b1776f5d7edc07451186a0bcc7253ef4a714f976e4976fd51ac7f833c097479f"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/head_board_1789289074498234861.json": {
+    "bytes": 13271,
+    "sha256": "b8d18123092eaccfb0b0f3bac2a3d1b7e5f4c98492bb16abeab53d2fa4f7e4b9"
+  },
+  "runs/competition_actions/1789289069853811374_rod_16mm_pick_attempt3/head_observations.json": {
+    "bytes": 10818,
+    "sha256": "5dcda2cfe7272b74515904c8c334982396ce3c8f936383be7d31cd75f7fe7314"
+  },
+  "runs/wrist_parts_20260912T190946_777416Z/board_1789240193521256296.json": {
+    "bytes": 11068,
+    "sha256": "f35896972ba26dbfbaef5fdb277e73d899473a9dd517fd8c2c3502a7ccb656d4"
+  },
+  "runs/wrist_parts_20260912T190946_777416Z/pin_handoff.json": {
+    "bytes": 1364,
+    "sha256": "a3ef3f07b339a22cf6a9e0815775f1fb0e92a12a2377ef5c982b54b834791a3c"
+  },
+  "diagnostics/git_revision.json": {
+    "bytes": 154,
+    "sha256": "4dec18fdd546dc7626a079764caa20302efe6bb446fb58fc89df7ba5e1ff1262"
+  },
+  "diagnostics/git_status.json": {
+    "bytes": 625,
+    "sha256": "8ad2b0fdb5fcc5a974cd57c6c58553c9808c12edc2bf66603b83d5adb08b0d75"
+  },
+  "diagnostics/code_diff.json": {
+    "bytes": 148,
+    "sha256": "33aff33aa4050c99fa6c315b67c268b0ef768dfa4aa51552c9b1c076c8b429dc"
+  },
+  "diagnostics/preflight.json": {
+    "bytes": 1232,
+    "sha256": "ae4070f03665590a1f18be46ebdd7e598cbbfd1d3a29146a8c25f7a05a86d91a"
+  },
+  "diagnostics/competition_check.json": {
+    "bytes": 1029,
+    "sha256": "c3df6cf5e845a5b145a5d1cceb0cb7275776047df4896b9f39a58d6f5d3b733e"
+  },
+  "diagnostics/readiness.json": {
+    "bytes": 625,
+    "sha256": "a557a632a05b5a8e1a53623a243b3cbda5e1e287ceebbf5bbc1d624698290497"
+  },
+  "readiness.json": {
+    "bytes": 11840,
+    "sha256": "71bd24e51e13dd4e7236871992f182f8de0f26b330579fd7bbca1683135f4415"
+  },
+  "report.json": {
+    "bytes": 209398,
+    "sha256": "974745e7d33bd816043d14d753b2206513a18eb85a8827d72cce7ea6bf9d09a4"
+  }
+}

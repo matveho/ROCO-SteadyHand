@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "position_units": "m",
+  "quaternion_order": "wxyz",
+  "pose_frame": null,
+  "source_coordinates_file": "configs/task_coordinates.json",
+  "source_pose_frame": "roco_organizer_sim_stage",
+  "source": {
+    "repository": "rocochallenge/RoCo_TaskBoardAssembly",
+    "commit": "45dd6ad6e0792faf3450bdd2f81bb143b11bc43f",
+    "source_file": "task/param_config.py",
+    "checked_at_utc": "2026-09-27T05:32:56Z"
+  },
+  "notes": "Part order and release labels mirror task/param_config.py at the pinned organizer commit. Onsite poses and physical success checks remain per-session inputs. Simulation snap behavior is not a real-robot insertion mechanism.",
+  "part_order": ["gear_60teeth", "gear_20teeth", "rod_16mm", "bolt_8mm", "usb_a", "hdmi", "pin", "battery_size1", "battery_size5"],
+  "parts": {
+    "gear_60teeth": {"simulation_release_mode": "open", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "gear_20teeth": {"simulation_release_mode": "open", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "rod_16mm": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "bolt_8mm": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "usb_a": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "hdmi": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "pin": {"simulation_release_mode": "snap", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "battery_size1": {"simulation_release_mode": "open", "pick_pose": null, "place_pose": null, "verification_method": null},
+    "battery_size5": {"simulation_release_mode": "open", "pick_pose": null, "place_pose": null, "verification_method": null}
+  }
+}

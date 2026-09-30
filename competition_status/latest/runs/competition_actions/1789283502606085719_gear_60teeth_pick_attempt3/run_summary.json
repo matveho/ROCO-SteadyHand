@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "part": "gear_60teeth",
+  "action": "pick",
+  "holding_may_be_true": false,
+  "automatic_continuation_safe": true,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.4602597190227012,
+      -0.034528315730852265
+    ],
+    "board_x_unit_base_xy": [
+      -0.006354454510944908,
+      -0.9999798102501212
+    ],
+    "board_y_unit_base_xy": [
+      -0.9999798102501211,
+      0.006354454510944903
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        0.020605521531807176,
+        0.002880225831972389
+      ],
+      "rotation_deg": -0.9892841288217926,
+      "fit_residual_m": 0.005255107768449129,
+      "edge_scale": [
+        1.0205001443499162,
+        1.0241267843859037,
+        1.0120134461817094,
+        1.0157421818113186
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T07:11:47.184750+00:00"
+    },
+    "captured_at_utc": "2026-09-13T07:12:12.254829+00:00"
+  },
+  "last_error": "PickupPreflightError: Pickup descent preflight failed: waypoint 3/5 xyz_m=(0.621934, -0.136247, 0.496703): IK did not converge after 500 iterations (position_error=0.00822 m, orientation_error=0.00061 rad)",
+  "execution_offsets": {
+    "schema_version": 1,
+    "pickup": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    },
+    "placement": {
+      "forward_mm": 0,
+      "right_mm": 0,
+      "down_mm": 0
+    }
+  },
+  "coarse_xy_m": [
+    0.6235476622632649,
+    -0.13857353114531107
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.25,
+  "alignment_verified": true,
+  "alignment_fallback_used": true,
+  "grasp_verified": false,
+  "grasp_clearance_m": 0.0050000000000000044,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789283509381883864.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T07:12:12.255377+00:00"
+}

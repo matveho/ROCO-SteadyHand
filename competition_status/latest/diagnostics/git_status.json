@@ -1,0 +1,10 @@
+{
+  "command": [
+    "git",
+    "status",
+    "--porcelain=v1"
+  ],
+  "returncode": 0,
+  "stdout": " M calibration/wrist_part_profiles.json\n M competition_offsets.json\n M configs/competition_actions.json\n M configs/competition_plan.json\n?? calibration/place_templates/\n?? calibration/wrist_templates/battery_size1_1789284490090854796.png\n?? calibration/wrist_templates/battery_size5_1789286604684315901.png\n?? calibration/wrist_templates/rod_16mm_1789283061705325280.png\n?? calibration/wrist_templates/rod_16mm_1789289526267759605.png\n?? calibration/wrist_templates/usb_a_1789288776913657333.png\n",
+  "stderr": ""
+}

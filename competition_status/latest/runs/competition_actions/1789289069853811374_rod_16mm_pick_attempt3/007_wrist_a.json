@@ -1,0 +1,15 @@
+{
+  "accepted": true,
+  "attempt": 1,
+  "frame_id": 63,
+  "timestamp_ns": 12382860895,
+  "received_monotonic_ns": 60645177900433,
+  "shape": [
+    1536,
+    1920,
+    3
+  ],
+  "mean": 85.21797055844907,
+  "std": 50.619929792195606,
+  "file": "007_wrist_a.png"
+}

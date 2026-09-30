@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "status": "failed",
+  "part": "pin",
+  "action": null,
+  "holding_may_be_true": false,
+  "automatic_continuation_safe": false,
+  "board_reference": {
+    "center_base_xy_m": [
+      0.46020787290942333,
+      -0.03542944282691594
+    ],
+    "board_x_unit_base_xy": [
+      -0.016460803632460247,
+      -0.99986451179336
+    ],
+    "board_y_unit_base_xy": [
+      -0.9998645117933604,
+      0.016460803632460257
+    ],
+    "board_size_m": 0.386,
+    "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+    "registration": {
+      "status": "fresh",
+      "source": "differential_four_corner_386mm",
+      "translation_m": [
+        0.020553675418529288,
+        0.0019790987359087136
+      ],
+      "rotation_deg": -1.5683754263454648,
+      "fit_residual_m": 0.004974939001361538,
+      "edge_scale": [
+        1.0183055610115914,
+        1.0074941466437246,
+        1.0255099007830786,
+        1.0130566121567732
+      ],
+      "metric_scale": 0.9611882628747844,
+      "captured_at_utc": "2026-09-13T07:50:05.472135+00:00"
+    },
+    "captured_at_utc": "2026-09-13T07:51:06.595279+00:00"
+  },
+  "last_error": "RuntimeError: Not centered after 16 corrections: 44.4 px",
+  "execution_offsets": null,
+  "coarse_xy_m": [
+    0.5476619126643926,
+    0.013546353338885216
+  ],
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.1,
+  "alignment_verified": false,
+  "alignment_fallback_used": false,
+  "grasp_verified": false,
+  "grasp_clearance_m": null,
+  "drop_release_photo": null,
+  "drop_evidence_photos": [],
+  "board_scene_paths": [
+    "board_1789285807886079131.json"
+  ],
+  "events_path": "events.jsonl",
+  "calibration_path": "calibration/vega_board_manual.json",
+  "profiles_path": "calibration/wrist_part_profiles.json",
+  "created_at_utc": "2026-09-13T07:51:06.595778+00:00"
+}

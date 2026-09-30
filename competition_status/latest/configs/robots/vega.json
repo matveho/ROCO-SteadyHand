@@ -1,0 +1,326 @@
+{
+  "schema_version": 1,
+  "robot_id": "vega",
+  "robot_name": "dm/vgfcb66075ea-1u",
+  "working_arm": "right",
+  "host": "192.168.50.20",
+  "sdk_version": "0.5.0",
+  "urdf_path": "configs/robots/vega_1u_competition_kinematics.urdf",
+  "urdf_candidates": [
+    "configs/robots/vega_1u_competition_kinematics.urdf",
+    "configs/robots/vega_1u_competition.urdf",
+    "/home/dexmate/miniconda3/lib/python3.13/site-packages/dexmate_urdf/robots/humanoid/vega_1u/vega_1u_gripper.urdf"
+  ],
+  "joint_names": [
+    "L_arm_j1",
+    "L_arm_j2",
+    "L_arm_j3",
+    "L_arm_j4",
+    "L_arm_j5",
+    "L_arm_j6",
+    "L_arm_j7",
+    "R_arm_j1",
+    "R_arm_j2",
+    "R_arm_j3",
+    "R_arm_j4",
+    "R_arm_j5",
+    "R_arm_j6",
+    "R_arm_j7"
+  ],
+  "joint_limits_rad": {
+    "left": [
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -0.453,
+        1.553
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -3.071,
+        0.244
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.396,
+        1.396
+      ],
+      [
+        -1.378,
+        1.117
+      ]
+    ],
+    "right": [
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.553,
+        0.453
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -3.071,
+        0.244
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.396,
+        1.396
+      ],
+      [
+        -1.117,
+        1.378
+      ]
+    ]
+  },
+  "max_joint_speed_rad_s": null,
+  "allow_robot_init_head_motion": false,
+  "motion": {
+    "step_wait_time_s": null,
+    "max_step_rad": 0.12,
+    "max_total_delta_rad": 2.5,
+    "control_hz": 100,
+    "joint_reached_tolerance_rad": 0.005,
+    "joint_timeout_s": 30
+  },
+  "board_calibration": {
+    "board_size_m": 0.386,
+    "board_motion_model": "horizontal_translation_only_fixed_table_plane",
+    "board_plane_z_m": 0.4560002716867571,
+    "forward_rise_angle_deg": 12.418744602,
+    "fallback_file": "calibration/vega_board_manual_fallback.json",
+    "camera_target_corrections_m": {
+      "CENTER": [-0.046518656, -0.014059528],
+      "TOP_RIGHT": [-0.045435466, 0.006742256],
+      "BOTTOM_RIGHT": [-0.054762737, 0.024019439],
+      "BOTTOM_LEFT": [-0.050445634, -0.042835330]
+    },
+    "camera_target_correction_convention": "These are final corrected TCP XY minus the raw camera coarse XY, measured from the permanent five-point run; forward=+base X and right=-base Y.",
+    "default_task_clearance_mm": 100.0,
+    "calibration_target_clearance_mm": 100.0,
+    "calibration_reference_clearance_mm": {
+      "CENTER": 100.0,
+      "TOP_RIGHT": 100.0,
+      "BOTTOM_RIGHT": 100.0,
+      "BOTTOM_LEFT": 100.0
+    },
+    "suggested_clearance_mm": {
+      "CENTER": 100.0,
+      "TOP_RIGHT": 100.0,
+      "BOTTOM_RIGHT": 100.0,
+      "BOTTOM_LEFT": 100.0
+    },
+    "calibration_height_convention": "All four operator-confirmed reference poses are measured at 100 mm TCP-to-board clearance; use these values as the next supervised calibration defaults.",
+    "source": "operator-confirmed final five-point calibration; 386 mm board span",
+    "status": "active_supervised_board_plane_correction"
+  },
+  "joint_presets": {
+    "right_ready": {
+      "joint_names": [
+        "R_arm_j1", "R_arm_j2", "R_arm_j3", "R_arm_j4",
+        "R_arm_j5", "R_arm_j6", "R_arm_j7"
+      ],
+      "joint_positions_rad": [
+        0.21463710069656372,
+        -0.3935612738132477,
+        -1.8070772886276245,
+        -1.646824598312378,
+        1.711227297782898,
+        -1.385257363319397,
+        0.0025394540280103683
+      ],
+      "tip_r_pose": {
+        "position_m": [0.44780069372494935, -0.057527080297007635, 0.6050230329337706],
+        "quaternion_wxyz": [0.8158175491223725, 0.052638024999248696, 0.0714430131564337, 0.5714602879809529]
+      },
+      "source": "operator_measured_RIGHT_READY_2026-09-28"
+    },
+    "right_camera_clear": {
+      "joint_names": [
+        "R_arm_j1", "R_arm_j2", "R_arm_j3", "R_arm_j4",
+        "R_arm_j5", "R_arm_j6", "R_arm_j7"
+      ],
+      "joint_positions_rad": [
+        0.21482908725738525,
+        -1.1214107275009155,
+        -1.807173252105713,
+        -1.6464650630950928,
+        1.710747241973877,
+        -1.3857128620147705,
+        0.002204350894317031
+      ],
+      "tip_r_pose": {
+        "position_m": [0.47851481158018394, -0.32143913038768884, 0.6046640830811985],
+        "quaternion_wxyz": [0.966066449652513, 0.0705496694727629, 0.050575168727761306, 0.24327044888607202]
+      },
+      "source": "operator_measured_RIGHT_CAMERA_CLEAR_2026-09-28"
+    }
+  },
+  "kinematics": {
+    "backend": "pinocchio",
+    "ee_frame": "tip_r",
+    "left_arm_joint_names": [
+      "L_arm_j1",
+      "L_arm_j2",
+      "L_arm_j3",
+      "L_arm_j4",
+      "L_arm_j5",
+      "L_arm_j6",
+      "L_arm_j7"
+    ],
+    "right_arm_joint_names": [
+      "R_arm_j1",
+      "R_arm_j2",
+      "R_arm_j3",
+      "R_arm_j4",
+      "R_arm_j5",
+      "R_arm_j6",
+      "R_arm_j7"
+    ],
+    "fixed_joint_values": {
+      "Lift": 0,
+      "torso_flip": 0.22689280275926285
+    },
+    "position_tolerance_m": 0.002,
+    "orientation_tolerance_rad": 0.02,
+    "max_iterations": 500,
+    "damping": 0.000001,
+    "integration_step": 0.15,
+    "max_seed_delta_rad": 1.5,
+    "base_frame": "vega_1u_base_link"
+  },
+  "gripper_driver_path": "vendor/dexmate_setup/gripper.py",
+  "gripper": {
+    "driver_path": "vendor/dexmate_setup/gripper.py",
+    "scope": "right",
+    "calibration_cache_path": "/home/dexmate/.cache/roco_vega_right_gripper.json",
+    "home_on_connect": true,
+    "skip_home_verified": false,
+    "grip_current_a": 1,
+    "open_speed_dps": 500,
+    "grip_speed_dps": 240,
+    "release_max_delta_fraction": 0.05,
+    "release_speed_dps": 500
+  },
+  "cameras": {
+    "head": {
+      "model": "ZED X Mini",
+      "mount": "head",
+      "connection": "ZED Link Duo",
+      "streams": [
+        "left_rgb_rectified",
+        "right_rgb_rectified",
+        "depth_m"
+      ],
+      "width": 1920,
+      "height": 1200,
+      "configured_fps": 30,
+      "observed_publish_hz_approx": 24,
+      "native_point_cloud": false,
+      "intrinsics_source": "runtime_get_camera_info"
+    },
+    "wrists": {
+      "model": "Sony ISX031",
+      "mounts": [
+        "left_wrist",
+        "right_wrist"
+      ],
+      "api_labels": [
+        "wrist_a",
+        "wrist_b"
+      ],
+      "api_label_to_physical_mount": {
+        "wrist_a": "right_wrist",
+        "wrist_b": "left_wrist"
+      },
+      "rgb_width": 1920,
+      "rgb_height": 1536,
+      "notes": "VERIFIED_ON_COMP_ROBOT 2026-09-28: wrist_a=RIGHT, wrist_b=LEFT by displayed-image occlusion/visual confirmation. First startup frames may be black; warm up and validate image content before use."
+    }
+  },
+  "notes": "Competition Vega dm/vgfcb66075ea-1u. Sep 28 right-arm migration: working arm is right, Cartesian IK/FK uses tip_r, CAN gripper scope is right, and the verified physical-right wrist stream is wrist_a. The tracked compact FK/IK URDF reproduces the organizer competition arm/base/tip kinematics from dexmate-setup pinned commit 4be4d16140b25f730673d664b49c58280b07ef46; it intentionally contains no collision meshes. Fixed Lift=0 and torso_flip=0.22689280275926285 are organizer source-robot assumptions and must be rechecked if geometry changes. Gripper object-grip current/speed remain 1.0 A and 240 deg/s from onsite bring-up. No general collision checking is implemented.",
+  "allow_sdk_version_mismatch": false,
+  "arm_joint_limits_rad": {
+    "left": [
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -0.453,
+        1.553
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -3.071,
+        0.244
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.396,
+        1.396
+      ],
+      [
+        -1.378,
+        1.117
+      ]
+    ],
+    "right": [
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.553,
+        0.453
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -3.071,
+        0.244
+      ],
+      [
+        -3.071,
+        3.071
+      ],
+      [
+        -1.396,
+        1.396
+      ],
+      [
+        -1.117,
+        1.378
+      ]
+    ]
+  },
+  "competition_setup_source": {
+    "repository": "intelligent-control-lab/dexmate-setup",
+    "commit": "4be4d16140b25f730673d664b49c58280b07ef46",
+    "note": "Organizer-linked Sep 27 reference for modified official Vega; verify source-robot calibration values against competition unit before use."
+  }
+}

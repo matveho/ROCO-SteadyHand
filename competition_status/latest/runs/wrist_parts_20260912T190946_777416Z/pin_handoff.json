@@ -1,0 +1,60 @@
+{
+  "part": "pin",
+  "working_arm": "right",
+  "tcp_frame": "tip_r",
+  "wrist_camera": "wrist_a",
+  "calibration_sha256": "41233a67a52630d9b3d7670b54b31093db05a53d4118702927dba1ee31aff21f",
+  "coarse_xy_m": [
+    0.5201663307109562,
+    0.001033131513138377
+  ],
+  "feature_uv": [
+    887.0,
+    704.0
+  ],
+  "goal_uv": [
+    891.0,
+    693.0
+  ],
+  "goal_source": "operator_confirmed_current_pose",
+  "goal_match_uv": [
+    891.0,
+    693.0
+  ],
+  "goal_match_score": 0.9788572192192078,
+  "goal_click_match_error_px": 0.0,
+  "reference_match_score": 0.9999991655349731,
+  "feature_tracking_mode": "strict",
+  "final_match_uv": [
+    891.0,
+    696.0
+  ],
+  "final_match_score": 0.9791333675384521,
+  "image_shape": [
+    1536,
+    1920
+  ],
+  "hover_clearance_m": 0.1,
+  "grasp_clearance_m": 0.0,
+  "yaw_deg": 0.0,
+  "gripper_open_fraction": 0.1,
+  "place": null,
+  "grasp_verified": true,
+  "place_verified": false,
+  "template": {
+    "path": "calibration/wrist_templates/pin_1789240406699115552.png",
+    "sha256": "57744f86dcd7267388adc0ad414ed35644f657b2179968fe7a32740ed0d280c9",
+    "template_uv": [
+      20,
+      20
+    ]
+  },
+  "localization_result": {
+    "angle": -1085.57,
+    "peak_current": 1.27,
+    "stopped_by": "current",
+    "position": 0.039484309243553894,
+    "gripped": true
+  },
+  "created_at_utc": "2026-09-12T19:13:26.700713+00:00"
+}
