@@ -1238,16 +1238,18 @@ class PartSession:
         self.remote_checkpoint("before_grasp_descent")
         self.move(grasp, slow=True)
         self.remote_checkpoint("grasp_height_jaws_open")
-        # A Cartesian Z descent is solved as a sequence of joint targets.  On
-        # Vega that can leave the measured TCP a few millimetres off in XY,
-        # even though the requested grasp pose has the same XY as the hover.
-        # Correct that bounded residual while the jaws are still open, before
-        # applying grip pressure.  This is deliberately local and uses the
-        # measured grasp height/orientation; it cannot create a new board move.
+        # Read back the actual endpoint. A small upward Z residual may be late
+        # telemetry; settle it before considering one retry of the taught Z.
+        # Never compensate by requesting a position below the taught target.
         measured_grasp = self.robot.get_tcp_pose()
+        if measured_grasp.position_m[2] - grasp.position_m[2] > .002:
+            measured_grasp = self._stationary_grasp_readback()
         xy_error = math.dist(
             measured_grasp.position_m[:2], (anchor_x, anchor_y)
         )
+        z_error = measured_grasp.position_m[2] - grasp.position_m[2]
+        correct_height = (.002 < z_error <= .008 and
+                          math.hypot(xy_error, z_error) <= .010)
         self.event(
             "grasp_approach_readback",
             {
@@ -1255,25 +1257,30 @@ class PartSession:
                 "requested_grasp_tcp": list(grasp.position_m),
                 "measured_grasp_tcp": list(measured_grasp.position_m),
                 "xy_error_m": xy_error,
+                "z_error_m": z_error,
+                "height_correction_planned": correct_height,
             },
         )
-        if xy_error > 0.001:
+        if xy_error > 0.001 or correct_height:
             if xy_error > 0.010:
                 raise RuntimeError(
                     "Grasp approach drifted more than 10 mm from the manually "
                     "positioned hover; no grip command issued"
                 )
             correction = Pose(
-                (anchor_x, anchor_y, measured_grasp.position_m[2]),
+                (anchor_x, anchor_y, grasp.position_m[2] if correct_height else measured_grasp.position_m[2]),
                 measured_grasp.quaternion_wxyz,
             )
             print(
-                "GRASP XY CORRECTION: returning to the exact manual hover "
-                f"anchor ({xy_error * 1000:.1f} mm residual)",
+                f"GRASP {'XYZ' if correct_height else 'XY'} CORRECTION: "
+                f"XY residual {xy_error * 1000:.1f} mm; "
+                f"height {z_error * 1000:+.1f} mm from taught target; "
+                + ("one retry to taught height" if correct_height else "height unchanged"),
                 flush=True,
             )
             self.move(correction, slow=True)
-            measured_grasp = self.robot.get_tcp_pose()
+            measured_grasp = (self._stationary_grasp_readback() if correct_height
+                              else self.robot.get_tcp_pose())
             corrected_error = math.dist(
                 measured_grasp.position_m[:2], (anchor_x, anchor_y)
             )
@@ -1282,6 +1289,8 @@ class PartSession:
                 {
                     "measured_grasp_tcp": list(measured_grasp.position_m),
                     "xy_error_m": corrected_error,
+                    "z_error_m": measured_grasp.position_m[2] - grasp.position_m[2],
+                    "height_correction_attempted": correct_height,
                 },
             )
             if corrected_error > 0.006:
@@ -1289,6 +1298,17 @@ class PartSession:
                     "Grasp approach could not return to the manually positioned "
                     f"hover anchor (XY residual {corrected_error * 1000:.1f} mm)"
                 )
+        final_z_error = measured_grasp.position_m[2] - grasp.position_m[2]
+        self.event("grasp_height_readback", {
+            "requested_z_m": grasp.position_m[2],
+            "measured_z_m": measured_grasp.position_m[2],
+            "z_error_m": final_z_error,
+            "height_correction_attempted": correct_height,
+        })
+        if abs(final_z_error) > .002:
+            print(f"GRASP HEIGHT RESIDUAL: {final_z_error * 1000:+.1f} mm "
+                  "(positive = above taught target). No further height correction; "
+                  "continuing the existing grip attempt.", flush=True)
         self.remote_checkpoint("before_gripper_close")
         self.holding = True  # Remains true on uncertain grip/error; no blind recovery.
         self.robot.grip(self.part)
@@ -1312,6 +1332,13 @@ class PartSession:
         self.event("successful_pickup_pose", {"hover_tcp": list(hover.position_m),
             "quaternion_wxyz": list(hover.quaternion_wxyz)})
         return result
+
+    def _stationary_grasp_readback(self):
+        try:
+            return self.robot.stationary_tcp_pose(settle_timeout_s=1.0)
+        except Exception:
+            self.motion_faulted = True
+            raise
 
     def return_part(self, clearance, *, partial_release=False):
         if not self.holding:

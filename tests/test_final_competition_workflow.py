@@ -848,6 +848,79 @@ class FinalWorkflowTests(unittest.TestCase):
         self.assertEqual(s.status, "cancelled_before_grip")
         self.assertNotIn("grip", [v[0] for v in s.robot.trace])
 
+    def test_grasp_height_retry_is_once_bounded_and_never_deeper_than_taught(self):
+        for z_error, xy_error, settles, persistent, corrected in (
+                (.0057, .0033, False, False, True),
+                (.006, 0., False, False, True),
+                (.006, 0., True, False, False),
+                (.006, 0., False, True, True),
+                (.020, 0., False, False, False),
+                (.006, .009, False, False, False),
+                (-.006, 0., False, False, False),
+                (.001, 0., False, False, False)):
+            with self.subTest(z_error=z_error, xy_error=xy_error, settles=settles, persistent=persistent):
+                s, profile = self.session(competition=True)
+                s.begin_part(s.part, profile, competition=True, no_cv=True)
+                original = copy.deepcopy(profile)
+                start = s.robot.pose
+                target_z = s.surface(*start.position_m[:2]) + profile['grasp_clearance_m']
+                moves = []
+                actual_move = s.move
+                def move(target, **kwargs):
+                    moves.append(target)
+                    actual_move(target, **kwargs)
+                    if len(moves) == 1 or (persistent and len(moves) == 2):
+                        s.robot.pose = Pose((target.position_m[0] + xy_error,
+                            target.position_m[1], target.position_m[2] + z_error), target.quaternion_wxyz)
+                s.move = move
+                def stationary(**kwargs):
+                    if settles:
+                        s.robot.pose = moves[0]
+                    return s.robot.pose
+                s.robot.stationary_tcp_pose = mock.Mock(side_effect=stationary)
+                s.grab(profile['grasp_clearance_m'], allow_unverified=True)
+                has_correction = corrected or xy_error > .001
+                self.assertEqual(len(moves), 3 if has_correction else 2)  # descent, optional correction, lift
+                self.assertAlmostEqual(moves[0].position_m[2], target_z)
+                if has_correction:
+                    self.assertGreaterEqual(moves[1].position_m[2], target_z)
+                    if corrected:
+                        self.assertAlmostEqual(moves[1].position_m[2], target_z)
+                grip = next(v for v in s.robot.trace if v[0] == 'grip')
+                expected_error = 0. if settles or (corrected and not persistent) else z_error
+                self.assertAlmostEqual(grip[1].position_m[2], target_z + expected_error)
+                height = next(c.args[1] for c in s.event.call_args_list if c.args[0] == 'grasp_height_readback')
+                self.assertEqual(height['height_correction_attempted'], corrected)
+                self.assertAlmostEqual(height['z_error_m'], expected_error)
+                self.assertEqual(profile, original)
+
+    def test_grasp_height_retry_requires_fresh_stationary_state_before_and_after_motion(self):
+        for fail_after_correction in (False, True):
+            with self.subTest(fail_after_correction=fail_after_correction):
+                s, profile = self.session(competition=True)
+                s.begin_part(s.part, profile, competition=True, no_cv=True)
+                actual_move = s.move
+                moves = []
+                def move(target, **kwargs):
+                    moves.append(target)
+                    actual_move(target, **kwargs)
+                    if len(moves) == 1:
+                        s.robot.pose = Pose((*target.position_m[:2], target.position_m[2] + .006), target.quaternion_wxyz)
+                s.move = move
+                checks = []
+                def stationary(**kwargs):
+                    checks.append(True)
+                    if not fail_after_correction or len(checks) == 2:
+                        raise RuntimeError('Recovery blocked: joint state is stale')
+                    return s.robot.pose
+                s.robot.stationary_tcp_pose = stationary
+                with self.assertRaisesRegex(RuntimeError, 'joint state is stale'):
+                    s.grab(profile['grasp_clearance_m'], allow_unverified=True)
+                self.assertTrue(s.motion_faulted)
+                self.assertFalse(s.holding)
+                self.assertEqual(len(moves), 2 if fail_after_correction else 1)
+                self.assertNotIn('grip', [v[0] for v in s.robot.trace])
+
     def test_all_existing_profiles_keep_no_cv_depth_yaw_jaws_and_return_anchor(self):
         for part in self.profiles["parts"]:
             with self.subTest(part=part):
