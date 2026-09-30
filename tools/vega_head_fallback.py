@@ -348,8 +348,8 @@ class HeadFallbackSession:
         self.observation = self.observations[part]
         offset = _finite_pair(self.profile.get("offset_base_xy_m", [0, 0]), "offset_base_xy_m")
         yaw = float(self.profile.get("yaw_deg", 0.0))
-        if not math.isfinite(yaw) or not -45 <= yaw <= 45:
-            raise ValueError("saved fallback yaw must be -45..45 degrees")
+        if not math.isfinite(yaw):
+            raise ValueError("saved fallback yaw must be finite")
         xy = (self.observation["selected_xy_m"][0] + offset[0], self.observation["selected_xy_m"][1] + offset[1])
         self.hover_pose = self.make_hover(*xy, yaw)
         depth = self.profile.get("grasp_depth_mm")
@@ -357,16 +357,16 @@ class HeadFallbackSession:
             self.grasp_clearance_m = None
         else:
             depth = float(depth)
-            if not math.isfinite(depth) or not 0 <= depth <= 100:
-                raise ValueError("saved grasp depth must be 0..100.0 mm below hover")
+            if not math.isfinite(depth) or depth < 0:
+                raise ValueError("saved grasp depth must be finite and nonnegative mm below hover")
             self.grasp_clearance_m = HOVER_CLEARANCE_M - depth / 1000.0
         print(f"SELECTED {part}: {self.observation['selection']} target={tuple(round(v, 4) for v in self.hover_pose.position_m)}", flush=True)
         self.move(self.hover_pose)
 
     def adjust(self, direction, amount_mm):
         amount = float(amount_mm) / 1000.0
-        if not math.isfinite(amount) or not 0.0001 <= amount <= 0.050:
-            raise ValueError("adjustment must be 0.1..50 mm")
+        if not math.isfinite(amount) or amount <= 0:
+            raise ValueError("adjustment must be finite and positive")
         dx, dy = {"forward": (amount, 0), "back": (-amount, 0), "left": (0, amount), "right": (0, -amount)}[direction]
         x, y = self.hover_pose.position_m[:2]
         self.hover_pose = self.make_hover(x + dx, y + dy, float(self.profile.get("yaw_deg", 0)))
@@ -378,8 +378,8 @@ class HeadFallbackSession:
 
     def set_yaw(self, degrees):
         yaw = float(degrees)
-        if not math.isfinite(yaw) or not -45 <= yaw <= 45:
-            raise ValueError("yaw must be -45..45 degrees")
+        if not math.isfinite(yaw):
+            raise ValueError("yaw must be finite")
         x, y = self.hover_pose.position_m[:2]
         self.profile["yaw_deg"] = yaw
         self.hover_pose = self.make_hover(x, y, yaw)
@@ -387,8 +387,8 @@ class HeadFallbackSession:
 
     def set_depth(self, depth_mm):
         depth = float(depth_mm)
-        if not math.isfinite(depth) or not 0 <= depth <= 100:
-            raise ValueError("depth must be 0..100.0 mm below hover")
+        if not math.isfinite(depth) or depth < 0:
+            raise ValueError("depth must be finite and nonnegative mm below hover")
         clearance = HOVER_CLEARANCE_M - depth / 1000.0
         self.grasp_clearance_m = clearance
         grasp_z = self.surface(*self.hover_pose.position_m[:2]) + clearance
@@ -486,7 +486,7 @@ class HeadFallbackSession:
 
     def run_part(self, part):
         self.select_part(part)
-        print("Commands: forward/back/left/right N, yaw N, depth 0..100, grab, return, save, retake, status, abort")
+        print("Commands: forward/back/left/right N, yaw N, depth N (mm below hover), grab, return, save, retake, status, abort")
         while True:
             raw = input(f"head-fallback {part}> ").strip().lower().split()
             if not raw:

@@ -79,8 +79,11 @@ class HeadFallbackTests(unittest.TestCase):
         session.surface = lambda x, y: 0.5
         session.set_depth(100)
         self.assertEqual(session.grasp_clearance_m, 0.0)
-        with self.assertRaisesRegex(ValueError, "0..100.0"):
-            session.set_depth(100.1)
+        session.set_depth(105)
+        self.assertAlmostEqual(session.grasp_clearance_m, -.005)
+        for invalid in (-1, float('nan'), float('inf')):
+            with self.assertRaises(ValueError):
+                session.set_depth(invalid)
 
     def test_can_network_down_detection_is_narrow(self):
         self.assertTrue(_is_can_network_down(RuntimeError("Network is down [Error Code 100]")))

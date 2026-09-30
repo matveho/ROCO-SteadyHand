@@ -92,6 +92,7 @@ class CompetitionMenuTests(unittest.TestCase):
 
     def test_selected_competition_uses_config_and_no_prompts_or_unselected_parts(self):
         settings = pipeline._load_competition_actions()
+        settings['order'] = ['battery_size1', 'bolt_8mm']
         settings['pipeline_speed_scale'] = .31
         settings['parts']['battery_size1'].update(enabled=False, pick_enabled=False)
         settings['parts']['bolt_8mm'].update(mode='pick_place', use_wrist_pick_cv=False)
@@ -132,6 +133,7 @@ class CompetitionMenuTests(unittest.TestCase):
 
     def test_selected_competition_preserves_retry_settings_and_hard_stops(self):
         settings = pipeline._load_competition_actions()
+        settings['order'] = ['battery_size1', 'bolt_8mm']
         settings['parts']['battery_size1']['max_attempts'] = 2
         settings['head_reacquire_on_failure'] = False
         settings['retry_without_wrist_cv'] = False

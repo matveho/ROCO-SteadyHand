@@ -1555,11 +1555,10 @@ class PartSession:
         clearance = float(pose.position_m[2]) - self.surface(
             pose.position_m[0], pose.position_m[1]
         )
-        if not math.isfinite(clearance) or not 0.001 <= clearance < 0.100:
-            raise ValueError(
-                f"drop clearance must be 1..99 mm above the calibrated surface; "
-                f"measured {clearance * 1000:.1f} mm"
-            )
+        if not math.isfinite(clearance):
+            raise ValueError("drop clearance must be finite")
+        if clearance > .100:
+            raise ValueError("Release must be at or below the return hover so retreat moves upward")
         return {
             "offset_board_xy_m": [
                 dx * float(ux[0]) + dy * float(ux[1]),
@@ -1776,7 +1775,6 @@ class PartSession:
                       "Part remains held. Use small directional adjustments, target to retry, "
                       "image to inspect, or return to put it back. Release only at the intended destination.", flush=True)
         approach_drop()
-        adjustment_anchor = self.robot.get_tcp_pose()
         print(
             "Commands: forward/back/left/right N (mm) | step N | yaw N (deg) | "
             "down N (mm) | up N | undo | target | image | status | release | return | abort\n"
@@ -1795,7 +1793,6 @@ class PartSession:
                 continue
             if command == "target":
                 approach_drop()
-                adjustment_anchor = self.robot.get_tcp_pose()
                 continue
             if command == "release":
                 try:
@@ -1867,7 +1864,7 @@ class PartSession:
                 continue
             if command == "step" and len(raw) == 2:
                 try:
-                    self.step_mm = _number(raw[1], .5, 20.0)
+                    self.step_mm = _number(raw[1], .001, math.inf)
                     print(f"STEP = {self.step_mm:g} mm", flush=True)
                 except ValueError as exc:
                     print(f"COMMAND BLOCKED: {exc}", flush=True)
@@ -1888,28 +1885,24 @@ class PartSession:
                 old_yaw = self.yaw
                 x, y, z = current.position_m
                 if command in ("forward", "back", "left", "right"):
-                    amount = self.step_mm if len(raw) == 1 else _number(raw[1], .1, 30.0)
+                    amount = self.step_mm if len(raw) == 1 else _number(raw[1], .001, math.inf)
                     amount /= 1000.0
                     dx, dy = {
                         "forward": (amount, 0.0), "back": (-amount, 0.0),
                         "left": (0.0, amount), "right": (0.0, -amount),
                     }[command]
                     x, y = x + dx, y + dy
-                    if math.dist((x, y), adjustment_anchor.position_m[:2]) > .120:
-                        raise ValueError("drop adjustment exceeds 120 mm from starting hover")
                     clearance = z - self.surface(*current.position_m[:2])
                     target = Pose(
                         (x, y, self.surface(x, y) + clearance),
                         current.quaternion_wxyz,
                     )
                 elif command in ("down", "up") and len(raw) == 2:
-                    amount = _number(raw[1], .1, 20.0) / 1000.0
+                    amount = _number(raw[1], .001, math.inf) / 1000.0
                     target_z = z + amount if command == "up" else z - amount
-                    if target_z <= self.surface(x, y) + .001:
-                        raise ValueError("drop target must remain at least 1 mm above the board")
                     target = Pose((x, y, target_z), current.quaternion_wxyz)
                 elif command == "yaw" and len(raw) == 2:
-                    self.yaw = _number(raw[1], -45.0, 45.0)
+                    self.yaw = _number(raw[1])
                     target = Pose(
                         current.position_m,
                         _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz,
@@ -2172,7 +2165,7 @@ class PartSession:
                     continue
                 try:
                     if command == "step" and len(raw) == 2:
-                        self.step_mm = _number(raw[1], .5, 20.0)
+                        self.step_mm = _number(raw[1], .001, math.inf)
                         print(f"STEP = {self.step_mm:g} mm", flush=True)
                         continue
                     if command in ("jaw", "gripper") and len(raw) == 1:
@@ -2189,16 +2182,16 @@ class PartSession:
                         self._set_gripper_fraction(max(0.0, min(1.0, current + delta)))
                         continue
                     if command == "depth" and len(raw) == 2:
-                        depth = _number(raw[1], .001, 100.)
+                        depth = _number(raw[1], 0., math.inf)
                         grasp = .100-depth/1000
                         self.last_grasp_clearance = grasp
                         self.grasp_verified = False
                         print(f"Grasp clearance above calibrated surface: {grasp*1000:.1f} mm", flush=True)
                         continue
                     if command == "place-config" and len(raw) == 5:
-                        dx, dy = (_number(v, -50., 50.)/1000 for v in raw[1:3])
-                        depth = _number(raw[3], .001, 100.)
-                        yaw = _number(raw[4], -45., 45.)
+                        dx, dy = (_number(v)/1000 for v in raw[1:3])
+                        depth = _number(raw[3], 0., math.inf)
+                        yaw = _number(raw[4])
                         place = {"offset_board_xy_m": [dx, dy], "clearance_m": .100-depth/1000, "yaw_deg": yaw}
                         place_changed = True
                         print("Place settings recorded; task test must validate them before competition.")
@@ -2215,10 +2208,10 @@ class PartSession:
                         self.frame("after undo")
                         continue
                     if command == "yaw" and len(raw) == 2:
-                        yaw = _number(raw[1], -45., 45.)
+                        yaw = _number(raw[1])
                         target = Pose(current.position_m, _yaw_pose(self.runtime[3], yaw).quaternion_wxyz)
                     elif command in ("forward", "back", "left", "right") and len(raw) in (1, 2):
-                        amount = self.step_mm if len(raw) == 1 else _number(raw[1], .1, 30.)
+                        amount = self.step_mm if len(raw) == 1 else _number(raw[1], .001, math.inf)
                         amount /= 1000.0
                         dx, dy = {"forward": (amount, 0), "back": (-amount, 0), "left": (0, amount), "right": (0, -amount)}[command]
                         x, y = current.position_m[0]+dx, current.position_m[1]+dy
@@ -2527,7 +2520,7 @@ class PartSession:
         return 0
 
 
-def _number(value, low, high):
+def _number(value, low=-math.inf, high=math.inf):
     result = float(value)
     if not math.isfinite(result) or not low <= result <= high:
         raise ValueError(f"Value must be finite and in {low}..{high}")

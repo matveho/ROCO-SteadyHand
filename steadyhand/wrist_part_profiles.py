@@ -106,13 +106,11 @@ def validate_profile(profile, robot_config, *, expected_part=None):
     opening = profile.get("gripper_open_fraction")
     if opening is not None and not 0.0 <= _finite(opening, "gripper opening") <= 1.0:
         raise ValueError(f"{part}: gripper opening must be 0..1 (0 closed, 1 open)")
-    if not 0.060 <= profile["hover_clearance_m"] <= 0.150:
-        raise ValueError(f"{part}: hover clearance must be 60..150 mm")
-    if abs(profile["yaw_deg"]) > 45:
-        raise ValueError(f"{part}: yaw must be within 45 degrees of ready")
+    if profile["hover_clearance_m"] <= 0:
+        raise ValueError(f"{part}: hover clearance must be positive")
     grasp = profile.get("grasp_clearance_m")
-    if grasp is not None and not 0 <= _finite(grasp, "grasp clearance") < profile["hover_clearance_m"]:
-        raise ValueError(f"{part}: grasp clearance must be below hover and above surface")
+    if grasp is not None and not _finite(grasp, "grasp clearance") <= profile["hover_clearance_m"]:
+        raise ValueError(f"{part}: grasp clearance must be at or below hover")
     shape = _finite_vector(profile.get("image_shape"), 2, "image shape")
     for field in ("feature_uv", "goal_uv"):
         u, v = profile[field]
@@ -123,10 +121,9 @@ def validate_profile(profile, robot_config, *, expected_part=None):
     place = profile.get("place")
     if place is not None:
         _finite_vector(place.get("offset_board_xy_m"), 2, "place offset")
-        if not 0 <= _finite(place.get("clearance_m"), "place clearance") < profile["hover_clearance_m"]:
-            raise ValueError("place clearance must be below hover and above surface")
-        if abs(_finite(place.get("yaw_deg"), "place yaw")) > 45:
-            raise ValueError("place yaw must be within 45 degrees of ready")
+        if not _finite(place.get("clearance_m"), "place clearance") <= profile["hover_clearance_m"]:
+            raise ValueError("place clearance must be at or below hover")
+        _finite(place.get("yaw_deg"), "place yaw")
     corner_reference = profile.get("place_cv")
     if isinstance(corner_reference, dict) and corner_reference.get("method") == "white_board_corners_v1":
         _validate_place_corners(corner_reference)

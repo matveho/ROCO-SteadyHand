@@ -203,7 +203,7 @@ class FinalWorkflowTests(unittest.TestCase):
         approach = s.profile_pose(profile, "pick")
         template_path = wrist.ROOT / profile["template"]["path"]
         template_bytes = template_path.read_bytes()
-        commands = ["back 2", "depth 90", "grab manual", "yes", "return", "save"]
+        commands = ["back 2", "depth 105", "grab manual", "yes", "return", "save"]
         with mock.patch("builtins.input", side_effect=commands), \
                 mock.patch.object(wrist, "_crop_template") as crop, \
                 mock.patch.object(s, "_load_saved_feature") as load, \
@@ -215,7 +215,7 @@ class FinalWorkflowTests(unittest.TestCase):
             if key.startswith(("feature", "goal", "reference_match", "final_match", "place")) \
                     or key in ("template", "image_shape"):
                 self.assertEqual(saved[key], value, key)
-        self.assertAlmostEqual(saved["grasp_clearance_m"], .01)
+        self.assertAlmostEqual(saved["grasp_clearance_m"], -.005)
         np.testing.assert_allclose(s.profile_pose(saved, "pick").position_m, approach.position_m)
         np.testing.assert_allclose(s.profile_pose(saved, "pick", no_cv=True).position_m,
                                    s.successful_pickup_pose.position_m)
@@ -413,8 +413,10 @@ class FinalWorkflowTests(unittest.TestCase):
             self.assertEqual(saved.get("pickup_board"), original.get("pickup_board"))
             return {"enabled": True}
         s._optional_place_corner_teaching = mock.Mock(side_effect=teach)
-        with mock.patch("builtins.input", side_effect=["forward 5", "down 10", "release"]):
+        with mock.patch("builtins.input", side_effect=["forward 125", "down 65", "release"]):
             self.assertEqual(s.teach_drop(s.part, profile), 0)
+        saved = load_profiles(s.args.profiles, s.cfg)["parts"][s.part]
+        self.assertAlmostEqual(saved["place"]["clearance_m"], -.005)
         s._optional_place_corner_teaching.assert_called_once()
         self.assertEqual([v[0] for v in s.robot.trace].count("release"), 1)
 
@@ -921,10 +923,10 @@ class FinalWorkflowTests(unittest.TestCase):
                 mock.patch('builtins.input', side_effect=commands):
             self.assertEqual(s.teach(s.part), 1)
         np.testing.assert_allclose(s.robot.pose.position_m[:2],
-                                   [start.position_m[0] - .06, start.position_m[1]])
+                                   [start.position_m[0] - .06, start.position_m[1] - .02])
         self.assertTrue(any(np.linalg.norm(np.array(v[1].position_m[:2]) - start.position_m[:2]) > .06
                             for v in s.robot.trace if v[0] == 'move'))
-        self.assertEqual(len(s.history), 3)  # four accepted jogs, then undo; 31 mm rejected
+        self.assertEqual(len(s.history), 4)  # five accepted jogs, then undo
         self.assertNotIn('Adjustment exceeds 60 mm', self.output.getvalue())
 
     def test_faster_motion_preserves_requested_lower_speed_and_trajectory(self):

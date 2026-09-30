@@ -9,8 +9,8 @@
     "battery_size5",
     "rod_16mm",
     "usb_a",
-    "hdmi"
-    "battery_size1",
+    "hdmi",
+    "battery_size1"
   ],
   "retries_per_action": 2,
   "max_attempts_per_action": 3,

@@ -31,13 +31,28 @@ class WristProfileTests(unittest.TestCase):
             self.assertEqual(load_profiles(path, self.cfg)["parts"]["battery_size1"]["grasp_clearance_m"], 0.035)
             self.assertFalse(path.with_suffix(".json.tmp").exists())
 
-    def test_rejects_missing_hash_and_out_of_range_depth(self):
+    def test_rejects_missing_hash(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             profile = self.profile(root)
             profile["calibration_sha256"] = "bad"
             with self.assertRaises(ValueError):
                 save_profile(root / "p.json", self.cfg, profile)
+
+    def test_operator_depth_and_yaw_round_trip_without_surface_clamp(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            profile = self.profile(root)
+            profile.update(grasp_clearance_m=-.005, yaw_deg=90,
+                           place={"offset_board_xy_m": [.12, -.08], "clearance_m": -.010, "yaw_deg": -90})
+            path = root / "p.json"
+            save_profile(path, self.cfg, profile)
+            saved = load_profiles(path, self.cfg)["parts"]["battery_size1"]
+            self.assertEqual(saved, profile)
+            for invalid in (float('nan'), float('inf')):
+                profile['grasp_clearance_m'] = invalid
+                with self.assertRaises(ValueError):
+                    save_profile(path, self.cfg, profile)
 
     def test_shipped_profiles_keep_template_hashes_and_board_hashes(self):
         root = Path(__file__).resolve().parents[1]
