@@ -38,7 +38,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PROFILES = ROOT / "calibration" / "head_fallback_profiles.json"
 HOVER_CLEARANCE_M = 0.100
 DETECTION_RADIUS_M = 0.100
-SPEED_SCALE = 0.50
+SPEED_SCALE = 0.60
 CAN_INTERFACE = "can1"
 CAN_BITRATE = "1000000"
 
@@ -336,7 +336,7 @@ class HeadFallbackSession:
         for index in range(1, count + 1):
             waypoint = interpolate_pose(current, target, index / count)
             seed = self.robot._kinematics.solve(waypoint, seed)
-        move_tcp_segmented(self.robot, target, speed_scale=0.35 if slow else SPEED_SCALE,
+        move_tcp_segmented(self.robot, target, speed_scale=0.42 if slow else SPEED_SCALE,
                            max_translation_step_m=0.025, max_orientation_step_rad=0.12,
                            min_tcp_z_m=None)
 

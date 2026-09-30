@@ -57,6 +57,7 @@ class RemoteClearanceTests(unittest.TestCase):
             with self.subTest(slow=slow):
                 normal = self.moving_session(remote=False)
                 remote = self.moving_session()
+                normal.args.speed_scale = remote.args.speed_scale = .60
                 normal.move(pose(.508), slow=slow)
                 with mock.patch('builtins.input', return_value='') as prompt:
                     remote.move(pose(.508), slow=slow)
@@ -64,7 +65,7 @@ class RemoteClearanceTests(unittest.TestCase):
                 self.assertEqual(remote.robot._kinematics.solve.call_args_list,
                                  normal.robot._kinematics.solve.call_args_list)
                 self.assertEqual(len(remote.moves), 5)
-                self.assertTrue(all(speed == (.35 if slow else .38) for _, speed in remote.moves))
+                self.assertTrue(all(speed == (.42 if slow else .60) for _, speed in remote.moves))
                 remote.frame.assert_called_once_with('remote checkpoint before_lowering')
                 normal.frame.assert_not_called()
                 self.assertGreater(prompt.call_count, 0)

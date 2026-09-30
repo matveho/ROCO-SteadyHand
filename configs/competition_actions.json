@@ -18,7 +18,7 @@
   "retry_without_wrist_cv": true,
   "use_place_cv": true,
   "head_reacquire_on_failure": true,
-  "pipeline_speed_scale": 0.50,
+  "pipeline_speed_scale": 0.60,
   "task_clearance_mm": 100.0,
   "visual_center_backoff_mm": 15.0,
   "parts": {

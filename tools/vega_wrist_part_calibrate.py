@@ -371,7 +371,7 @@ class PartSession:
             end_clearance = target.position_m[2] - self.surface(*target.position_m[:2])
             if end_clearance < start_clearance - .0005:
                 self.remote_checkpoint("before_lowering", capture=True, target=target)
-        speed = min(.35, self.args.speed_scale) if slow else self.args.speed_scale
+        speed = min(.42, self.args.speed_scale) if slow else self.args.speed_scale
         try:
             move_tcp_segmented(self.robot, target, speed_scale=speed,
                                **MOTION_STEPS,
@@ -772,7 +772,7 @@ class PartSession:
                 self.remote_checkpoint("before_wrist_centering")
                 result = run_xy_servo(
                     self.robot, self.capture, floor_m=self.floor, goal_uv=self.goal,
-                    max_radius_m=.060, speed_scale=.55, event=self.event,
+                    max_radius_m=.060, speed_scale=.66, event=self.event,
                     checkpoint=self.remote_checkpoint if self.remote_safe else None,
                     waypoint_guard=self.remote_waypoint if self.remote_safe else None,
                     tracker_factory=lambda rgb, _: self._reacquire(rgb), surface_z=self.surface,
@@ -1365,7 +1365,7 @@ class PartSession:
                 self.robot, self.capture, floor_m=self.floor, goal_uv=goal,
                 probe_m=.006, gain=.35, max_step_m=.006, max_radius_m=.030,
                 tolerance_px=8.0, max_iterations=DEFAULT_CENTERING_ITERATIONS,
-                speed_scale=.55,
+                speed_scale=.66,
                 checkpoint=self.remote_checkpoint if self.remote_safe else None,
                 waypoint_guard=self.remote_waypoint if self.remote_safe else None,
                 event=self.event, surface_z=self.surface,
@@ -2475,7 +2475,7 @@ def main(argv=None):
     parser.add_argument("--no-viewer", action="store_true", help="Enter image pixels in terminal instead of Tk viewer")
     parser.add_argument("--confirm-head-motion", action="store_true")
     parser.add_argument("--confirm-physical-motion", action="store_true")
-    parser.add_argument("--speed-scale", type=float, default=.50)
+    parser.add_argument("--speed-scale", type=float, default=.60)
     parser.add_argument(
         "--remote-safe", action="store_true",
         help="normal motion settings; confirm below 40 mm and capture once before lowering",

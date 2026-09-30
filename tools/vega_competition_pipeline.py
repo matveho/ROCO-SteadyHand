@@ -52,7 +52,7 @@ DEFAULT_TASK_CLEARANCE_MM = 100.0
 # annotations.  Keep the source JSON immutable and apply this runtime correction
 # to every task point (pick/place/connect/grade) after board registration.
 TASK_FORWARD_OFFSET_M = 0.012
-DEFAULT_PIPELINE_SPEED_SCALE = 0.50
+DEFAULT_PIPELINE_SPEED_SCALE = 0.60
 COMPETITION_PLAN = ROOT / "configs" / "competition_plan.json"
 COMPETITION_ACTIONS = ROOT / "configs" / "competition_actions.json"
 

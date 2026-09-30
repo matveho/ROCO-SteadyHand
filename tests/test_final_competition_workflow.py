@@ -592,14 +592,15 @@ class FinalWorkflowTests(unittest.TestCase):
 
     def test_faster_motion_preserves_requested_lower_speed_and_trajectory(self):
         traces = []
-        for requested, slow, expected in ((.50, False, .50), (.50, True, .35), (.25, True, .25)):
+        for requested, slow, expected in ((.60, False, .60), (.60, True, .42), (.25, True, .25)):
             with self.subTest(requested=requested, slow=slow):
                 s, _ = self.session()
                 s.args.speed_scale = requested
                 start = s.robot.pose
-                target = Pose((start.position_m[0] + .01, *start.position_m[1:]),
+                target = Pose((*start.position_m[:2], start.position_m[2] - .06),
                               start.quaternion_wxyz)
                 s.move(target, slow=slow)
+                s.move(start, slow=slow)
                 moves = [v for v in s.robot.trace if v[0] == 'move']
                 self.assertTrue(moves)
                 self.assertTrue(all(v[2] == expected for v in moves))
