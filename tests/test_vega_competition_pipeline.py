@@ -13,6 +13,7 @@ from tools.vega_competition_pipeline import (
     _run_competition_action,
     _priority_competition_actions,
     _all_calibrated_competition_run,
+    _configured_competition_run,
     _sequence_indices,
     _prompt_next_location,
 )
@@ -279,6 +280,38 @@ class CompetitionPipelineTests(unittest.TestCase):
              mock.patch("tools.vega_competition_pipeline.load_bundle", return_value={"robot": {}}), \
              mock.patch("tools.vega_competition_pipeline.load_profiles", return_value={"parts": {"battery_size1": profile}}):
             self.assertEqual(_all_calibrated_competition_run(args, place_cv=False), 0)
+
+    def test_placement_cv_switches_protect_other_parts_in_every_competition_mode(self):
+        settings = _load_competition_actions()
+        profiles = {"parts": {part: {
+            "grasp_verified": True, "place_verified": True,
+            "place": {"clearance_m": .02}, "place_cv": {"enabled": True},
+        } for part in settings["order"]}}
+        for part, entry in settings["parts"].items():
+            entry.update(enabled=True, pick_enabled=True, place_enabled=True)
+            entry["use_place_cv"] = part in ("hdmi", "usb_a")
+        for mode in ("configured", "selected", "all"):
+            for global_cv in (True, False):
+                settings["use_place_cv"] = global_cv
+                args = type("Args", (), {"speed_scale": .38, "check_only": False})()
+                with self.subTest(mode=mode, global_cv=global_cv), \
+                     mock.patch("tools.vega_competition_pipeline._load_competition_actions", return_value=settings), \
+                     mock.patch("tools.vega_competition_pipeline.load_bundle", return_value={"robot": {}}), \
+                     mock.patch("tools.vega_competition_pipeline.load_profiles", return_value=profiles), \
+                     mock.patch("tools.vega_competition_pipeline._run_competition_action", return_value=0) as runner:
+                    if mode == "all":
+                        code = _all_calibrated_competition_run(args, place_cv=True)
+                    else:
+                        code = _configured_competition_run(args, selected_parts=(
+                            settings["order"] if mode == "selected" else None))
+                    self.assertEqual(code, 0)
+                    self.assertEqual(runner.call_count, 9)
+                    for call in runner.call_args_list:
+                        part = call.args[1]
+                        self.assertEqual(call.args[2], "pick_place")
+                        self.assertEqual(call.kwargs["place_cv"],
+                                         global_cv and part in ("hdmi", "usb_a"))
+                        self.assertFalse(call.kwargs["no_cv"])
 
     def test_possible_held_part_is_never_retried(self):
         args = type("Args", (), {"speed_scale": 0.38})()

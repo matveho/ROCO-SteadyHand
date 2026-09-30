@@ -1300,6 +1300,11 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
     return 0
 
 
+def _placement_cv_enabled(settings, part, profile):
+    return bool(settings["use_place_cv"] and settings["parts"][part]["use_place_cv"]
+                and (profile.get("place_cv") or {}).get("enabled", False))
+
+
 def _configured_competition_run(args, *, selected_parts=None, action_override=None):
     """Run the single JSON-configured, calibration-gated competition routine."""
     _snapshot_execution_offsets(args)
@@ -1349,6 +1354,8 @@ def _configured_competition_run(args, *, selected_parts=None, action_override=No
         for part, _ in actions
     ), flush=True)
     print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a in actions) or "none"), flush=True)
+    print("Placement CV: " + (", ".join(p for p, a in actions if a == "pick_place"
+          and _placement_cv_enabled(settings, p, profiles["parts"][p])) or "none"), flush=True)
     for part, reason in skipped:
         print(f"Skipped: {part} ({reason})", flush=True)
     if not actions:
@@ -1370,11 +1377,7 @@ def _configured_competition_run(args, *, selected_parts=None, action_override=No
         # Use the verified saved release pose until menu 14 has produced a
         # placement reference; never make a held part depend on an absent
         # template during a non-interactive competition run.
-        use_place_cv = bool(
-            settings["use_place_cv"]
-            and part_settings["use_place_cv"]
-            and profile.get("place_cv", {}).get("enabled", False)
-        )
+        use_place_cv = _placement_cv_enabled(settings, part, profile)
         result = _run_competition_action(
             args, part, action,
             retries=part_settings["max_attempts"] - 1,
@@ -1414,10 +1417,10 @@ def _all_calibrated_competition_run(args, *, place_cv=False):
             profile.get("place") and profile.get("place_verified")
         ) else "pick"
         actions.append((part, action, bool(
-            place_cv and action == "pick_place" and profile.get("place_cv", {}).get("enabled", False)
+            place_cv and action == "pick_place" and _placement_cv_enabled(settings, part, profile)
         )))
     print("\nALL CALIBRATED COMPETITION RUN", flush=True)
-    print("Placement CV:", "enabled where taught" if place_cv else "disabled", flush=True)
+    print("Placement CV: " + (", ".join(p for p, _, use_cv in actions if use_cv) or "none"), flush=True)
     print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a, _ in actions) or "none"), flush=True)
     if not actions:
         print("No verified pickup profiles are available.", file=sys.stderr, flush=True)

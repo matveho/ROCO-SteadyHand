@@ -94,7 +94,7 @@ class CompetitionMenuTests(unittest.TestCase):
         settings = pipeline._load_competition_actions()
         settings['order'] = ['battery_size1', 'bolt_8mm']
         settings['pipeline_speed_scale'] = .31
-        settings['parts']['battery_size1'].update(enabled=False, pick_enabled=False)
+        settings['parts']['battery_size1'].update(enabled=False, pick_enabled=False, use_place_cv=True)
         settings['parts']['bolt_8mm'].update(mode='pick_place', use_wrist_pick_cv=False)
         self.profiles['parts']['bolt_8mm']['place_verified'] = True
         before = copy.deepcopy(settings)
@@ -135,6 +135,7 @@ class CompetitionMenuTests(unittest.TestCase):
         settings = pipeline._load_competition_actions()
         settings['order'] = ['battery_size1', 'bolt_8mm']
         settings['parts']['battery_size1']['max_attempts'] = 2
+        settings['parts']['battery_size1']['use_place_cv'] = True
         settings['head_reacquire_on_failure'] = False
         settings['retry_without_wrist_cv'] = False
         for result, count in ((-1, 2), (2, 1), (3, 1)):
