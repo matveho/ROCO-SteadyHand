@@ -109,7 +109,7 @@ class CompetitionPipelineTests(unittest.TestCase):
                 )
                 return 0
             (output / "run_summary.json").write_text(
-                json.dumps({"status": "failed", "holding_may_be_true": False})
+                json.dumps({"status": "failed", "holding_may_be_true": False, "automatic_continuation_safe": True})
             )
             return 2
         run_once.calls = 0
@@ -276,7 +276,7 @@ class CompetitionPipelineTests(unittest.TestCase):
             )
         self.assertEqual(runner.call_count, 1)
 
-    def test_exception_from_action_is_bounded_and_operator_controlled(self):
+    def test_unknown_exception_without_safe_summary_stops_automatic_motion(self):
         args = type("Args", (), {"speed_scale": 0.38})()
         with mock.patch(
             "tools.vega_competition_pipeline.run_wrist_part_calibration",
@@ -284,7 +284,7 @@ class CompetitionPipelineTests(unittest.TestCase):
         ), mock.patch("builtins.input", return_value="s"):
             self.assertEqual(
                 _run_competition_action(args, "battery_size1", "pick_place", retries=1),
-                -1,
+                2,
             )
 
 

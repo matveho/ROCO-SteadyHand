@@ -86,6 +86,17 @@ def _load_manual(path, cfg):
     plane["axis_dot_raw"] = manual["axis_dot_raw"]
     plane["axis_angle_error_deg"] = manual["axis_angle_error_deg"]
     plane["calibration_path"] = manual["path"]
+    from steadyhand.board_relative import reference_from_calibration
+    plane["calibration_sha256"] = manual["sha256"]
+    plane["calibration_board_reference"] = reference_from_calibration(manual)
+    plane["calibration_camera_board"] = manual["raw"].get("camera_board_read")
+    plane["calibration_board_corners_xy"] = {
+        label: list(sample["tip_r_pose"]["position_m"][:2])
+        for label, sample in (manual["raw"].get("samples") or {}).items()
+        if label in ("TOP_RIGHT", "BOTTOM_RIGHT", "BOTTOM_LEFT")
+        and isinstance(sample.get("tip_r_pose", {}).get("position_m"), list)
+    }
+    plane["registration"] = {"status": "reference", "source": manual["path"]}
     return (
         manual["center_base_xy_m"],
         manual["board_x_unit_base_xy"],

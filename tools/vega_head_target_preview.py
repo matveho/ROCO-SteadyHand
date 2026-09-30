@@ -198,12 +198,20 @@ def main(argv=None):
         scene = _capture_downward_head_frame(robot, floor_m=floor, bundle=bundle,
             checkpoint=checkpoint, output=output)
         updated = _runtime_from_board_scene(runtime, scene)
-        fresh_registration = updated is not runtime
+        fresh_registration = updated[2][3].get("registration", {}).get("status") == "fresh"
+        if "registration" not in updated[2][3]:
+            fresh_registration = updated is not runtime  # compatibility with old saved fixtures
+        if not fresh_registration and "registration" in updated[2][3]:
+            print("Board fit rejected; capturing one more head image before review.", flush=True)
+            scene = _capture_downward_head_frame(robot, floor_m=floor, bundle=bundle,
+                checkpoint=checkpoint, output=output)
+            updated = _runtime_from_board_scene(runtime, scene)
+            fresh_registration = updated[2][3].get("registration", {}).get("status") == "fresh"
         runtime = updated
         result["fresh_board_registration_accepted"] = fresh_registration
         # Preserve the same validated physical axes as teaching/competition.
         physical_task_data = dict(task_data, task_coordinate_mirror_y=False)
-        targets = _task_targets(runtime, physical_task_data, .100)
+        targets = _task_targets(runtime, physical_task_data, .100, use_profiles=False)
         from tools.vega_head_fallback import match_expected_parts
         observation = match_expected_parts(scene, runtime, targets, task_data=physical_task_data)[args.part]
         result.update({"scene": scene, "head_observation": observation})

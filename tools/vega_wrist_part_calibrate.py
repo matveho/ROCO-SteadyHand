@@ -29,6 +29,7 @@ from steadyhand.executor import move_tcp_segmented, preflight_tcp_segmented
 from steadyhand.kinematics import IKError
 from steadyhand.execution_offsets import load_offsets, parse_offsets, describe_offsets
 from steadyhand.geometry import matrix_to_quaternion, quaternion_to_matrix
+from steadyhand.board_relative import snapshot
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
@@ -50,6 +51,10 @@ ROOT = Path(__file__).resolve().parents[1]
 COMPETITION_ACTIONS = ROOT / "configs" / "competition_actions.json"
 GOAL_CLICK_MAX_ERROR_PX = 50.0
 MOTION_STEPS = dict(max_translation_step_m=.020, max_orientation_step_rad=.08)
+
+
+class GripNotVerifiedError(RuntimeError):
+    """Gripper completed normally but did not report a grasp."""
 
 
 class PickupPreflightError(IKError):
@@ -198,6 +203,10 @@ class PartSession:
         self.remote_safe = bool(getattr(args, "remote_safe", False))
         self.remote_checkpoint_index = 0
         self.place_cv_settings = None
+        self.reference_pose = None
+        self.successful_pickup_pose = None
+        self.motion_faulted = False
+        self.automatic_continuation_safe = False
 
     def start(self):
         self.status = "starting"
@@ -223,6 +232,11 @@ class PartSession:
                 "part": self.part,
                 "action": self.action,
                 "holding_may_be_true": bool(self.holding),
+                "automatic_continuation_safe": bool(getattr(self, "automatic_continuation_safe", False)
+                                                     and not getattr(self, "motion_faulted", False)
+                                                     and not self.holding),
+                "board_reference": (snapshot(self.runtime[2])
+                                    if getattr(self, "runtime", None) is not None else None),
                 "last_error": self.last_error,
                 "execution_offsets": self.execution_offsets.as_dict() if getattr(self, "execution_offsets", None) else None,
                 "coarse_xy_m": list(self.coarse.position_m[:2]) if hasattr(self, "coarse") else None,
@@ -248,35 +262,29 @@ class PartSession:
     def retake(self):
         if self.holding:
             raise RuntimeError("Retake blocked while a part may be held")
-        from tools.vega_competition_pipeline import _capture_downward_head_frame, _load_runtime, _runtime_from_board_scene, _task_targets
+        from tools.vega_competition_pipeline import _capture_registered_board, _load_runtime, _task_targets
         runtime = _load_runtime()
+        if self.runtime is not None and (self.runtime[2][3].get("calibration_sha256")
+                                        == runtime[2][3].get("calibration_sha256")):
+            # A rejected retake must retain this session's last accepted pose,
+            # not jump back to the board position in the original JSON.
+            runtime = runtime[0], runtime[1], self.runtime[2], self.runtime[3]
         self.runtime = runtime  # Clearance model is needed before camera-clear.
-        scene = _capture_downward_head_frame(
-            self.robot, floor_m=self.floor, bundle=runtime[0], output=self.output,
+        self.runtime, scene = _capture_registered_board(
+            self.robot, runtime, floor_m=self.floor, output=self.output,
             checkpoint=self.remote_checkpoint if self.remote_safe else None,
         )
-        self.runtime = _runtime_from_board_scene(runtime, scene)
         ready_q, _ = configured_right_preset(self.cfg, "right_ready")
         self.remote_checkpoint("before_right_ready")
         self.robot.move_joints(ready_q, speed_scale=self.args.speed_scale)
         self.remote_checkpoint("after_right_ready")
-        # The reflected task frame is retained for the verified competition
-        # path (where saved arm hovers are preferred).  Teaching and release
-        # setup must use the physically validated frame, however: these are
-        # the paths that create new coarse/place poses when no saved profile
-        # exists.  Without this split, option 3/10 sends the arm to the
-        # mirror image while option 6 appears correct because it uses an old
-        # saved hover.
+        # All menus share the reviewed physical task orientation. Saved
+        # profiles add board-relative approach/grasp corrections below.
         teaching_task_data = dict(self.runtime[1])
-        # A fresh head image is still captured for board registration, but its
-        # generic dark-object association must not replace a verified physical
-        # wrist hover.  That association was the source of the mirrored
-        # competition target.  The reviewed task map shifts with the live
-        # board center; saved profiles remain authoritative for each part.
         teaching_frame_override = not getattr(self.args, "head_reacquire", False)
         teaching_task_data["task_coordinate_mirror_y"] = False
         print("WRIST TARGET FRAME: validated physical orientation (task_coordinate_mirror_y=false).", flush=True)
-        self.targets = _task_targets(self.runtime, teaching_task_data, .100)
+        self.targets = _task_targets(self.runtime, teaching_task_data, .100, use_profiles=False)
         # During teaching/drop setup, do not let the generic dark-object
         # association select a similarly shaped object on the reflected side
         # of the board.  The reviewed task map (or a saved physical hover in
@@ -328,10 +336,14 @@ class PartSession:
                 json.dumps(self.head_observations, indent=2, default=str) + "\n",
                 encoding="utf-8",
             )
+        from steadyhand.board_relative import snapshot
+        scene["registered_board_reference"] = snapshot(self.runtime[2])
+        self.event("board_reference", {"board_reference": scene["registered_board_reference"]})
         scene_path = self.output / f"board_{time.time_ns()}.json"
         scene_path.write_text(json.dumps(scene, indent=2, default=str) + "\n")
         self.board_scene_paths.append(scene_path.name)
-        print("FRESH BOARD REGISTERED; RIGHT_READY reached.", flush=True)
+        status = self.runtime[2][3].get("registration", {}).get("status", "reference")
+        print(f"BOARD FRAME: {status.upper()}; RIGHT_READY reached.", flush=True)
 
     def surface(self, x, y):
         from tools.vega_task_coordinate_reachability import calibrated_surface_z
@@ -350,10 +362,14 @@ class PartSession:
             if end_clearance < start_clearance - .0005:
                 self.remote_checkpoint("before_lowering", capture=True, target=target)
         speed = .25 if slow else self.args.speed_scale
-        move_tcp_segmented(self.robot, target, speed_scale=speed,
-                           **MOTION_STEPS,
-                           waypoint_guard=self.remote_waypoint if self.remote_safe else None,
-                           min_tcp_z_m=None)
+        try:
+            move_tcp_segmented(self.robot, target, speed_scale=speed,
+                               **MOTION_STEPS,
+                               waypoint_guard=self.remote_waypoint if self.remote_safe else None,
+                               min_tcp_z_m=None)
+        except Exception:
+            self.motion_faulted = True
+            raise
 
     def remote_waypoint(self, target):
         from steadyhand.remote_motion import needs_low_clearance_confirmation
@@ -575,6 +591,7 @@ class PartSession:
             # Preserve the pre-servo reference: a final aligned frame may
             # contain the jaw over the part and is a poor global template.
             self.reference_rgb = rgb.copy()
+            self.reference_pose = self.robot.get_tcp_pose()
             self.reference_feature = tuple(float(v) for v in feature)
             self.reference_match_score = float(score)
             self.goal = None
@@ -686,7 +703,7 @@ class PartSession:
                 f"= {tuple(round(v, 1) for v in self.goal)}",
                 flush=True,
             )
-        reference = _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz
+        reference = self.robot.get_tcp_pose().quaternion_wxyz
         self.alignment_verified = False
         # Centering is deliberately retried with a gentler controller.  The
         # probe/return phase is sensitive to wrist-camera jitter, especially
@@ -760,6 +777,10 @@ class PartSession:
                 # ``grab manual``.  In particular, do not issue a blind
                 # return/retry after a missed physical waypoint.
                 failure_text = str(exc).lower()
+                if "tcp missed servo waypoint" in failure_text:
+                    self.motion_faulted = True
+                    if getattr(self.args, "competition", False):
+                        raise
                 if (
                     "tcp missed servo waypoint" in failure_text
                     or "centering stalled" in failure_text
@@ -806,6 +827,29 @@ class PartSession:
         self.tracker.locate(rgb)
         return self.tracker
 
+    def profile_pose(self, profile, action, *, no_cv=False, clearance=.100):
+        from steadyhand.board_relative import resolve_profile_target
+        nominal = self.targets[f"task.{self.part or profile['part']}.{action}"]
+        if not profile:
+            return nominal
+        if action == "pick" and not profile.get("pickup_board"):
+            print(f"LEGACY BOARD REFERENCE ASSUMED for {self.part}: "
+                  "run vega_migrate_board_profiles.py to recover teaching logs; verify hover.", flush=True)
+        xy, quat = resolve_profile_target(profile, self.runtime[2], self.runtime[3],
+                                           nominal, action=action, no_cv=no_cv)
+        return Pose((*xy, self.surface(*xy) + clearance), quat)
+
+    def pickup_record(self):
+        from steadyhand.board_relative import snapshot, make_record, record_target
+        reference = snapshot(self.runtime[2])
+        approach = self.reference_pose or self.coarse
+        grasp = self.successful_pickup_pose
+        if grasp is None:
+            raise ValueError("No successful pickup pose recorded in this teaching session")
+        return make_record(reference,
+            approach=record_target(reference, approach, source="feature_image_TCP"),
+            grasp=record_target(reference, grasp, source="confirmed_grasp_hover_TCP"))
+
     def begin_part(self, part, profile=None, *, initial_yaw=None, competition=False,
                    no_cv=False):
         self.part, self.history = part, []
@@ -814,39 +858,34 @@ class PartSession:
         self.alignment_fallback_used = False
         self.calibration_hash_mismatch = False
         validate_task_coordinate_extent(self.runtime[1], names=[f"{part}.pick"])
+        self.successful_pickup_pose = None
+        self.reference_pose = None
         self.yaw = float(profile["yaw_deg"]) if profile else float(initial_yaw or 0.0)
-        coarse = self.targets[f"task.{part}.pick"]
-        if getattr(self.args, "mode", "calibrate") == "calibrate" and profile:
-            saved_xy = profile.get("coarse_xy_m")
-            if isinstance(saved_xy, (list, tuple)) and len(saved_xy) == 2:
-                sx, sy = (float(v) for v in saved_xy)
-                coarse = Pose(
-                    (sx, sy, self.surface(sx, sy) + float(profile.get("hover_clearance_m", .100))),
-                    self.runtime[3].quaternion_wxyz,
-                )
-                print(
-                    "CALIBRATION START: using the part's last verified coarse hover "
-                    f"({sx:.4f}, {sy:.4f}) m",
-                    flush=True,
-                )
-        elif competition and profile and not getattr(self.args, "head_reacquire", False):
-            saved_xy = profile.get("coarse_xy_m")
-            if isinstance(saved_xy, (list, tuple)) and len(saved_xy) == 2:
-                sx, sy = (float(v) for v in saved_xy)
-                coarse = Pose(
-                    (sx, sy, self.surface(sx, sy) + float(profile.get("hover_clearance_m", .100))),
-                    self.runtime[3].quaternion_wxyz,
-                )
-                print(
-                    "COMPETITION COARSE HOVER: saved verified physical pose "
-                    f"({sx:.4f}, {sy:.4f}) m",
-                    flush=True,
-                )
-        self.coarse = coarse
+        nominal = self.targets[f"task.{part}.pick"]
+        coarse = self.profile_pose(profile, "pick", no_cv=False) if profile else _yaw_pose(nominal, self.yaw)
+        self.grasp_target = self.profile_pose(profile, "pick", no_cv=True) if profile else coarse
         if getattr(self.args, "head_reacquire", False):
             observation = self.head_observations.get(part, {})
             if observation.get("selection") != "head_detection":
                 raise ValueError("Head reacquisition has no unique nearby detection; part skipped")
+            if profile:
+                # A head detector observes the *part center*, not the taught
+                # jaw/TCP offset. Apply only its residual displacement to both
+                # projected taught poses; don't discard the successful grasp.
+                delta = [float(observation["selected_xy_m"][i]) -
+                         float(observation["expected_xy_m"][i]) for i in range(2)]
+                if not all(math.isfinite(v) for v in delta) or math.hypot(*delta) > .060:
+                    raise ValueError("Head part displacement exceeds the bounded local correction")
+                def shifted(pose):
+                    x, y = (pose.position_m[i] + delta[i] for i in range(2))
+                    return Pose((x, y, self.surface(x, y) + .100), pose.quaternion_wxyz)
+                coarse, self.grasp_target = shifted(coarse), shifted(self.grasp_target)
+        self.coarse = coarse
+        print(f"BOARD-RELATIVE {part} APPROACH: {tuple(round(v, 4) for v in coarse.position_m)}", flush=True)
+        print(f"BOARD-RELATIVE {part} GRASP HOVER: {tuple(round(v, 4) for v in self.grasp_target.position_m)}", flush=True)
+        self.event("resolved_pickup", {"approach_tcp": list(coarse.position_m),
+            "grasp_hover_tcp": list(self.grasp_target.position_m),
+            "registration": self.runtime[2][3].get("registration")})
         if profile:
             # A field recalibration changes the board surface/registration hash.
             # It must not invalidate a previously verified grasp profile: the
@@ -887,63 +926,15 @@ class PartSession:
             self._set_gripper_fraction(opening)
         self.coarse = coarse
         if no_cv:
-            # First try the exact saved arm hover from teaching.  This is the
-            # fastest no-camera path and remains useful when board vision or
-            # the wrist stream is unavailable.  If the board moved enough for
-            # that pose to be unreachable, fall back to the live task target.
-            recorded = None
-            if profile and profile.get("coarse_xy_m"):
-                rx, ry = (float(v) for v in profile["coarse_xy_m"])
-                recorded = Pose(
-                    (rx, ry, self.surface(rx, ry) + float(profile.get("hover_clearance_m", .100))),
-                    self.runtime[3].quaternion_wxyz,
-                )
-                if self.yaw:
-                    recorded = _yaw_pose(recorded, self.yaw)
-            # A changed board calibration means the board may have moved.  In
-            # that case, prefer the freshly registered task target; the saved
-            # teaching hover remains a bounded fallback if the live target is
-            # unreachable.  With an unchanged calibration preserve the proven
-            # saved-hover-first behavior.
-            detected_live_xy = (
-                self.head_observations.get(part, {}).get("selection")
-                == "head_detection"
-            )
-            if competition and recorded is not None:
-                # Competition must preserve the physically taught hover.  A
-                # live board target is only a bounded fallback if that exact
-                # saved pose cannot be reached.
-                if getattr(self.args, "head_reacquire", False):
-                    candidates = (("fresh head-camera task target", coarse),
-                                  ("recorded arm hover fallback", recorded))
-                else:
-                    candidates = (("recorded arm hover", recorded),
-                                  ("live reviewed task target fallback", coarse))
-            elif self.calibration_hash_mismatch or detected_live_xy:
-                candidates = (("live head-camera target", coarse),
-                              ("recorded arm hover fallback", recorded))
-            else:
-                candidates = (("recorded arm hover", recorded), ("live task target", coarse))
-            last_error = None
-            for label, target in candidates:
-                if target is None:
-                    continue
-                try:
-                    self.remote_checkpoint("before_coarse_hover")
-                    self.move(target)
-                    self.coarse = target
-                    self.no_cv_used_recorded = label == "recorded arm hover"
-                    print(f"NO-CV COARSE HOVER: {label}", flush=True)
-                    self.remote_checkpoint("coarse_hover")
-                    return None
-                except (RuntimeError, ValueError) as exc:
-                    last_error = exc
-                    print(f"NO-CV COARSE HOVER FAILED ({label}): {exc}", flush=True)
-            raise last_error or RuntimeError("no reachable no-CV coarse hover")
+            self.remote_checkpoint("before_coarse_hover")
+            self.move(self.grasp_target)
+            self.coarse = self.grasp_target
+            self.no_cv_used_recorded = bool(profile)
+            print("NO-CV COARSE HOVER: projected taught grasp", flush=True)
+            self.remote_checkpoint("coarse_hover")
+            return None
         self.remote_checkpoint("before_coarse_hover")
         self.move(coarse)
-        if self.yaw:
-            self.move(_yaw_pose(coarse, self.yaw), slow=True)
         self.coarse = coarse
         self.remote_checkpoint("coarse_hover")
         if profile:
@@ -958,6 +949,7 @@ class PartSession:
                     initial_uv=profile.get("feature_uv"),
                 )
                 self.reference_rgb = rgb.copy()
+                self.reference_pose = self.robot.get_tcp_pose()
                 self.reference_feature = tuple(profile.get("feature_uv") or self.tracker.uv)
                 self.reference_match_score = profile.get("reference_match_score")
                 self.goal = tuple(profile["goal_uv"]) if profile.get("goal_uv") is not None else None
@@ -989,12 +981,13 @@ class PartSession:
                     "alignment_fallback",
                     {
                         "reason": str(exc),
-                        "fallback": "saved_coarse_hover",
+                        "fallback": "projected_taught_grasp",
                         "coarse_xy_m": list(self.coarse.position_m[:2]),
                     },
                 )
+                self.move(self.grasp_target, slow=True)
                 print(
-                    "WRIST FEATURE MATCH FAILED; using the saved coarse hover "
+                    "WRIST FEATURE MATCH FAILED; using the projected taught grasp "
                     "without visual centering.",
                     flush=True,
                 )
@@ -1002,27 +995,34 @@ class PartSession:
         else:
             return None
         try:
-            return self.localize()
+            result = self.localize()
+            if competition and not self.alignment_verified:
+                if self.motion_faulted:
+                    raise RuntimeError("Visual servo motion failed; automatic grasp blocked")
+                self.move(self.grasp_target, slow=True)
+                self.alignment_fallback_used = True
+                print("CENTERING UNVERIFIED: returned to projected taught grasp", flush=True)
+            return result
         except (RuntimeError, ValueError) as exc:
-            if not competition or not _is_visual_alignment_failure(exc):
+            if self.motion_faulted or not competition or not _is_visual_alignment_failure(exc):
                 raise
             # The saved coarse board target is the remembered physical pose.
             # Return there, skip visual servoing, and let the bounded grasp use
             # that pose.  This is only a competition fallback; teaching still
             # requires successful centering or explicit supervised override.
-            self.move(self.coarse, slow=True)
+            self.move(self.grasp_target, slow=True)
             self.alignment_fallback_used = True
             self.alignment_verified = False
             self.event(
                 "alignment_fallback",
                 {
                     "reason": str(exc),
-                    "fallback": "saved_coarse_hover",
+                    "fallback": "projected_taught_grasp",
                     "coarse_xy_m": list(self.coarse.position_m[:2]),
                 },
             )
             print(
-                "VISUAL CENTERING FAILED; returned to the saved coarse hover and "
+                "VISUAL CENTERING FAILED; returned to the projected taught grasp and "
                 "will attempt the grasp there without further centering.",
                 flush=True,
             )
@@ -1202,12 +1202,17 @@ class PartSession:
             "result": result,
         })
         print("GRIP RESULT", json.dumps(result, default=str), flush=True)
-        if not isinstance(result, dict) or result.get("gripped") is not True:
-            raise RuntimeError("Grip was not verified; stopped at grasp height for inspection")
+        if not isinstance(result, dict) or not isinstance(result.get("gripped"), bool):
+            raise RuntimeError("Gripper result is unknown; holding state requires inspection")
+        if result.get("gripped") is not True:
+            raise GripNotVerifiedError("Grip was not verified; stopped at grasp height for inspection")
         self.remote_checkpoint("grip_verified")
         self.remote_checkpoint("before_lift")
         self.move(hover, slow=True)
         self.remote_checkpoint("lifted_with_part")
+        self.successful_pickup_pose = hover
+        self.event("successful_pickup_pose", {"hover_tcp": list(hover.position_m),
+            "quaternion_wxyz": list(hover.quaternion_wxyz)})
         return result
 
     def return_part(self, clearance, *, partial_release=False):
@@ -1337,13 +1342,15 @@ class PartSession:
     def place(self, settings, *, partial_release=False, use_place_cv=False):
         if not self.holding or settings is None:
             raise ValueError("Place needs a verified held part and taught place settings")
-        target = self.targets[f"task.{self.part}.place"]
-        _, ux, uy, _ = self.runtime[2]
-        dx, dy = settings["offset_board_xy_m"]
-        x = target.position_m[0] + ux[0]*dx + uy[0]*dy
-        y = target.position_m[1] + ux[1]*dx + uy[1]*dy
-        quat = _yaw_pose(self.runtime[3], settings["yaw_deg"]).quaternion_wxyz
-        hover = Pose((x, y, self.surface(x, y)+.100), quat)
+        profile = dict(self.profiles["parts"][self.part], place=settings)
+        from steadyhand.vision.placement import placement_digest
+        previous_place = self.profiles["parts"][self.part].get("place")
+        if previous_place and placement_digest(previous_place) != placement_digest(settings):
+            profile.pop("placement_board", None)
+            profile.pop("place_release_tcp_m", None)
+        hover = self.profile_pose(profile, "place")
+        x, y = hover.position_m[:2]
+        quat = hover.quaternion_wxyz
         release = Pose((x, y, self.surface(x, y)+settings["clearance_m"]), quat)
         # Validate placement descent before transporting the held part.
         seed = self.robot._read_joint_positions()
@@ -1416,6 +1423,10 @@ class PartSession:
         profile["place"] = settings
         profile["place_verified"] = True
         profile["place_release_tcp_m"] = list(pose.position_m)
+        from steadyhand.board_relative import snapshot, make_record, record_target
+        reference = snapshot(self.runtime[2])
+        profile["placement_board"] = make_record(reference,
+            release=record_target(reference, pose, source="measured_release_TCP"))
         profile["place_release_gripper"] = release_result
         if getattr(self, "drop_release_photo", None):
             profile["place_release_photo"] = self.drop_release_photo
@@ -1524,19 +1535,7 @@ class PartSession:
         self.grasp_verified = True
         self.remote_checkpoint("drop_pickup_complete")
 
-        nominal = self.targets[f"task.{part}.place"]
-        saved_place = profile.get("place")
-        if saved_place:
-            _, ux, uy, _ = self.runtime[2]
-            dx, dy = saved_place["offset_board_xy_m"]
-            x = nominal.position_m[0] + ux[0] * dx + uy[0] * dy
-            y = nominal.position_m[1] + ux[1] * dx + uy[1] * dy
-            nominal = Pose((x, y, self.surface(x, y) + .100), nominal.quaternion_wxyz)
-        hover = Pose(
-            (nominal.position_m[0], nominal.position_m[1],
-             self.surface(nominal.position_m[0], nominal.position_m[1]) + .100),
-            _yaw_pose(self.runtime[3], self.yaw).quaternion_wxyz,
-        )
+        hover = self.profile_pose(profile, "place")
         self.remote_checkpoint("before_drop_hover")
         self.move(hover)
         self.remote_checkpoint("drop_hover_100mm")
@@ -1787,12 +1786,15 @@ class PartSession:
                         "template": {"path": str(template_path.relative_to(ROOT)), "sha256": file_sha256(template_path), "template_uv": list(anchor)},
                         "localization_result": result, "created_at_utc": datetime.now(timezone.utc).isoformat(),
                     }
+                    profile["pickup_board"] = self.pickup_record()
                     if place_changed:
                         # A new physical release pose invalidates any image
                         # reference taught for the previous pose.  Keep the
                         # pickup fields, but require menu 14 to teach a new
                         # placement reference before CV can be enabled again.
                         profile.pop("place_cv", None)
+                        profile.pop("placement_board", None)
+                        profile.pop("place_release_tcp_m", None)
                     self.profiles = save_profile(_resolve(self.args.profiles), self.cfg, profile)
                     handoff = self.output / f"{part}_handoff.json"
                     handoff.write_text(json.dumps(profile, indent=2, default=str)+"\n")
@@ -2013,13 +2015,9 @@ class PartSession:
             return 1
         self.remote_checkpoint("place_cv_pickup_complete")
         settings = profile["place"]
-        target = self.targets[f"task.{part}.place"]
-        _, ux, uy, _ = self.runtime[2]
-        dx, dy = settings["offset_board_xy_m"]
-        x = target.position_m[0] + ux[0] * dx + uy[0] * dy
-        y = target.position_m[1] + ux[1] * dx + uy[1] * dy
-        quat = _yaw_pose(self.runtime[3], settings["yaw_deg"]).quaternion_wxyz
-        hover = Pose((x, y, self.surface(x, y) + .100), quat)
+        hover = self.profile_pose(profile, "place")
+        x, y = hover.position_m[:2]
+        quat = hover.quaternion_wxyz
         release = Pose((x, y, self.surface(x, y) + settings["clearance_m"]), quat)
         self.remote_checkpoint("place_cv_before_hover")
         self.move(hover, slow=True)
@@ -2122,9 +2120,29 @@ class PartSession:
         self.begin_part(part, profile, competition=competition, no_cv=no_cv)
         if action == "localize":
             return 0
-        if not competition and input("Type grab to test the taught descent/grip/lift; anything else cancels: ").strip() != "grab":
-            self.status = "cancelled_before_grip"
-            return 1
+        manual = False
+        if not competition:
+            if not self.alignment_verified and not no_cv:
+                print("CV alignment was not verified. Inspect the current hover; "
+                      "'grab manual' explicitly approves it, 'center' retries localization.", flush=True)
+            while True:
+                choice = input("grab / grab manual / center / image / abort: ").strip().lower()
+                if choice == "image":
+                    self.frame("supervised pickup review")
+                    continue
+                if choice == "center":
+                    self.localize()
+                    continue
+                if choice == "grab manual":
+                    manual = True
+                    break
+                if choice == "grab":
+                    if not no_cv and not self.alignment_verified:
+                        print("Use 'grab manual' to approve this unverified hover, or center/image/abort.")
+                        continue
+                    break
+                self.status = "cancelled_before_grip"
+                return 1
         _, pickup_clearance = self._execution_target(
             "pickup", self.robot.get_tcp_pose(), profile["grasp_clearance_m"]
         )
@@ -2132,11 +2150,11 @@ class PartSession:
             self.grab(
                 pickup_clearance,
                 allow_unverified=bool(
-                    no_cv or (competition and self.alignment_fallback_used)
+                    no_cv or manual or (competition and self.alignment_fallback_used)
                 ),
             )
         except (RuntimeError, ValueError) as exc:
-            if competition and self.holding:
+            if competition and self.holding and isinstance(exc, GripNotVerifiedError) and not self.motion_faulted:
                 # The grasp routine marks holding before contact so an
                 # uncertain result is never silently retried.  Make the
                 # competition path self-cleaning when a safe return is still
@@ -2160,6 +2178,7 @@ class PartSession:
                     )
                     return 3
                 self.status = "pick_failed_returned"
+                self.automatic_continuation_safe = True
                 return 2
             raise
         if not competition:
@@ -2311,7 +2330,7 @@ def main(argv=None):
     if cfg.get("working_arm") != WORKING_ARM or cfg["kinematics"].get("ee_frame") != TCP_FRAME:
         raise ValueError("Requires right arm / tip_r")
     cfg["allow_robot_init_head_motion"] = True
-    cfg["auto_clear_software_estop_on_connect"] = True
+    cfg["auto_clear_software_estop_on_connect"] = not args.competition
     cfg["kinematics"]["near_target_fallback"] = True
     # The right-arm state stream routinely settles a few milliradians outside
     # the nominal 5 mrad gate even when the motion plugin has finished.  This
@@ -2395,6 +2414,10 @@ def main(argv=None):
     except Exception as exc:
         session.status = "failed"
         session.last_error = f"{type(exc).__name__}: {exc}"
+        session.automatic_continuation_safe = bool(
+            not session.holding and not session.motion_faulted
+            and (isinstance(exc, (IKError, ValueError)) or _is_visual_alignment_failure(exc))
+            and "tcp missed servo waypoint" not in str(exc).lower())
         print(f"Session stopped: {type(exc).__name__}: {exc}. Inspect before retrying.", flush=True)
         return 2
     finally:

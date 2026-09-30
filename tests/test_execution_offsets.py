@@ -128,7 +128,8 @@ class ExecutionOffsetTests(unittest.TestCase):
                 s.targets = {f"task.{s.part}.place": Pose((.5, .1, .6), QUAT)}
                 # Deliberately rotated board axes: last-minute directions must
                 # still be robot-relative, not board-relative.
-                s.runtime = (None, None, (None, (0., 1.), (-1., 0.), None), Pose((0., 0., 0.), QUAT))
+                s.runtime = (None, None, ((0., 0.), (0., 1.), (-1., 0.), {}), Pose((0., 0., 0.), QUAT))
+                s.profiles = {"parts": {s.part: {"part": s.part}}}
                 settings = {"offset_board_xy_m": [.01, .02], "clearance_m": .015, "yaw_deg": 0.}
                 original = copy.deepcopy(settings)
                 x, y = .48, .11
@@ -172,6 +173,7 @@ class ExecutionOffsetTests(unittest.TestCase):
                 (output / "run_summary.json").write_text(json.dumps({
                     "status": "pick_complete_returned" if success else "failed",
                     "holding_may_be_true": False,
+                    "automatic_continuation_safe": True,
                 }))
                 return 0 if success else 2
             with mock.patch.object(pipeline, "ROOT", Path(td)), \

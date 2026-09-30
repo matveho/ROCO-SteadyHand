@@ -23,11 +23,6 @@ from steadyhand.board_geometry import (
     validate_task_board_geometry,
     validate_task_coordinate_extent,
 )
-from steadyhand.board_calibration import (
-    board_geometry_signature,
-    compare_board_geometry,
-    orthonormalize_xy_axes,
-)
 from steadyhand.executor import move_tcp_segmented, preflight_tcp_segmented
 from steadyhand.kinematics import IKError
 from steadyhand.operator_input import clean_choice
@@ -299,6 +294,7 @@ def _load_runtime():
     path = CALIBRATION if CALIBRATION.is_file() else FALLBACK_CALIBRATION
     center, ux, uy, plane = _load_manual(path, bundle["robot"])
     _, ready_pose = configured_right_preset(bundle["robot"], "right_ready")
+    plane["calibration_ready_quaternion"] = list(ready_pose.quaternion_wxyz)
     return bundle, task_data, (center, ux, uy, plane), ready_pose
 
 
@@ -336,12 +332,13 @@ def _board_targets(runtime, clearance_m):
     return targets
 
 
-def _task_targets(runtime, task_data, clearance_m):
+def _task_targets(runtime, task_data, clearance_m, *, use_profiles=True):
     bundle, _, (center, ux, uy, plane), ready_pose = runtime
     source_center = _finite_vector(task_data.get("source_board_center_xy_m"), 2, "source board center")
     rotation_deg = float(task_data.get("task_coordinate_rotation_deg", 0.0))
     mirror_x = bool(task_data.get("task_coordinate_mirror_x", False))
-    mirror_y = bool(task_data.get("task_coordinate_mirror_y", False))
+    # One physically validated orientation across every menu.
+    mirror_y = False
     targets = OrderedDict()
     for part in task_data["official_order"]:
         for kind in task_data["parts"][part]:
@@ -358,8 +355,13 @@ def _task_targets(runtime, task_data, clearance_m):
             )
             # Forward is +base-X on this robot. Recompute Z on the calibrated
             # plane after shifting so the hover remains parallel to the board.
-            shifted_x = pose.position_m[0] + TASK_FORWARD_OFFSET_M
-            shifted_y = pose.position_m[1]
+            from steadyhand.board_relative import snapshot, rotation_between
+            reference = plane.get("calibration_board_reference")
+            delta = (TASK_FORWARD_OFFSET_M, 0.)
+            if reference:
+                delta = rotation_between(reference, snapshot(runtime[2])) @ delta
+            shifted_x = pose.position_m[0] + delta[0]
+            shifted_y = pose.position_m[1] + delta[1]
             targets[f"task.{name}"] = Pose(
                 (
                     shifted_x,
@@ -368,6 +370,18 @@ def _task_targets(runtime, task_data, clearance_m):
                 ),
                 pose.quaternion_wxyz,
             )
+    if use_profiles:
+        from steadyhand.board_relative import resolve_profile_target
+        profiles = load_profiles(ROOT / "calibration/wrist_part_profiles.json", bundle["robot"])
+        for part, profile in profiles.get("parts", {}).items():
+            for action in ("pick", "place"):
+                name = f"task.{part}.{action}"
+                if name not in targets or (action == "place" and not profile.get("place")):
+                    continue
+                xy, quat = resolve_profile_target(profile, runtime[2], ready_pose,
+                    targets[name], action=action, no_cv=True)
+                targets[name] = Pose((*xy, calibrated_surface_z(*xy, plane) + clearance_m), quat)
+
     return targets
 
 
@@ -482,17 +496,23 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle, speed_scale=None,
         if not cv2.imwrite(str(path), cv2.cvtColor(frame.left_rgb, cv2.COLOR_RGB2BGR)):
             raise RuntimeError("Failed to save head camera evidence")
     cfg = bundle["robot"]
-    scene = detect_head_task_scene(
-        frame.left_rgb,
-        frame.camera_info,
-        measured_head_q,
-        plane_z_m=configured_board_plane_z(
-            bundle["robot"], floor_m
-        ),
-        lift_m=float(cfg["kinematics"]["fixed_joint_values"]["Lift"]),
-        torso_flip_rad=float(cfg["kinematics"]["fixed_joint_values"]["torso_flip"]),
-        layout="unlabeled",
-    )
+    try:
+        scene = detect_head_task_scene(
+            frame.left_rgb,
+            frame.camera_info,
+            measured_head_q,
+            plane_z_m=configured_board_plane_z(
+                bundle["robot"], floor_m
+            ),
+            lift_m=float(cfg["kinematics"]["fixed_joint_values"]["Lift"]),
+            torso_flip_rad=float(cfg["kinematics"]["fixed_joint_values"]["torso_flip"]),
+            layout="unlabeled",
+        )
+    except (RuntimeError, ValueError) as exc:
+        # Image geometry failure, after the camera and head succeeded. The
+        # caller can recapture; never hide a head-motion or camera-read error.
+        scene = {"board": {}, "parts": [], "perception_error": str(exc)}
+        print(f"BOARD PERCEPTION REJECTED: {exc}", flush=True)
     if output is not None:
         scene["head_image_path"] = str(path)
         path.with_suffix(".json").write_text(json.dumps(scene, indent=2, default=str) + "\n")
@@ -500,115 +520,115 @@ def _capture_downward_head_frame(robot, *, floor_m, bundle, speed_scale=None,
 
 
 def _runtime_from_board_scene(runtime, scene):
-    """Replace live XY registration when safe, otherwise keep calibration.
-
-    A head-image retake is an optional board translation update.  It is not a
-    reason to force a new five-point calibration during competition.  If the
-    image has incompatible geometry or lacks a usable transform, the
-    operator-approved runtime frame is retained and the caller can continue
-    with the saved task positions.
-    """
-    import numpy as np
-
-    bundle, task_data, (_, _, _, old_plane), ready_pose = runtime
-    if not isinstance(scene, dict):
-        print(
-            "BOARD REGISTRATION FALLBACK: fresh scene was invalid; "
-            "keeping the last-known-good calibrated frame.",
-            flush=True,
-        )
-        return runtime
-    board = scene.get("board") or {}
-    if not isinstance(board, dict):
-        print(
-            "BOARD REGISTRATION FALLBACK: fresh scene had no usable board; "
-            "keeping the last-known-good calibrated frame.",
-            flush=True,
-        )
-        return runtime
-    reference_signature = old_plane.get("camera_geometry_signature")
-    current_signature = board.get("corners_px")
+    """Apply differential board motion; never substitute coarse absolute XY."""
+    from copy import deepcopy
+    from steadyhand.board_relative import register, rotation_between, rotate_quaternion
+    bundle, task_data, (center, ux, uy, old_plane), ready_pose = runtime
+    plane = deepcopy(old_plane)
+    reference = plane.get("calibration_board_reference")
     try:
-        geometry = compare_board_geometry(
-            reference_signature,
-            board_geometry_signature(current_signature),
-        )
-    except Exception as exc:
-        print(
-            "BOARD REGISTRATION FALLBACK: could not validate fresh board "
-            f"geometry ({type(exc).__name__}: {exc}); keeping the "
-            "last-known-good calibrated frame.",
-            flush=True,
-        )
-        return runtime
-    if not geometry.get("valid", True):
-        print(
-            "BOARD REGISTRATION FALLBACK: fresh image would require field "
-            f"recalibration ({geometry.get('reason', 'incompatible geometry')}); "
-            "continuing with the last-known-good calibrated frame.",
-            flush=True,
-        )
-        return runtime
-    try:
-        matrix = np.asarray(board.get("T_base_board_center"), dtype=float)
-    except (TypeError, ValueError) as exc:
-        print(
-            "BOARD REGISTRATION FALLBACK: fresh board transform was invalid "
-            f"({exc}); keeping the last-known-good calibrated frame.",
-            flush=True,
-        )
-        return runtime
-    if matrix.shape != (4, 4) or not np.all(np.isfinite(matrix)):
-        print(
-            "BOARD REGISTRATION FALLBACK: fresh board transform was not "
-            "finite; keeping the last-known-good calibrated frame.",
-            flush=True,
-        )
-        return runtime
-    center = matrix[:3, 3].copy()
-    # The board is calibrated as a horizontal translation-only object.  A
-    # single camera retake may label image edges with a mirrored or rotated
-    # sign, so it must never replace the operator-validated board axes.  Keep
-    # the calibrated axes (and therefore the reviewed 180-degree task frame)
-    # and use the image only to update board translation.
-    _, calibrated_ux, calibrated_uy, _ = runtime[2]
-    ux_xy = tuple(float(v) for v in calibrated_ux)
-    uy_xy = tuple(float(v) for v in calibrated_uy)
-
-    calibration_cfg = (bundle["robot"].get("board_calibration") or {})
-    corrections = calibration_cfg.get("camera_target_corrections_m") or {}
-    center_correction = corrections.get("CENTER", (0.0, 0.0))
-    center[:2] += np.asarray(center_correction, dtype=float)
-
-    plane = {
-        "coefficients": tuple(old_plane["coefficients"]),
-        "anchors": [],
-        "camera_geometry_signature": reference_signature,
-        "last_retake_geometry": geometry,
+        if not isinstance(scene, dict) or not reference:
+            raise ValueError("missing camera scene or reference observation")
+        current = register(reference, plane["calibration_camera_board"], scene["board"])
+    except (ValueError, TypeError, KeyError) as exc:
+        plane["registration"] = {"status": "stale", "reason": str(exc),
+                                 "source": "last_known_good_frame"}
+        print(f"BOARD REGISTRATION STALE: {exc}; retaining the last known frame. "
+              "Board motion has NOT been measured.", flush=True)
+        return bundle, task_data, (center, ux, uy, plane), ready_pose
+    plane["registration"] = current["registration"]
+    rotation = rotation_between(reference, current)
+    angle = math.atan2(rotation[1, 0], rotation[0, 0])
+    from steadyhand.board_relative import base_xy, local_xy
+    # Keep the empirical surface and its local residual anchors unchanged.
+    # Board corner hover targets, unlike Z, move with the registered board.
+    calibrated_corners = plane.get("calibration_board_corners_xy") or {}
+    plane["board_corners_xy"] = {
+        label: base_xy(current, local_xy(reference, calibrated_corners[label])
+                       if label in calibrated_corners else point)
+        for label, point in (("TOP_RIGHT", (.193, -.193)),
+                             ("BOTTOM_RIGHT", (.193, .193)),
+                             ("BOTTOM_LEFT", (-.193, .193)))
     }
-    raw_corners = board.get("corners_base_m_coarse") or {}
-    corrected_corners = {}
-    for label, key in (("TOP_RIGHT", "tr"), ("BOTTOM_RIGHT", "br"), ("BOTTOM_LEFT", "bl")):
-        point = raw_corners.get(key)
-        if not isinstance(point, list) or len(point) != 3:
-            print(
-                "BOARD REGISTRATION FALLBACK: fresh board image is missing "
-                f"corner {key}; keeping the last-known-good calibrated frame.",
-                flush=True,
-            )
-            return runtime
-        correction = corrections.get(label, (0.0, 0.0))
-        corrected_corners[label] = (
-            float(point[0]) + float(correction[0]),
-            float(point[1]) + float(correction[1]),
-        )
-    plane["board_corners_xy"] = corrected_corners
-    return bundle, task_data, (
-        tuple(float(v) for v in center[:2]),
-        tuple(float(v) for v in ux_xy),
-        tuple(float(v) for v in uy_xy),
-        plane,
-    ), ready_pose
+    quat = plane.get("calibration_ready_quaternion", ready_pose.quaternion_wxyz)
+    ready_pose = Pose(ready_pose.position_m, rotate_quaternion(quat, angle))
+    print("BOARD REGISTRATION " + json.dumps(plane["registration"]), flush=True)
+    return bundle, task_data, (tuple(current["center_base_xy_m"]),
+        tuple(current["board_x_unit_base_xy"]), tuple(current["board_y_unit_base_xy"]), plane), ready_pose
+
+
+def _capture_registered_board(robot, runtime, *, floor_m, output=None, checkpoint=None,
+                              speed_scale=None):
+    """Two image attempts for rejected geometry; hardware errors still escape."""
+    scene = None
+    updated = runtime
+    if output is None:
+        output = ROOT / "runs" / "board_relative_previews" / str(time.time_ns())
+        output.mkdir(parents=True, exist_ok=True)
+    for attempt in range(2):
+        scene = _capture_downward_head_frame(robot, floor_m=floor_m, bundle=runtime[0],
+            output=output, checkpoint=checkpoint, speed_scale=speed_scale)
+        updated = _runtime_from_board_scene(runtime, scene)
+        if updated[2][3].get("registration", {}).get("status") == "fresh":
+            break
+        if attempt == 0:
+            print("BOARD REGISTRATION: recapturing once before using the saved frame", flush=True)
+    try:
+        _board_target_evidence(updated, scene, output)
+    except (OSError, ValueError, KeyError, TypeError, ImportError) as exc:
+        print(f"BOARD REVIEW IMAGE unavailable: {exc}", flush=True)
+    return updated, scene
+
+
+def _board_target_evidence(runtime, scene, output):
+    """Save projected taught targets; expose the review through the existing image helper."""
+    import cv2
+    import numpy as np
+    import shutil
+    from steadyhand.board_relative import snapshot, local_xy
+    reference = snapshot(runtime[2])
+    targets = _task_targets(runtime, runtime[1], .100)
+    report = {"board_reference": reference, "targets": {
+        name: {"position_m": list(pose.position_m), "quaternion_wxyz": list(pose.quaternion_wxyz)}
+        for name, pose in targets.items()}}
+    (Path(output) / "board_projected_targets.json").write_text(json.dumps(report, indent=2) + "\n")
+    source = scene.get("head_image_path")
+    if not source:
+        return
+    rgb = cv2.imread(str(source))
+    if rgb is None:
+        raise ValueError("head evidence image could not be read")
+    pixels = np.float32([scene["board"]["corners_px"][k] for k in ("tl", "tr", "br", "bl")])
+    board = np.float32([[-.193, -.193], [.193, -.193], [.193, .193], [-.193, .193]])
+    transform = cv2.getPerspectiveTransform(board, pixels)
+    cv2.polylines(rgb, [pixels.astype(np.int32)], True, (0, 255, 0), 2)
+    for name, pose in targets.items():
+        if not name.endswith((".pick", ".place")):
+            continue
+        xy = local_xy(reference, pose.position_m[:2])
+        uv = cv2.perspectiveTransform(np.float32([[xy]]), transform)[0, 0]
+        u, v = (int(round(float(n))) for n in uv)
+        if not (0 <= u < rgb.shape[1] and 0 <= v < rgb.shape[0]):
+            continue
+        color = (0, 255, 255) if name.endswith(".pick") else (255, 0, 255)
+        cv2.drawMarker(rgb, (u, v), color, cv2.MARKER_CROSS, 12, 2)
+        cv2.putText(rgb, name[5:], (max(0, u-35), max(12, v-8)),
+                    cv2.FONT_HERSHEY_SIMPLEX, .35, color, 1, cv2.LINE_AA)
+    status = reference["registration"]["status"].upper()
+    cv2.putText(rgb, f"{status} BOARD | yellow pickup / purple place | taught TCP projections",
+                (8, 22), cv2.FONT_HERSHEY_SIMPLEX, .45, (0, 0, 255), 1, cv2.LINE_AA)
+    destination = Path(output) / "BOARD_PROJECTED_TARGETS.png"
+    if not cv2.imwrite(str(destination), rgb):
+        raise OSError("cannot save board overlay")
+    live = ROOT / "runs/wrist_live"
+    live.mkdir(parents=True, exist_ok=True)
+    pending = live / ".board_projected_targets.tmp"
+    shutil.copyfile(destination, pending)
+    pending.replace(live / "latest_wrist_a.png")
+    (live / "latest_wrist_a.json").write_text(json.dumps({"camera": "head_camera",
+        "stage": "BOARD_PROJECTED_TARGETS", "registration": reference["registration"],
+        "source_run": str(destination)}) + "\n")
+    print(f"BOARD TARGET REVIEW: {destination}", flush=True)
 
 
 def _prompt_next_location(current_name, available_targets):
@@ -682,13 +702,12 @@ def _run_motion_targets(
 
                 def refresh_board_image():
                     nonlocal runtime, available_targets, targets
-                    scene = _capture_downward_head_frame(
-                        robot, floor_m=floor, bundle=bundle,
-                        checkpoint=(lambda label: guard(None) if label == "before_camera_clear" else None) if remote_safe else None,
-                    )
                     if runtime is None or task_data is None or clearance_m is None:
                         return
-                    runtime = _runtime_from_board_scene(runtime, scene)
+                    runtime, scene = _capture_registered_board(
+                        robot, runtime, floor_m=floor,
+                        checkpoint=(lambda label: guard(None) if label == "before_camera_clear" else None) if remote_safe else None,
+                    )
                     available_targets = _make_test_targets(
                         list(available_targets), runtime, task_data, clearance_m
                     )
@@ -698,7 +717,7 @@ def _run_motion_targets(
                         for name in selected_names
                     )
                     print(
-                        "BOARD FRAME REFRESHED; targets rebuilt from the new image",
+                        f"BOARD FRAME {runtime[2][3].get('registration', {}).get('status', 'reference').upper()}; targets rebuilt",
                         flush=True,
                     )
 
@@ -798,7 +817,8 @@ def _run_competition_task(name, runtime, task_data, args):
     if name == "battery_size1_pick_v0":
         targets = _make_test_targets(["task.battery_size1.pick"], runtime, task_data, args.clearance_m)
         return _run_motion_targets(targets, runtime[0], confirm_physical=True,
-                                   check_only=args.check_only, speed_scale=args.speed_scale)
+                                   check_only=args.check_only, speed_scale=args.speed_scale,
+                                   runtime=runtime, task_data=task_data, clearance_m=args.clearance_m)
     print(f"{name} is present in the pipeline as a preserved version entry.")
     print("It is intentionally not enabled until the calibrated approach, grasp, and verification are validated.")
     print("No arm or gripper motion was commanded.")
@@ -981,7 +1001,8 @@ def _snapshot_execution_offsets(args):
     describe_offsets(args.execution_offsets)
 
 
-def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place_cv=False, head_reacquire=True):
+def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place_cv=False,
+                            head_reacquire=True, retry_without_cv=True):
     """Run one gated action with automatic, bounded recovery.
 
     Competition execution is deliberately non-interactive after launch: a
@@ -1014,7 +1035,7 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
         )
         print(f"\nCOMPETITION ACTION {part}.{action} (attempt {attempt})", flush=True)
         attempt_command = list(command)
-        if attempt == 2 and not no_cv:
+        if attempt == 2 and not no_cv and retry_without_cv:
             # Second attempt: keep the saved calibrated arm pose but disable
             # wrist centering.  This isolates a bad visual feature from a
             # physically good taught grasp.
@@ -1074,6 +1095,10 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
                 file=sys.stderr, flush=True,
             )
             return result
+        if summary.get("automatic_continuation_safe") is not True:
+            print("ACTION STOPPED WITHOUT SAFE CONTINUATION: motion/hardware state "
+                  "or missing summary requires inspection; no automatic retry.", flush=True)
+            return 2
         if attempt > retries:
             print(
                 f"FAILED {part}.{action}; automatic retry budget exhausted; continuing.",
@@ -1122,7 +1147,7 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
     print("\nPRIORITY COMPETITION PLAN", flush=True)
     print(f"Action: {chosen_action}; bounded retries per part: {plan['max_retries_per_part']}", flush=True)
     if no_cv:
-        print("Positioning: saved arm hover -> shifted live task target fallback (no wrist CV)", flush=True)
+        print("Positioning: board-projected taught grasp hover (no wrist CV)", flush=True)
     print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a in actions) or "none"), flush=True)
     if skipped:
         print("Not yet eligible:", flush=True)
@@ -1232,11 +1257,12 @@ def _configured_competition_run(args):
             no_cv=not part_settings["use_wrist_pick_cv"],
             place_cv=use_place_cv,
             head_reacquire=settings["head_reacquire_on_failure"],
+            retry_without_cv=settings["retry_without_wrist_cv"],
         )
         if result == 0:
             completed += 1
             continue
-        if result == 3:
+        if result not in (0, -1):
             return result
         failed.append((part, action))
     if failed:
@@ -1286,7 +1312,7 @@ def _all_calibrated_competition_run(args, *, place_cv=False):
         )
         if result == 0:
             completed += 1
-        elif result == 3:
+        elif result != -1:
             return result
     print(f"ALL-CALIBRATED RUN FINISHED: {completed}/{len(actions)} actions completed.", flush=True)
     return 0
@@ -1499,6 +1525,7 @@ def main(argv=None):
                 targets, runtime[0], confirm_physical=args.confirm_physical_motion,
                 check_only=args.check_only, speed_scale=args.speed_scale,
                 runtime=runtime, remote_safe=args.remote_safe,
+                task_data=task_data, clearance_m=args.clearance_m,
             )
         selected = _flatten_action_names(args.competition_task)
         unknown = [name for name in selected if name not in COMPETITION_TASKS]

@@ -132,6 +132,13 @@ def validate_profile(profile, robot_config, *, expected_part=None):
         raise ValueError(f"{part}: template provenance is required")
     if len(str(template.get("sha256", ""))) != 64:
         raise ValueError(f"{part}: template SHA256 is malformed")
+    from steadyhand.board_relative import validate_record
+    for key in ("pickup_board", "placement_board"):
+        if key in profile:
+            validate_record(profile[key])
+            required = ("approach", "grasp") if key == "pickup_board" else ("release",)
+            if not all(name in profile[key] for name in required):
+                raise ValueError(f"{part}: incomplete {key} target")
     return profile
 
 
