@@ -34,7 +34,10 @@ function Invoke-Checked {
     if ($LASTEXITCODE -ne 0) { throw "$Exe failed with exit code $LASTEXITCODE" }
 }
 
-$Password = $env:DEXMATE_PASSWORD
+# The robot account uses this fixed onsite password.  An environment override is
+# still accepted for teams that rotate credentials, but normal deployment must
+# never stop for an interactive password prompt.
+$Password = if ($env:DEXMATE_PASSWORD) { $env:DEXMATE_PASSWORD } else { "hello-dex" }
 $AskPassPath = $null
 $OldAskPass = $env:SSH_ASKPASS
 $OldAskPassRequire = $env:SSH_ASKPASS_REQUIRE
@@ -53,12 +56,6 @@ try {
         throw "LiveDir contains unsupported characters"
     }
 
-    if (-not $Password) {
-        $secure = Read-Host "DexMate SSH password (or set DEXMATE_PASSWORD)" -AsSecureString
-        $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
-        try { $Password = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr) }
-        finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr) }
-    }
     if ($Password) {
         $env:ROCO_SSH_PASSWORD = $Password
         $AskPassPath = Join-Path $env:TEMP "roco-ssh-askpass-$PID.cmd"
@@ -160,10 +157,15 @@ pgrep -af 'tools/vega_competition_pipeline.py' | grep -v '[g]rep' >/dev/null && 
 } || true
 if [ -d "$LIVE" ]; then
   DIRTY="$(git -C "$LIVE" status --porcelain --untracked-files=no 2>/dev/null || true)"
-  if [ -n "$DIRTY" ]; then
-    echo "REFUSING DEPLOY: tracked files in $LIVE have onsite edits:" >&2
-    echo "$DIRTY" >&2
+  NON_CALIBRATION="$(printf '%s\n' "$DIRTY" | awk 'NF && $2 !~ /^calibration\// {print}')"
+  if [ -n "$NON_CALIBRATION" ]; then
+    echo "REFUSING DEPLOY: tracked non-calibration files in $LIVE have onsite edits:" >&2
+    echo "$NON_CALIBRATION" >&2
     exit 3
+  fi
+  if [ -n "$DIRTY" ]; then
+    echo "PRESERVING onsite calibration edits while updating code:"
+    echo "$DIRTY"
   fi
 fi
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -173,6 +175,14 @@ while [ -e "$ARCHIVE" ]; do ARCHIVE="${VERSION_ROOT}/${ARCHIVE_NAME}_$RANDOM"; d
 if [ -d "$LIVE" ]; then
   cp -a "$LIVE" "$ARCHIVE"
   echo "PRESERVED_LIVE_VERSION=$ARCHIVE"
+fi
+CALIBRATION_PRESERVE="/home/dexmate/roco_calibration_edits_${STAMP}_$$"
+if [ -d "$LIVE" ]; then
+  while IFS= read -r PATHNAME; do
+    [ -n "$PATHNAME" ] || continue
+    mkdir -p "$CALIBRATION_PRESERVE/$(dirname "$PATHNAME")"
+    cp -a "$LIVE/$PATHNAME" "$CALIBRATION_PRESERVE/$PATHNAME"
+  done < <(git -C "$LIVE" diff --name-only HEAD -- calibration)
 fi
 STAGE="${LIVE}.deploy.${EXPECTED:0:12}.$$"
 rm -rf "$STAGE"
@@ -190,7 +200,15 @@ while IFS= read -r PATHNAME; do
   fi
 done < <(git -C "$STAGE" ls-tree -r --name-only refs/remotes/deploy/main)
 if [ "$MIGRATION_COUNT" -gt 0 ]; then echo "PRESERVED $MIGRATION_COUNT old untracked paths in $MIGRATION_BACKUP"; fi
-git -C "$STAGE" checkout -B main refs/remotes/deploy/main
+git -C "$STAGE" checkout -f -B main refs/remotes/deploy/main
+if [ -d "$CALIBRATION_PRESERVE" ]; then
+  while IFS= read -r PATHNAME; do
+    [ -n "$PATHNAME" ] || continue
+    mkdir -p "$STAGE/$(dirname "$PATHNAME")"
+    cp -a "$CALIBRATION_PRESERVE/$PATHNAME" "$STAGE/$PATHNAME"
+  done < <(find "$CALIBRATION_PRESERVE/calibration" -type f -printf '%P\n' 2>/dev/null)
+  echo 'RESTORED onsite calibration edits into the deployed checkout.'
+fi
 ACTUAL="$(git -C "$STAGE" rev-parse HEAD)"
 [ "$ACTUAL" = "$EXPECTED" ] || { echo "REFUSING: staged SHA $ACTUAL != expected $EXPECTED" >&2; rm -rf "$STAGE"; exit 4; }
 if [ "$SKIP_PREFLIGHT" != "1" ]; then
@@ -198,7 +216,7 @@ if [ "$SKIP_PREFLIGHT" != "1" ]; then
   (cd "$STAGE" && python3 tools/vega_preflight.py) || { echo 'PREFLIGHT FAILED; live checkout unchanged.' >&2; rm -rf "$STAGE"; exit 10; }
 fi
 SWAP="${LIVE}.swap.$$"
-rm -rf "$SWAP"
+rm -rf "$SWAP" "$CALIBRATION_PRESERVE"
 if [ -d "$LIVE" ]; then mv "$LIVE" "$SWAP"; fi
 if ! mv "$STAGE" "$LIVE"; then
   [ -d "$SWAP" ] && mv "$SWAP" "$LIVE"
