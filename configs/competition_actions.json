@@ -22,12 +22,12 @@
   "task_clearance_mm": 100.0,
   "visual_center_backoff_mm": 15.0,
   "parts": {
-    "battery_size1": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
+    "battery_size1": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
     "gear_20teeth": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
-    "gear_60teeth": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
+    "gear_60teeth": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "pin": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "bolt_8mm": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
-    "battery_size5": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
+    "battery_size5": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "pick_place"},
     "rod_16mm": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "usb_a": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"},
     "hdmi": {"enabled": false, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": true, "max_attempts": 3, "mode": "auto"}
