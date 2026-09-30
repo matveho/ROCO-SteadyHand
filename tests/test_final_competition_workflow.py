@@ -94,6 +94,87 @@ class FinalWorkflowTests(unittest.TestCase):
         np.testing.assert_allclose(s.robot.pose.position_m, s.coarse.position_m)
         self.assertIn("Arm left at its current hover", self.output.getvalue())
 
+    def test_no_cv_inspection_starts_camera_and_camera_failure_keeps_prompt(self):
+        s, _ = self.session(mode="drop")
+        s.capture.return_value = np.zeros((8, 8, 3), np.uint8)
+        s.capture.index = 1
+        s._publish_live_image = mock.Mock()
+        wrist.PartSession.frame(s, "inspection")
+        s.cameras.connect.assert_called_once()
+        s.capture.assert_called_once()
+        s.frame.side_effect = RuntimeError("camera timeout")
+        with mock.patch("builtins.input", side_effect=["image", "retry"]):
+            self.assertTrue(s._pickup_plan_retry(wrist.PickupPreflightError("unreachable")))
+        self.assertEqual(s.robot.trace, [])
+        self.assertIn("IMAGE UNAVAILABLE", self.output.getvalue())
+
+    def test_logged_8_45mm_servo_miss_replans_saved_grasp_after_stationary_check(self):
+        s, profile = self.session(competition=True, part="gear_20teeth")
+        s._load_saved_feature = lambda _: (setattr(s, "tracker", mock.Mock()),
+            setattr(s, "reference_feature", tuple(profile["feature_uv"])),
+            setattr(s, "goal", tuple(profile["goal_uv"])))
+        s.robot.stationary_tcp_pose = mock.Mock(side_effect=s.robot.get_tcp_pose)
+        def failed_servo(*args, **kwargs):
+            current = s.robot.pose
+            s.robot.pose = Pose((current.position_m[0] + .006, *current.position_m[1:]), current.quaternion_wxyz)
+            raise wrist.ServoWaypointError("TCP missed servo waypoint by >8 mm", position_error_m=.008452,
+                                            measured_pose=s.robot.pose)
+        with mock.patch.object(wrist, "run_xy_servo", side_effect=failed_servo), \
+                mock.patch("builtins.input", side_effect=AssertionError("competition prompted")):
+            self.assertEqual(s.test(s.part, "pick", competition=True), 0)
+        s.robot.stationary_tcp_pose.assert_called_once()
+        self.assertFalse(s.motion_faulted)
+        self.assertFalse(s.holding)
+        grip = next(v for v in s.robot.trace if v[0] == "grip")
+        np.testing.assert_allclose(grip[1].position_m[:2], s.grasp_target.position_m[:2])
+
+    def test_servo_replan_requires_small_structured_error_and_stopped_arm(self):
+        s, _ = self.session(competition=True)
+        s.robot.stationary_tcp_pose = mock.Mock(side_effect=RuntimeError("stale state"))
+        for error in (RuntimeError("TCP missed servo waypoint"),
+                      wrist.ServoWaypointError("miss", position_error_m=.020, measured_pose=s.robot.pose)):
+            self.assertFalse(s._recoverable_servo_miss(error))
+        s.robot.stationary_tcp_pose.assert_not_called()
+        with self.assertRaisesRegex(RuntimeError, "stale state"):
+            s._recoverable_servo_miss(wrist.ServoWaypointError("miss", position_error_m=.009, measured_pose=s.robot.pose))
+        self.assertEqual(s.robot.trace, [])
+
+    def test_drop_unreachable_transfer_keeps_controls_and_returns_held_part(self):
+        s, profile = self.session(mode="drop", part="gear_20teeth")
+        original = copy.deepcopy(s.profiles)
+        target = s.profile_pose(profile, "place")
+        original_move = s.move
+        def move(pose, **kwargs):
+            if pose == target:
+                raise wrist.IKError("waypoint 6/7: position_error=0.04226 m")
+            return original_move(pose, **kwargs)
+        s.move = move
+        with mock.patch("builtins.input", side_effect=["image", "status", "return"]):
+            self.assertEqual(s.teach_drop(s.part, profile), 1)
+        self.assertFalse(s.holding)
+        self.assertEqual(s.status, "drop_cancelled_returned")
+        self.assertEqual(s.profiles, original)
+        self.assertEqual([v[0] for v in s.robot.trace].count("grip"), 1)
+        self.assertEqual([v[0] for v in s.robot.trace].count("release"), 1)
+
+    def test_competition_unreachable_place_returns_source_and_keeps_pickup(self):
+        s, _ = self.session(competition=True)
+        s.place = mock.Mock(side_effect=wrist.PlacementPreflightError("unreachable transfer"))
+        with mock.patch("builtins.input", side_effect=AssertionError("competition prompted")):
+            self.assertEqual(s.test(s.part, "pick_place", competition=True, no_cv=True), 0)
+        self.assertFalse(s.holding)
+        self.assertEqual(s.status, "pick_complete_place_blocked_returned")
+        self.assertTrue(s.automatic_continuation_safe)
+
+    def test_placement_preflight_rejects_before_transport_and_preserves_hold(self):
+        s, profile = self.session()
+        s.holding = True
+        s.robot._kinematics.solve = mock.Mock(side_effect=wrist.IKError("unreachable"))
+        with self.assertRaises(wrist.PlacementPreflightError):
+            s.place(profile["place"])
+        self.assertTrue(s.holding)
+        self.assertEqual(s.robot.trace, [])
+
     def test_menu4_can_inspect_retry_rejected_feature_then_use_saved_and_grab(self):
         s, profile = self.session()
         original = copy.deepcopy(profile)

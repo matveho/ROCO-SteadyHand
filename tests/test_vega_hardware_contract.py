@@ -155,6 +155,22 @@ class FakeKinematics:
 
 
 class AdapterContractTests(unittest.TestCase):
+    def test_stationary_recovery_checks_fresh_state_velocity_and_estop_without_motion(self):
+        adapter = self.connect()
+        with patch("steadyhand.adapters.vega.time.sleep"):
+            adapter.stationary_tcp_pose()
+            adapter._arm.get_joint_vel = lambda: [.01] * 7
+            with self.assertRaisesRegex(RuntimeError, "moving"):
+                adapter.stationary_tcp_pose()
+            adapter._arm.get_joint_vel = lambda: [0.] * 7
+            with patch.object(adapter, "_read_estop_status", return_value={"button_pressed": True}):
+                with self.assertRaisesRegex(RuntimeError, "E-stop"):
+                    adapter.stationary_tcp_pose()
+            adapter._arm.frozen = True
+            with self.assertRaisesRegex(RuntimeError, "fresh=False"):
+                adapter.stationary_tcp_pose()
+        self.assertFalse(any(e[0] == "move_to_joint_pos" for e in self.events))
+
     def setUp(self):
         self.events = []
         self.robot = FakeRobot(self.events)

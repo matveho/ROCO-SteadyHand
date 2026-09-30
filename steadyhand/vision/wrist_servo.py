@@ -17,7 +17,12 @@ import time
 
 
 class ServoWaypointError(RuntimeError):
-    """The commanded local waypoint was not reached; no further move is safe."""
+    """Stop visual servoing; a caller may separately validate a new plan."""
+
+    def __init__(self, message, *, position_error_m=None, measured_pose=None):
+        super().__init__(message)
+        self.position_error_m = position_error_m
+        self.measured_pose = measured_pose
 
 
 @dataclass(frozen=True)
@@ -541,7 +546,8 @@ def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
         if position_error > 0.008:
             raise ServoWaypointError(
                 f"TCP missed servo waypoint by >8 mm ({label}: {position_error * 1000:.2f} mm "
-                "after read-only settling); centering stopped at the measured pose"
+                "after read-only settling); centering stopped at the measured pose",
+                position_error_m=position_error, measured_pose=actual,
             )
         if checkpoint:
             checkpoint(f"after_servo_{label}")

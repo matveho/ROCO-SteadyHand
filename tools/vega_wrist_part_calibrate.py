@@ -28,12 +28,12 @@ from steadyhand.config import load_bundle
 from steadyhand.executor import move_tcp_segmented, preflight_tcp_segmented
 from steadyhand.kinematics import IKError
 from steadyhand.execution_offsets import load_offsets, parse_offsets, describe_offsets
-from steadyhand.geometry import matrix_to_quaternion, quaternion_to_matrix
+from steadyhand.geometry import matrix_to_quaternion, quaternion_to_matrix, quaternion_angle
 from steadyhand.board_relative import snapshot
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
-from steadyhand.vision.wrist_servo import TemplateTracker, run_xy_servo
+from steadyhand.vision.wrist_servo import TemplateTracker, ServoWaypointError, run_xy_servo
 from steadyhand.wrist_part_profiles import (
     PART_NAMES,
     WORKING_ARM,
@@ -59,6 +59,10 @@ class GripNotVerifiedError(RuntimeError):
 
 class PickupPreflightError(IKError):
     """The complete pickup route failed before any descent or grip command."""
+
+
+class PlacementPreflightError(IKError):
+    """Placement route rejected while still at the successful pickup hover."""
 
 
 def _session_execution_offsets(args):
@@ -354,6 +358,8 @@ class PartSession:
         return calibrated_surface_z(x, y, self.runtime[2][3])
 
     def move(self, target, *, slow=False):
+        if getattr(self, "motion_faulted", False):
+            raise RuntimeError("Movement blocked after a hardware/motion fault; inspect before restarting")
         # Check the complete Cartesian segment before issuing its first waypoint.
         before = self.robot.get_tcp_pose()
         preflight_tcp_segmented(self.robot._kinematics, self.robot._read_joint_positions(),
@@ -428,11 +434,36 @@ class PartSession:
             print("Press Enter to continue or type abort; other input does not authorize motion.", flush=True)
 
     def frame(self, label="wrist"):
+        # Drop/no-CV workflows start without a wrist stream. Opening is
+        # idempotent, so optional inspection works in those workflows too.
+        self.cameras.connect()
         rgb = self.capture()
         raw = self.output / f"{self.capture.index-1:03d}_wrist_a.png"
         print(f"{label.upper()} IMAGE: {raw}", flush=True)
         self._publish_live_image(rgb, raw, label)
         return rgb, raw
+
+    def inspection_image(self, label):
+        """Optional operator inspection must not discard a teaching session."""
+        try:
+            return self.frame(label)
+        except (RuntimeError, OSError, ValueError) as exc:
+            print(f"IMAGE UNAVAILABLE: {exc}. No motion issued; retry image or abort.", flush=True)
+            return None
+
+    def _recoverable_servo_miss(self, exc):
+        # Keep the servo's 8 mm bound. Only a small, structured residual from
+        # an otherwise completed motion can abandon CV and start a NEW plan.
+        if (not isinstance(exc, ServoWaypointError) or exc.measured_pose is None or
+                exc.position_error_m is None or not .008 < exc.position_error_m <= .010):
+            return False
+        pose = self.robot.stationary_tcp_pose()
+        if (math.dist(pose.position_m, exc.measured_pose.position_m) > .002 or
+                quaternion_angle(pose.quaternion_wxyz, exc.measured_pose.quaternion_wxyz) > .005):
+            return False
+        self.event("servo_replan_allowed", {"reason": str(exc), "measured_tcp": pose.position_m})
+        print("CENTERING ABANDONED: stationary arm verified; saved grasp will be replanned from measured pose.", flush=True)
+        return True
 
     def _publish_live_image(self, rgb, raw, label):
         """Publish a stable, optional laptop-pull path without affecting control."""
@@ -782,8 +813,10 @@ class PartSession:
                 # return/retry after a missed physical waypoint.
                 failure_text = str(exc).lower()
                 if "tcp missed servo waypoint" in failure_text:
-                    self.motion_faulted = True
-                    if getattr(self.args, "competition", False):
+                    self.motion_faulted = True  # verification failure must remain a hard stop
+                    if self._recoverable_servo_miss(exc):
+                        self.motion_faulted = False
+                    elif getattr(self.args, "competition", False):
                         raise
                 if (
                     "tcp missed servo waypoint" in failure_text
@@ -1379,10 +1412,13 @@ class PartSession:
         release = Pose((x, y, self.surface(x, y)+settings["clearance_m"]), quat)
         # Validate placement descent before transporting the held part.
         seed = self.robot._read_joint_positions()
-        seed = preflight_tcp_segmented(self.robot._kinematics, seed,
-                                       self.robot.get_tcp_pose(), hover, **MOTION_STEPS)
-        seed = preflight_tcp_segmented(self.robot._kinematics, seed, hover, release, **MOTION_STEPS)
-        preflight_tcp_segmented(self.robot._kinematics, seed, release, hover, **MOTION_STEPS)
+        try:
+            seed = preflight_tcp_segmented(self.robot._kinematics, seed,
+                                           self.robot.get_tcp_pose(), hover, **MOTION_STEPS)
+            seed = preflight_tcp_segmented(self.robot._kinematics, seed, hover, release, **MOTION_STEPS)
+            preflight_tcp_segmented(self.robot._kinematics, seed, release, hover, **MOTION_STEPS)
+        except IKError as exc:
+            raise PlacementPreflightError(str(exc)) from exc
         self.remote_checkpoint("before_place_hover")
         self.move(hover)
         self.remote_checkpoint("place_hover")
@@ -1528,13 +1564,13 @@ class PartSession:
               "No descent or grip was commanded. The arm remains at the pickup hover.\n"
               "Inspect before retrying; the saved calibration has not been changed.", flush=True)
         if self.remote_safe:
-            self.frame("pickup preflight blocked")
+            self.inspection_image("pickup preflight blocked")
         while True:
             command = input("PICKUP PLAN [retry / image / abort]: ").strip().lower()
             if command == "retry":
                 return True
             if command == "image":
-                self.frame("pickup preflight inspection")
+                self.inspection_image("pickup preflight inspection")
             elif command in ("abort", "stop", "exit", "q"):
                 return False
             else:
@@ -1565,30 +1601,29 @@ class PartSession:
         self.remote_checkpoint("drop_pickup_complete")
 
         hover = self.profile_pose(profile, "place")
-        self.remote_checkpoint("before_drop_hover")
-        self.move(hover)
-        self.remote_checkpoint("drop_hover_100mm")
-        # Keep a view of the nominal, calibrated drop approach as well as the
-        # operator-adjusted release.  These frames are evidence for a later
-        # board/wrist CV pass and do not affect the control path.
-        self._capture_drop_evidence("nominal_hover_100mm")
-        initial_clearance = .060  # 100 mm hover minus the requested 40 mm descent
-        current = Pose(
-            (hover.position_m[0], hover.position_m[1],
-             self.surface(hover.position_m[0], hover.position_m[1]) + initial_clearance),
-            hover.quaternion_wxyz,
-        )
-        self.remote_checkpoint("before_drop_initial_descent")
-        self.move(current, slow=True)
-        self.remote_checkpoint("drop_initial_40mm")
-        self._capture_drop_evidence("initial_40mm_below_hover")
-        print(
-            f"DROP CALIBRATION READY: {part}; nominal drop reached at 40 mm below hover.",
-            flush=True,
-        )
+        def approach_drop():
+            try:
+                self.remote_checkpoint("before_drop_hover")
+                self.move(hover)
+                self.remote_checkpoint("drop_hover_100mm")
+                self._capture_drop_evidence("nominal_hover_100mm")
+                current = Pose((hover.position_m[0], hover.position_m[1],
+                    self.surface(*hover.position_m[:2]) + .060), hover.quaternion_wxyz)
+                self.remote_checkpoint("before_drop_initial_descent")
+                self.move(current, slow=True)
+                self._capture_drop_evidence("initial_40mm_below_hover")
+                print(f"DROP CALIBRATION READY: {part}; 40 mm below hover.", flush=True)
+            except IKError as exc:
+                if self.motion_faulted:
+                    raise
+                print(f"NEXT DROP SEGMENT BLOCKED BEFORE MOTION: {exc}\n"
+                      "Part remains held. Use small directional adjustments, target to retry, "
+                      "image to inspect, or return to put it back. Release only at the intended destination.", flush=True)
+        approach_drop()
+        adjustment_anchor = self.robot.get_tcp_pose()
         print(
             "Commands: forward/back/left/right N (mm) | step N | yaw N (deg) | "
-            "down N (mm) | up N | undo | status | release | return | abort",
+            "down N (mm) | up N | undo | target | image | status | release | return | abort",
             flush=True,
         )
         while True:
@@ -1598,6 +1633,13 @@ class PartSession:
             command = raw[0]
             if command in ("abort", "exit", "q"):
                 return 3 if self.holding else 1
+            if command == "image":
+                self.inspection_image("drop inspection")
+                continue
+            if command == "target":
+                approach_drop()
+                adjustment_anchor = self.robot.get_tcp_pose()
+                continue
             if command == "release":
                 try:
                     self.remote_checkpoint("before_drop_release")
@@ -1645,7 +1687,7 @@ class PartSession:
                     self.move(Pose((current.position_m[0], current.position_m[1],
                                     self.surface(*current.position_m[:2]) + .100),
                                    current.quaternion_wxyz), slow=True)
-                    self.move(self.coarse, slow=True)
+                    self.move(self.successful_pickup_pose or self.coarse, slow=True)
                     self.return_part(profile["grasp_clearance_m"])
                     self.status = "drop_cancelled_returned"
                     return 1
@@ -1691,8 +1733,8 @@ class PartSession:
                         "left": (0.0, amount), "right": (0.0, -amount),
                     }[command]
                     x, y = x + dx, y + dy
-                    if math.dist((x, y), hover.position_m[:2]) > .120:
-                        raise ValueError("drop adjustment exceeds 120 mm from nominal target")
+                    if math.dist((x, y), adjustment_anchor.position_m[:2]) > .120:
+                        raise ValueError("drop adjustment exceeds 120 mm from starting hover")
                     clearance = z - self.surface(*current.position_m[:2])
                     target = Pose(
                         (x, y, self.surface(x, y) + clearance),
@@ -2269,7 +2311,17 @@ class PartSession:
             return 3
         if not competition and input("Type place to test the taught transfer/descent/release: ").strip() != "place":
             return 3
-        self.place(profile["place"], partial_release=competition, use_place_cv=place_cv)
+        try:
+            self.place(profile["place"], partial_release=competition, use_place_cv=place_cv)
+        except PlacementPreflightError as exc:
+            if not competition or self.motion_faulted:
+                raise
+            print(f"PLACE PLAN BLOCKED: {exc}. Pickup succeeded; returning to source and skipping placement.", flush=True)
+            self.return_part(pickup_clearance, partial_release=True)
+            self.status = "pick_complete_place_blocked_returned"
+            self.automatic_continuation_safe = True
+            self.last_error = str(exc)
+            return 0
         self.status = "completed"
         if not competition:
             if input("Was placement correct? Type yes to enable it for competition: ").strip().lower() == "yes":

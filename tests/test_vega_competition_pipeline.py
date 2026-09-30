@@ -19,6 +19,12 @@ from tools.vega_competition_pipeline import (
 
 
 class CompetitionPipelineTests(unittest.TestCase):
+    def setUp(self):
+        # Persistence is exercised separately with an isolated temp directory.
+        patcher = mock.patch("tools.vega_competition_pipeline._start_competition_progress", return_value=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_location_prompt_supports_image_retake_and_exit(self):
         targets = {"board.center": object(), "task.battery_size1.pick": object()}
         with mock.patch("builtins.input", return_value="r"):

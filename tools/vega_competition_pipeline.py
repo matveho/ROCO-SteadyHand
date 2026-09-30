@@ -1018,6 +1018,23 @@ def _snapshot_execution_offsets(args):
     describe_offsets(args.execution_offsets)
 
 
+def _start_competition_progress(args, mode, actions):
+    from steadyhand.competition_progress import CompetitionProgress
+    try:
+        args.competition_progress = CompetitionProgress(
+            ROOT / "runs" / "competition_progress.json", mode, actions,
+            recovered_empty=getattr(args, "resume_after_inspection", False),
+            new_run=getattr(args, "new_competition_run", False),
+        )
+        # An acknowledgement is for this launch, never later menu selections.
+        args.resume_after_inspection = False
+        args.new_competition_run = False
+        return True
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        print(f"COMPETITION PROGRESS: {exc}", file=sys.stderr, flush=True)
+        return False
+
+
 def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place_cv=False,
                             head_reacquire=True, retry_without_cv=True):
     """Run one gated action with automatic, bounded recovery.
@@ -1044,7 +1061,19 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
         command.append("--place-cv")
     if getattr(args, "remote_safe", False):
         command.append("--remote-safe")
-    attempt = 0
+    progress = getattr(args, "competition_progress", None)
+    entry = progress.entry(part, action) if progress is not None else {}
+    if entry.get("status") in ("completed", "skipped"):
+        print(f"RESUME: {part}.{action} already {entry['status']}; not repeated.", flush=True)
+        return 0 if entry["status"] == "completed" else -1
+    attempt = entry.get("attempts", 0)
+    def finish(code, summary=None):
+        if progress is not None:
+            progress.finish(part, action, code, summary)
+        return code
+    if attempt >= retries + 1:
+        print(f"RESUME: {part}.{action} exhausted its attempt budget; skipping.", flush=True)
+        return finish(-1)
     while True:
         attempt += 1
         output = ROOT / "runs" / "competition_actions" / (
@@ -1062,6 +1091,8 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
             # the aggressive bounded wrist path (unless the part is globally
             # configured no-CV, in which case the saved pose remains active).
             attempt_command.append("--head-reacquire")
+        if progress is not None:
+            progress.begin_attempt(part, action, output)
         try:
             result = run_wrist_part_calibration(attempt_command + ["--output", str(output)])
         except Exception as exc:
@@ -1083,19 +1114,19 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
                 "RUN SUMMARY SAYS A PART MAY BE HELD; refusing all automatic retries.",
                 file=sys.stderr, flush=True,
             )
-            return 3
+            return finish(3, summary)
         if result == 0:
             if not summary_path.is_file():
                 print(
                     "Action returned success without run_summary.json; stopping for inspection.",
                     file=sys.stderr, flush=True,
                 )
-                return 2
+                return finish(2, summary)
             # Pick-only competition actions intentionally return the part to
             # its source so the next part can be attempted.  That path has a
             # distinct successful terminal status; treating it as an error
             # made option 6 stop after the first successful pickup.
-            successful_statuses = {"completed"}
+            successful_statuses = {"completed", "pick_complete_place_blocked_returned"}
             if action == "pick":
                 successful_statuses.add("pick_complete_returned")
             if summary.get("status") not in successful_statuses:
@@ -1103,26 +1134,31 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
                     f"Action returned success but run summary is {summary.get('status')!r}; stopping for inspection.",
                     file=sys.stderr, flush=True,
                 )
-                return 2
-            print(f"COMPLETE {part}.{action}", flush=True)
-            return 0
+                return finish(2, summary)
+            if summary.get("status") == "pick_complete_place_blocked_returned":
+                print(f"PICKUP COMPLETE {part}; placement skipped (unreachable plan).", flush=True)
+            else:
+                print(f"COMPLETE {part}.{action}", flush=True)
+            return finish(0, summary)
         if result == 3:
             print(
                 "ACTION LEFT A POSSIBLY HELD PART; retry is blocked. Inspect and recover manually through the gated tool.",
                 file=sys.stderr, flush=True,
             )
-            return result
+            return finish(result, summary)
         if summary.get("automatic_continuation_safe") is not True:
             print("ACTION STOPPED WITHOUT SAFE CONTINUATION: motion/hardware state "
                   "or missing summary requires inspection; no automatic retry.", flush=True)
-            return 2
+            return finish(2, summary)
         if attempt > retries:
             print(
                 f"FAILED {part}.{action}; automatic retry budget exhausted; continuing.",
                 file=sys.stderr,
                 flush=True,
             )
-            return -1
+            return finish(-1, summary)
+        if progress is not None:
+            progress.retry_pending(part, action, summary)
         print(
             f"AUTOMATIC RETRY {part}.{action}: attempt {attempt + 1} of {retries + 1}",
             flush=True,
@@ -1176,6 +1212,8 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
     if args.check_only:
         print("CHECK-ONLY: no robot, camera, or gripper motion will be commanded.", flush=True)
         return 0
+    if not _start_competition_progress(args, "priority_" + chosen_action + ("_no_cv" if no_cv else ""), actions):
+        return 2
     completed = 0
     skipped_run = 0
     failed_parts = []
@@ -1253,6 +1291,8 @@ def _configured_competition_run(args):
     if args.check_only:
         print("CHECK-ONLY: no robot, camera, or gripper motion will be commanded.", flush=True)
         return 0
+    if not _start_competition_progress(args, "configured", actions):
+        return 2
     completed = 0
     failed = []
     for part, action in actions:
@@ -1318,6 +1358,8 @@ def _all_calibrated_competition_run(args, *, place_cv=False):
     if args.check_only:
         print("CHECK-ONLY: no robot, camera, or gripper motion will be commanded.", flush=True)
         return 0
+    if not _start_competition_progress(args, "all_place_cv" if place_cv else "all_no_place_cv", [(p, a) for p, a, _ in actions]):
+        return 2
     completed = 0
     for part, action, use_cv in actions:
         result = _run_competition_action(
@@ -1369,6 +1411,9 @@ def _run_competition_sequence(args, raw=None):
         return 2
     plan = _load_competition_plan()
     _snapshot_execution_offsets(args)
+    if not _start_competition_progress(args, "custom", [
+            available_actions[str(i)].split(".", 1) for i in indices]):
+        return 2
     for index in indices:
         part, action = available_actions[str(index)].split(".", 1)
         result = _run_competition_action(
@@ -1393,6 +1438,10 @@ def main(argv=None):
         "--clearance-mm", type=float, default=None,
         help="TCP clearance above the calibrated board surface (default: configs/competition_plan.json)",
     )
+    p.add_argument("--resume-after-inspection", action="store_true",
+                   help="resume interrupted competition only after verifying arm stopped, faults resolved, and gripper empty")
+    p.add_argument("--new-competition-run", action="store_true",
+                   help="start a new trial instead of resuming pending actions; archives previous progress")
     actions = p.add_mutually_exclusive_group()
     actions.add_argument("--recalibrate", action="store_true",
                          help="run five-point calibration directly, without the menu")

@@ -302,6 +302,22 @@ class VegaAdapter(RobotAdapter):
         q = self._read_joint_positions()
         return self._kinematics.forward(q)
 
+    def stationary_tcp_pose(self):
+        """Read-only recovery gate: advancing state, stopped joints, clear E-stop."""
+        stamp = self._state_timestamp()
+        previous = self._read_joint_positions()
+        for _ in range(3):
+            time.sleep(.1)
+            current = self._wait_for_joint_state(newer_than=stamp, timeout_s=.5)
+            stamp = self._state_timestamp()
+            velocity = _finite_vector(self._arm.get_joint_vel(), 7, "Vega joint velocity")
+            if (any(self._read_estop_status().values()) or
+                    max(abs(v) for v in velocity) > .005 or
+                    max(abs(a-b) for a, b in zip(current, previous)) > .0005):
+                raise RuntimeError("Recovery blocked: arm is moving or E-stop is active")
+            previous = current
+        return self._kinematics.forward(current)
+
     # ------------------------------------------------------------------
     # Joint / TCP motion
     # ------------------------------------------------------------------

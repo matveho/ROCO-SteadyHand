@@ -280,7 +280,8 @@ class BoardRelativeTests(unittest.TestCase):
             Pose((.6, .2, .6), Q), action="place")
         np.testing.assert_allclose(xy, [.51, .12])
 
-    def test_competition_loops_do_not_continue_past_unknown_hardware_state(self):
+    @mock.patch.object(pipeline, "_start_competition_progress", return_value=True)
+    def test_competition_loops_do_not_continue_past_unknown_hardware_state(self, _progress):
         args = SimpleNamespace(speed_scale=.38, check_only=False)
         with mock.patch.object(pipeline, "_run_competition_action", return_value=2) as run:
             self.assertEqual(pipeline._configured_competition_run(args), 2)
