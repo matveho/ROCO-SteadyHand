@@ -25,9 +25,10 @@ from steadyhand.board_calibration import load_board_calibration
 from steadyhand.board_geometry import validate_task_coordinate_extent
 from steadyhand.cameras.vega import VegaWristCameras
 from steadyhand.config import load_bundle
-from steadyhand.executor import move_tcp_segmented
+from steadyhand.executor import move_tcp_segmented, preflight_tcp_segmented
+from steadyhand.kinematics import IKError
 from steadyhand.execution_offsets import load_offsets, parse_offsets, describe_offsets
-from steadyhand.geometry import matrix_to_quaternion, quaternion_to_matrix, interpolate_pose, pose_distance
+from steadyhand.geometry import matrix_to_quaternion, quaternion_to_matrix
 from steadyhand.models import Pose
 from steadyhand.skill_config import load_vega_skills
 from steadyhand.vega_presets import configured_right_preset
@@ -48,6 +49,11 @@ from steadyhand.vision.wrist_review import select_pixel
 ROOT = Path(__file__).resolve().parents[1]
 COMPETITION_ACTIONS = ROOT / "configs" / "competition_actions.json"
 GOAL_CLICK_MAX_ERROR_PX = 50.0
+MOTION_STEPS = dict(max_translation_step_m=.020, max_orientation_step_rad=.08)
+
+
+class PickupPreflightError(IKError):
+    """The complete pickup route failed before any descent or grip command."""
 
 
 def _session_execution_offsets(args):
@@ -334,13 +340,8 @@ class PartSession:
     def move(self, target, *, slow=False):
         # Check the complete Cartesian segment before issuing its first waypoint.
         before = self.robot.get_tcp_pose()
-        distance, angle = pose_distance(before, target)
-        step_m = .020
-        count = max(1, math.ceil(distance/step_m), math.ceil(angle/.08))
-        seed = self.robot._read_joint_positions()
-        for i in range(1, count + 1):
-            pose = interpolate_pose(before, target, i/count)
-            seed = self.robot._kinematics.solve(pose, seed)
+        preflight_tcp_segmented(self.robot._kinematics, self.robot._read_joint_positions(),
+                                before, target, **MOTION_STEPS)
         # Remote supervision changes confirmation/evidence only, not the
         # established trajectory, speed or manual jog size.
         if self.remote_safe:
@@ -350,7 +351,7 @@ class PartSession:
                 self.remote_checkpoint("before_lowering", capture=True, target=target)
         speed = .25 if slow else self.args.speed_scale
         move_tcp_segmented(self.robot, target, speed_scale=speed,
-                           max_translation_step_m=step_m, max_orientation_step_rad=.08,
+                           **MOTION_STEPS,
                            waypoint_guard=self.remote_waypoint if self.remote_safe else None,
                            min_tcp_z_m=None)
 
@@ -1111,11 +1112,23 @@ class PartSession:
         anchor_x, anchor_y, _ = hover.position_m
         x, y = anchor_x, anchor_y
         grasp = Pose((x, y, self.surface(x, y) + clearance), hover.quaternion_wxyz)
-        # Validate both descent and return before opening/closing.
+        # Validate the same segmented descent AND lift that move() executes.
+        # A one-shot lift solve can fail even when every local step is valid.
         seed = self.robot._read_joint_positions()
-        for i in range(1, 11):
-            seed = self.robot._kinematics.solve(interpolate_pose(hover, grasp, i/10), seed)
-        self.robot._kinematics.solve(hover, seed)
+        start = hover
+        for stage, target in (("descent", grasp), ("lift", hover)):
+            try:
+                seed = preflight_tcp_segmented(self.robot._kinematics, seed, start, target,
+                                               **MOTION_STEPS)
+            except IKError as exc:
+                self.event("pickup_preflight_failed", {
+                    "stage": stage, "hover_tcp": list(hover.position_m),
+                    "grasp_tcp": list(grasp.position_m),
+                    "quaternion_wxyz": list(hover.quaternion_wxyz),
+                    "grasp_clearance_m": clearance, "reason": str(exc),
+                })
+                raise PickupPreflightError(f"Pickup {stage} preflight failed: {exc}") from exc
+            start = target
         self.robot.connect_gripper()
         if self.gripper_open_fraction is None:
             # Never travel to the hard-open stop during a competition grasp;
@@ -1207,9 +1220,8 @@ class PartSession:
             hover.quaternion_wxyz,
         )
         seed = self.robot._read_joint_positions()
-        for i in range(1, 11):
-            seed = self.robot._kinematics.solve(interpolate_pose(hover, release, i / 10), seed)
-        self.robot._kinematics.solve(hover, seed)
+        seed = preflight_tcp_segmented(self.robot._kinematics, seed, hover, release, **MOTION_STEPS)
+        preflight_tcp_segmented(self.robot._kinematics, seed, release, hover, **MOTION_STEPS)
         self.remote_checkpoint("before_return_descent")
         self.move(release, slow=True)
         self.remote_checkpoint("return_release_height")
@@ -1315,8 +1327,9 @@ class PartSession:
             x, y = corrected.position_m[:2]
             descent = Pose((x, y, self.surface(x, y) + depth), corrected.quaternion_wxyz)
             seed = self.robot._read_joint_positions()
-            seed = self.robot._kinematics.solve(corrected, seed)
-            self.robot._kinematics.solve(descent, seed)
+            seed = preflight_tcp_segmented(self.robot._kinematics, seed,
+                                           self.robot.get_tcp_pose(), corrected, **MOTION_STEPS)
+            preflight_tcp_segmented(self.robot._kinematics, seed, corrected, descent, **MOTION_STEPS)
             if corrected != hover:
                 self.move(corrected, slow=True)
         return corrected, depth
@@ -1334,8 +1347,10 @@ class PartSession:
         release = Pose((x, y, self.surface(x, y)+settings["clearance_m"]), quat)
         # Validate placement descent before transporting the held part.
         seed = self.robot._read_joint_positions()
-        seed = self.robot._kinematics.solve(hover, seed)
-        self.robot._kinematics.solve(release, seed)
+        seed = preflight_tcp_segmented(self.robot._kinematics, seed,
+                                       self.robot.get_tcp_pose(), hover, **MOTION_STEPS)
+        seed = preflight_tcp_segmented(self.robot._kinematics, seed, hover, release, **MOTION_STEPS)
+        preflight_tcp_segmented(self.robot._kinematics, seed, release, hover, **MOTION_STEPS)
         self.remote_checkpoint("before_place_hover")
         self.move(hover)
         self.remote_checkpoint("place_hover")
@@ -1458,6 +1473,33 @@ class PartSession:
         self.drop_release_photo = relative
         return relative
 
+    def _teaching_pickup(self, profile):
+        """Keep a dry-run IK rejection inspectable without restarting teaching.
+
+        Only the pre-motion pickup check is recoverable here. A failure after
+        descent starts, or any hardware failure, still escapes to safe shutdown.
+        """
+        while True:
+            try:
+                self.grab(profile["grasp_clearance_m"], allow_unverified=True)
+                return True
+            except PickupPreflightError as exc:
+                print(f"PICKUP PLAN BLOCKED: {exc}\n"
+                      "No descent or grip was commanded. The arm remains at the pickup hover.\n"
+                      "Inspect before retrying; the saved calibration has not been changed.", flush=True)
+                if self.remote_safe:
+                    self.frame("pickup preflight blocked")
+                while True:
+                    command = input("PICKUP PLAN [retry / image / abort]: ").strip().lower()
+                    if command == "retry":
+                        break
+                    if command == "image":
+                        self.frame("pickup preflight inspection")
+                    elif command in ("abort", "stop", "exit", "q"):
+                        return False
+                    else:
+                        print("Use retry to recheck IK, image to inspect, or abort to finish.", flush=True)
+
     def teach_drop(self, part, profile):
         """Teach a physical drop position using an existing pickup profile.
 
@@ -1477,10 +1519,8 @@ class PartSession:
         self.drop_evidence_photos = []
         self.drop_release_photo = None
         self.grasp_verified = True
-        self.grab(
-            profile["grasp_clearance_m"],
-            allow_unverified=True,
-        )
+        if not self._teaching_pickup(profile):
+            return 1
         self.grasp_verified = True
         self.remote_checkpoint("drop_pickup_complete")
 
@@ -1969,7 +2009,8 @@ class PartSession:
         print("PLACEMENT CV PICKUP: using saved pickup coordinates and depth, without wrist centering.", flush=True)
         self.begin_part(part, profile, competition=True, no_cv=True)
         self.grasp_verified = True
-        self.grab(profile["grasp_clearance_m"], allow_unverified=True)
+        if not self._teaching_pickup(profile):
+            return 1
         self.remote_checkpoint("place_cv_pickup_complete")
         settings = profile["place"]
         target = self.targets[f"task.{part}.place"]
@@ -2271,6 +2312,7 @@ def main(argv=None):
         raise ValueError("Requires right arm / tip_r")
     cfg["allow_robot_init_head_motion"] = True
     cfg["auto_clear_software_estop_on_connect"] = True
+    cfg["kinematics"]["near_target_fallback"] = True
     # The right-arm state stream routinely settles a few milliradians outside
     # the nominal 5 mrad gate even when the motion plugin has finished.  This
     # is the same supervised tolerance used by board calibration and prevents

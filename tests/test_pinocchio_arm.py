@@ -7,16 +7,19 @@ standard-library CI explicitly skips the numerical tests when unavailable.
 """
 
 import math
+import json
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from steadyhand.geometry import quaternion_angle, quaternion_to_matrix
 from steadyhand.kinematics.pinocchio_arm import IKError, PinocchioArmKinematics
 from steadyhand.models import Pose
+from steadyhand.executor import preflight_tcp_segmented
 
 try:
     import numpy as np
@@ -222,6 +225,66 @@ class PinocchioNumericalTests(unittest.TestCase):
         current = kin.forward(SEED)
         with self.assertRaisesRegex(IKError, "position_error=.*orientation_error="):
             kin.solve(Pose((20, 20, 20), current.quaternion_wxyz), SEED)
+
+
+@unittest.skipUnless(pin is not None, "Numerical tests require robotics Pinocchio and NumPy")
+class VegaPickupRegressionTests(unittest.TestCase):
+    """Operator's failed menu-12 hover; no vendor control or robot connection."""
+    seed = (.2265978455543518, -.17115746438503265, -2.197451591491699,
+            -.9340024590492249, .9935635924339294, -.8889415860176086, .9849573373794556)
+    hover = Pose((.6066043805040553, -.14009201208247296, .5589450232631612),
+                 (.8199953126488716, .04858657587239977, .06911024666811323, .5661014093643891))
+    steps = dict(max_translation_step_m=.020, max_orientation_step_rad=.08)
+
+    def kin(self, enabled=True):
+        root = Path(__file__).resolve().parents[1]
+        cfg = json.loads((root / 'configs/robots/vega.json').read_text())
+        settings = dict(cfg['kinematics'], joint_limits_rad=cfg['arm_joint_limits_rad']['right'],
+                        near_target_fallback=enabled)
+        return PinocchioArmKinematics(root / cfg['urdf_path'], 'tip_r',
+                                      settings['right_arm_joint_names'], settings)
+
+    def test_logged_hover_fk_and_descent_failure_are_reproducible(self):
+        kin = self.kin(enabled=False)
+        np.testing.assert_allclose(kin.forward(self.seed).position_m, self.hover.position_m, atol=1e-12)
+        grasp = Pose((*self.hover.position_m[:2], .46191301569882637), self.hover.quaternion_wxyz)
+        with self.assertRaisesRegex(IKError, 'waypoint 5/5.*did not converge'):
+            preflight_tcp_segmented(kin, self.seed, self.hover, grasp, **self.steps)
+
+    def test_logged_pickup_and_segmented_lift_recover_with_original_limits(self):
+        from steadyhand.executor import cartesian_waypoints
+        from steadyhand.geometry import pose_distance
+        kin = self.kin()
+        for z in (.46191301569882637, .4639450232631612):
+            with self.subTest(z=z), mock.patch.object(kin, '_near_target_solve', wraps=kin._near_target_solve) as recover:
+                grasp = Pose((*self.hover.position_m[:2], z), self.hover.quaternion_wxyz)
+                seed = self.seed
+                for start, end in ((self.hover, grasp), (grasp, self.hover)):
+                    for point in cartesian_waypoints(start, end, **self.steps):
+                        solved = kin.solve(point, seed)
+                        dp, da = pose_distance(kin.forward(solved), point)
+                        self.assertLessEqual(dp, .002)
+                        self.assertLessEqual(da, .020)
+                        self.assertLessEqual(max(abs(a-b) for a, b in zip(solved, seed)), 1.5)
+                        self.assertTrue(np.all(np.asarray(solved) >= kin._lower))
+                        self.assertTrue(np.all(np.asarray(solved) <= kin._upper))
+                        seed = solved
+                self.assertGreater(recover.call_count, 0)
+
+    def test_normal_success_and_distant_failure_do_not_use_recovery(self):
+        kin = self.kin()
+        with mock.patch.object(kin, '_near_target_solve', side_effect=AssertionError('unexpected recovery')):
+            kin.solve(self.hover, self.seed)
+            with self.assertRaises(IKError):
+                kin.solve(Pose((20, 20, 20), self.hover.quaternion_wxyz), self.seed)
+
+    def test_recovery_cannot_bypass_original_seed_delta(self):
+        kin = self.kin()
+        kin.config['max_seed_delta_rad'] = .02
+        grasp = Pose((*self.hover.position_m[:2], .46191301569882637), self.hover.quaternion_wxyz)
+        desired = kin._root_M_base * pin.SE3(np.asarray(quaternion_to_matrix(grasp.quaternion_wxyz)),
+                                            np.asarray(grasp.position_m))
+        self.assertIsNone(kin._near_target_solve(desired, self.seed, .002, .02, 500))
 
 
 if __name__ == "__main__":

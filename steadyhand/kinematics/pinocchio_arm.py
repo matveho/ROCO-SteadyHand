@@ -263,11 +263,83 @@ class PinocchioArmKinematics:
             # Clamp active scalar joints to URDF limits.
             q[self._q_idx] = np.clip(q[self._q_idx], self._lower, self._upper)
 
+        # A near-target singularity can stall the unweighted SE(3) solve:
+        # it minimizes radians and metres equally, driving orientation almost
+        # to zero while position remains several millimetres out. Try a bounded
+        # numerical solve that gives translation more weight, then enforce the
+        # SAME position/orientation tolerances and original-seed distance gate.
+        # Opt-in for the wrist workflow; no changed target or physical retry.
+        if (self.config.get("near_target_fallback", False)
+                and final_pos <= .010 and final_orn <= .050):
+            recovered = self._near_target_solve(desired, seed_arm_q, pos_tol, orn_tol, max_iter)
+            if recovered is not None:
+                return recovered
         raise IKError(
             f"IK did not converge after {max_iter} iterations "
             f"(position_error={final_pos:.5f} m, "
             f"orientation_error={final_orn:.5f} rad)"
         )
+
+    def _near_target_solve(self, desired, seed_arm_q, pos_tol, orn_tol, max_iter):
+        """Trust-region damped solve; numerical candidates never move hardware."""
+        np, pin = self.np, self.pin
+        q = self._full_q(seed_arm_q)
+        lower, upper = self._lower.copy(), self._upper.copy()
+        max_delta = self.config.get("max_seed_delta_rad")
+        if max_delta is not None:
+            seed = np.asarray(seed_arm_q, dtype=float)
+            lower = np.maximum(lower, seed - float(max_delta))
+            upper = np.minimum(upper, seed + float(max_delta))
+        # Scale the two units by their acceptance tolerances. Keep angular
+        # residuals weighted conservatively (twice the normalized weight).
+        weights = np.asarray([1., 1., 1.] + [2. * pos_tol / orn_tol] * 3)
+        minimum_damping = max(1e-6, float(self.config.get("damping", 1e-6)))
+        damping = minimum_damping
+        for _ in range(min(max_iter, 300) + 1):
+            pin.forwardKinematics(self.model, self.data, q)
+            pin.updateFramePlacements(self.model, self.data)
+            current = self.data.oMf[self.frame_id]
+            relative = current.actInv(desired)
+            raw = pin.log6(relative).vector.copy()
+            if not np.all(np.isfinite(raw)):
+                return None
+            position_error = float(np.linalg.norm(current.translation - desired.translation))
+            orientation_error = float(np.linalg.norm(raw[3:]))
+            if position_error <= pos_tol and orientation_error <= orn_tol:
+                answer = self._arm_q(q)
+                self._check_seed_delta(answer, seed_arm_q)
+                print(f"IK NEAR-TARGET RECOVERY: position_error={position_error:.6f} m, "
+                      f"orientation_error={orientation_error:.6f} rad; original limits retained",
+                      flush=True)
+                return answer
+            err = raw * weights
+            j = self._local_error_jacobian(q, relative) * weights[:, None]
+            if not np.all(np.isfinite(j)):
+                return None
+            delta = -j.T @ np.linalg.solve(j @ j.T + damping * np.eye(6), err)
+            if not np.all(np.isfinite(delta)):
+                return None
+            # Bound each numerical update, then backtrack until the weighted
+            # pose error decreases. Joint and seed bounds apply to every trial.
+            delta *= min(1., .1 / max(float(np.max(np.abs(delta))), 1e-12))
+            score = float(err @ err)
+            accepted = False
+            for scale in (1., .5, .25, .125, .0625, .03125):
+                trial = q.copy()
+                trial[self._q_idx] = np.clip(q[self._q_idx] + scale * delta, lower, upper)
+                pin.forwardKinematics(self.model, self.data, trial)
+                pin.updateFramePlacements(self.model, self.data)
+                trial_error = pin.log6(self.data.oMf[self.frame_id].actInv(desired)).vector * weights
+                if np.all(np.isfinite(trial_error)) and float(trial_error @ trial_error) < score:
+                    q = trial
+                    damping = max(minimum_damping, damping * .5)
+                    accepted = True
+                    break
+            if not accepted:
+                damping *= 10.
+                if damping > 1.:
+                    return None
+        return None
 
     def _local_error_jacobian(self, q, relative):
         # e(q) = log(current(q)^-1 * desired), in the current EE frame.

@@ -89,8 +89,16 @@ def cartesian_waypoints(current, target, *, max_translation_step_m, max_orientat
 
 def preflight_tcp_segmented(kinematics, seed, current, target, **step_limits):
     """Check every local IK seed delta without commanding any movement."""
-    for waypoint in cartesian_waypoints(current, target, **step_limits):
-        seed = kinematics.solve(waypoint, seed)
+    from .kinematics import IKError
+    waypoints = cartesian_waypoints(current, target, **step_limits)
+    for index, waypoint in enumerate(waypoints, 1):
+        try:
+            seed = kinematics.solve(waypoint, seed)
+        except IKError as exc:
+            raise IKError(
+                f"waypoint {index}/{len(waypoints)} "
+                f"xyz_m={tuple(round(v, 6) for v in waypoint.position_m)}: {exc}"
+            ) from exc
     return seed
 
 
