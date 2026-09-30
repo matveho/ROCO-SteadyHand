@@ -152,7 +152,6 @@ class CompetitionMenuTests(unittest.TestCase):
                 self.assertEqual(run.call_args_list[0].kwargs, {
                     'retries': 1, 'no_cv': False, 'place_cv': True,
                     'head_reacquire': False, 'retry_without_cv': False,
-                    'release_wiggle': settings['parts']['battery_size1']['release_wiggle'],
                 })
 
     def test_full_competition_still_respects_disabled_parts(self):

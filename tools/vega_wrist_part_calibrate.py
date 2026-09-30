@@ -87,22 +87,6 @@ def _competition_center_backoff_m():
     return max(0.0, min(30.0, millimetres)) / 1000.0
 
 
-def release_wiggle_settings(value=None):
-    value = {} if value is None else value
-    if not isinstance(value, dict):
-        raise ValueError("release_wiggle must be an object")
-    enabled = value.get("enabled", False)
-    angle = value.get("angle_deg", 3.0)
-    cycles = value.get("cycles", 2)
-    if not isinstance(enabled, bool):
-        raise ValueError("release_wiggle.enabled must be true or false")
-    if isinstance(angle, bool) or not isinstance(angle, (int, float)) or not math.isfinite(angle) or not 0 < angle <= 10:
-        raise ValueError("release_wiggle.angle_deg must be finite and in (0, 10]")
-    if isinstance(cycles, bool) or not isinstance(cycles, int) or not 1 <= cycles <= 5:
-        raise ValueError("release_wiggle.cycles must be an integer 1..5")
-    return {"enabled": enabled, "angle_deg": float(angle), "cycles": cycles}
-
-
 def _is_visual_alignment_failure(exc):
     """Return whether an exception is safe to handle as a centering failure.
 
@@ -188,17 +172,6 @@ class PartSession:
 
     def __init__(self, args, output, cfg, profiles):
         self.args, self.output, self.cfg, self.profiles = args, output, cfg, profiles
-        self.release_wiggles = {}
-        if args.mode == "test":
-            raw = getattr(args, "release_wiggle_json", None)
-            if raw is not None:
-                self.release_wiggles[args.part] = release_wiggle_settings(json.loads(raw))
-            elif COMPETITION_ACTIONS.is_file():
-                entries = json.loads(COMPETITION_ACTIONS.read_text(encoding="utf-8")).get("parts", {})
-                self.release_wiggles = {
-                    part: release_wiggle_settings(entry.get("release_wiggle"))
-                    for part, entry in entries.items()
-                }
         self.execution_offsets = getattr(args, "execution_offsets", None)
         self.floor = float(load_vega_skills()["safety"]["min_tcp_z_m"])
         self.robot = VegaAdapter(cfg)
@@ -1526,51 +1499,6 @@ class PartSession:
                 self.move(corrected, slow=True)
         return corrected, depth
 
-    def _wiggle_before_release(self):
-        settings = self.release_wiggles.get(self.part, {})
-        if not settings.get("enabled", False):
-            return
-        if not self.holding or self.motion_faulted:
-            raise RuntimeError("Release wiggle needs a held part and healthy motion state")
-        original = None
-        try:
-            self.robot.stationary_tcp_pose(settle_timeout_s=1.0)
-            original = tuple(self.robot._read_joint_positions())
-            angle = math.radians(settings["angle_deg"])
-            targets = []
-            for _ in range(settings["cycles"]):
-                for delta in (angle, -angle):
-                    target = list(original)
-                    target[-1] += delta
-                    targets.append(tuple(target))
-            targets.append(original)
-            for target in targets:
-                self.robot._check_joint_limits(target)
-            self.event("release_wiggle_start", {
-                "part": self.part, "settings": settings, "original_joints_rad": list(original),
-            })
-            print(f"RELEASE WIGGLE {self.part}: joint 7 +/-{settings['angle_deg']:g} deg, "
-                  f"{settings['cycles']} cycles; restore original angle before release", flush=True)
-            for target in targets:
-                self.robot.move_joints(target, speed_scale=min(.15, self.args.speed_scale))
-            self.robot.stationary_tcp_pose(settle_timeout_s=1.0)
-            measured = tuple(self.robot._read_joint_positions())
-            error = abs(measured[-1] - original[-1])
-            if error > .005:
-                raise RuntimeError(f"Release wiggle joint 7 restoration error {math.degrees(error):.3f} deg; jaws remain closed")
-            self.event("release_wiggle_restored", {
-                "original_joints_rad": list(original), "measured_joints_rad": list(measured),
-                "last_joint_error_deg": math.degrees(error),
-            })
-            print("RELEASE WIGGLE: original joint 7 angle restored and verified", flush=True)
-        except BaseException:
-            self.motion_faulted = True
-            self.automatic_continuation_safe = False
-            # Do not command a blind restoration through an E-stop or failed
-            # motion. Keep the holding state and prohibit release/next action.
-            self.robot.stop()
-            raise
-
     def place(self, settings, *, partial_release=False, use_place_cv=False):
         if not self.holding or settings is None:
             raise ValueError("Place needs a verified held part and taught place settings")
@@ -1622,7 +1550,6 @@ class PartSession:
         self.remote_checkpoint("place_release_height")
         self.remote_checkpoint("before_place_release")
         self._capture_drop_evidence("competition_release_before")
-        self._wiggle_before_release()
         self.robot.release_gripper(self.part)
         self.holding = False
         self._capture_drop_evidence("competition_release_after")
@@ -2780,7 +2707,6 @@ def main(argv=None):
     # Internal snapshot passed by the pipeline to keep all parts/retries on the
     # same settings, even if the operator edits the JSON while a run is active.
     parser.add_argument("--execution-offsets-json", help=argparse.SUPPRESS)
-    parser.add_argument("--release-wiggle-json", help=argparse.SUPPRESS)
     parser.add_argument(
         "--no-cv", action="store_true",
         help="competition pickup from saved arm/task coordinates without wrist images",
