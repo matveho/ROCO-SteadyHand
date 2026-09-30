@@ -213,7 +213,14 @@ ACTUAL="$(git -C "$STAGE" rev-parse HEAD)"
 [ "$ACTUAL" = "$EXPECTED" ] || { echo "REFUSING: staged SHA $ACTUAL != expected $EXPECTED" >&2; rm -rf "$STAGE"; exit 4; }
 if [ "$SKIP_PREFLIGHT" != "1" ]; then
   echo '=== staged no-motion preflight ==='
-  (cd "$STAGE" && python3 tools/vega_preflight.py) || { echo 'PREFLIGHT FAILED; live checkout unchanged.' >&2; rm -rf "$STAGE"; exit 10; }
+  # Non-interactive SSH does not load the operator's conda shell setup.  Use
+  # the installed runtime explicitly so the preflight checks the same SDK that
+  # the competition commands use, and provide the fixed robot identity.
+  ROBOT_NAME="${ROBOT_NAME:-dm/vgfcb66075ea-1u}"
+  export ROBOT_NAME
+  PYTHON_BIN='/home/dexmate/miniconda3/bin/python3'
+  [ -x "$PYTHON_BIN" ] || PYTHON_BIN="$(command -v python3)"
+  (cd "$STAGE" && PATH="$(dirname "$PYTHON_BIN"):$PATH" ROBOT_NAME="$ROBOT_NAME" "$PYTHON_BIN" tools/vega_preflight.py) || { echo 'PREFLIGHT FAILED; live checkout unchanged.' >&2; rm -rf "$STAGE"; exit 10; }
 fi
 SWAP="${LIVE}.swap.$$"
 rm -rf "$SWAP" "$CALIBRATION_PRESERVE"
