@@ -41,7 +41,7 @@ class CompetitionPipelineTests(unittest.TestCase):
             )
 
     def test_pipeline_speed_default_is_slightly_higher(self):
-        self.assertAlmostEqual(DEFAULT_PIPELINE_SPEED_SCALE, 0.38)
+        self.assertAlmostEqual(DEFAULT_PIPELINE_SPEED_SCALE, 0.50)
 
     def test_priority_plan_is_complete_and_operator_editable(self):
         plan = _load_competition_plan()
@@ -96,7 +96,7 @@ class CompetitionPipelineTests(unittest.TestCase):
             "clearance_mm_cli": False,
         })()
         self.assertEqual(_reload_operator_settings(args), 0)
-        self.assertAlmostEqual(args.speed_scale, 0.38)
+        self.assertAlmostEqual(args.speed_scale, 0.50)
         self.assertAlmostEqual(args.clearance_mm, 100.0)
         self.assertAlmostEqual(args.clearance_m, 0.100)
 

@@ -457,7 +457,7 @@ class TemplateTracker:
 
 def run_xy_servo(robot, capture_rgb, *, floor_m, feature_uv=None, goal_uv=None,
                  probe_m=0.012, gain=0.65, max_step_m=0.015, max_radius_m=0.06,
-                 tolerance_px=5.0, max_iterations=DEFAULT_CENTERING_ITERATIONS, speed_scale=0.45,
+                 tolerance_px=5.0, max_iterations=DEFAULT_CENTERING_ITERATIONS, speed_scale=0.55,
                  tracker_factory=TemplateTracker, event=None,
                  surface_z=None, reference_quaternion_wxyz=None, checkpoint=None,
                  waypoint_guard=None):

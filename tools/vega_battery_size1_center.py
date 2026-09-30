@@ -53,7 +53,7 @@ def main(argv=None):
     p.add_argument("--max-radius-m", type=float, default=0.040)
     p.add_argument("--tolerance-px", type=float, default=5.0)
     p.add_argument("--max-iterations", type=int, default=DEFAULT_CENTERING_ITERATIONS)
-    p.add_argument("--speed-scale", type=float, default=0.45)
+    p.add_argument("--speed-scale", type=float, default=0.55)
     p.add_argument("--start-xy-tolerance-m", type=float, default=0.015)
     p.add_argument("--output")
     p.add_argument("--confirm-physical-motion", action="store_true")

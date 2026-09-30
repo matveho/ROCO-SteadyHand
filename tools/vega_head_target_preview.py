@@ -87,7 +87,7 @@ def main(argv=None):
     parser.add_argument("--goal-pixel", type=float, nargs=2, metavar=("U", "V"))
     parser.add_argument("--hover-clearance-mm", type=float, default=100.0)
     parser.add_argument("--remote-safe", action="store_true")
-    parser.add_argument("--speed-scale", type=float, default=.38)
+    parser.add_argument("--speed-scale", type=float, default=.50)
     parser.add_argument("--confirm-head-motion", action="store_true")
     parser.add_argument("--confirm-physical-motion", action="store_true")
     parser.add_argument("--output")
@@ -315,7 +315,7 @@ def main(argv=None):
             result["wrist_center"] = run_xy_servo(
                 robot, lambda: image("servo")[0], floor_m=floor, feature_uv=feature, goal_uv=goal,
                 max_radius_m=.060, probe_m=.008, gain=.45, max_step_m=.008,
-                tolerance_px=8., max_iterations=DEFAULT_CENTERING_ITERATIONS, speed_scale=.45,
+                tolerance_px=8., max_iterations=DEFAULT_CENTERING_ITERATIONS, speed_scale=.55,
                 checkpoint=checkpoint, event=event,
                 waypoint_guard=waypoint_guard,
                 surface_z=lambda x, y: calibrated_surface_z(x, y, runtime[2][3]),

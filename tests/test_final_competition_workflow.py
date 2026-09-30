@@ -429,6 +429,23 @@ class FinalWorkflowTests(unittest.TestCase):
         self.assertEqual(len(s.history), 3)  # four accepted jogs, then undo; 31 mm rejected
         self.assertNotIn('Adjustment exceeds 60 mm', self.output.getvalue())
 
+    def test_faster_motion_preserves_requested_lower_speed_and_trajectory(self):
+        traces = []
+        for requested, slow, expected in ((.50, False, .50), (.50, True, .35), (.25, True, .25)):
+            with self.subTest(requested=requested, slow=slow):
+                s, _ = self.session()
+                s.args.speed_scale = requested
+                start = s.robot.pose
+                target = Pose((start.position_m[0] + .01, *start.position_m[1:]),
+                              start.quaternion_wxyz)
+                s.move(target, slow=slow)
+                moves = [v for v in s.robot.trace if v[0] == 'move']
+                self.assertTrue(moves)
+                self.assertTrue(all(v[2] == expected for v in moves))
+                traces.append([v[1] for v in moves])
+        self.assertEqual(traces[0], traces[1])
+        self.assertEqual(traces[1], traces[2])
+
     def test_competition_menu_uses_requested_numbers(self):
         with mock.patch("builtins.input", return_value="0"):
             self.assertEqual(pipeline.main(["--check-only"]), 0)

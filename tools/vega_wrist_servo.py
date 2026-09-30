@@ -110,7 +110,7 @@ def main(argv=None):
     p.add_argument("--max-radius-m", type=float, default=0.06)
     p.add_argument("--tolerance-px", type=float, default=5)
     p.add_argument("--max-iterations", type=int, default=DEFAULT_CENTERING_ITERATIONS)
-    p.add_argument("--speed-scale", type=float, default=0.45)
+    p.add_argument("--speed-scale", type=float, default=0.55)
     p.add_argument("--output", help="new run directory; default runs/wrist_servo_<UTC>")
     args = p.parse_args(argv)
     if args.execute and not args.confirm_physical_motion:

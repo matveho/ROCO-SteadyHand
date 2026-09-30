@@ -160,8 +160,8 @@ def _main_once(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--hover-z", type=float, default=None,
                    help="initial TCP hover Z in base frame; default is floor + 80 mm")
-    p.add_argument("--coarse-speed-scale", type=float, default=0.65)
-    p.add_argument("--jog-speed-scale", type=float, default=0.45)
+    p.add_argument("--coarse-speed-scale", type=float, default=0.70)
+    p.add_argument("--jog-speed-scale", type=float, default=0.55)
     p.add_argument(
         "--max-jog-mm", type=float, default=float("inf"),
         help="maximum single jog in mm; default is unlimited (IK still preflights)",
@@ -276,7 +276,7 @@ def _main_once(argv=None):
             point[1] += float(correction[1])
         print("CAMERA BOARD READ:", json.dumps(scene["board"], indent=2), flush=True)
         ready_q, ready_pose = configured_right_preset(cfg, "right_ready")
-        _move_configured_right_ready(robot, floor=floor, speed_scale=0.45)
+        _move_configured_right_ready(robot, floor=floor, speed_scale=0.55)
         robot._kinematics.config.update({
             "position_tolerance_m": 0.0015,
             "orientation_tolerance_rad": 0.05,
