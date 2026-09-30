@@ -25,7 +25,7 @@
     "search": null,
     "preinsert_m": 0.012,
     "grasp_settle_s": 0.5,
-    "release_settle_s": 0.25,
+    "release_settle_s": 0.1,
     "max_cartesian_step_m": 0.025,
     "max_orientation_step_rad": 0.12,
     "insertion_reached_tolerance_m": 0.004,

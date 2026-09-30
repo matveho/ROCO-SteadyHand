@@ -6,6 +6,7 @@ tracking, force units, collision clearance, CAN timing or grasp success.
 """
 
 import copy
+import json
 import math
 from pathlib import Path
 import sys
@@ -434,6 +435,22 @@ class GripperContractTests(unittest.TestCase):
         self.assertIn(("right", "move_to", 0.55, 180.0), driver.calls)
         self.assertNotIn(("right", "open", 500.0), driver.calls)
         gripper.close()
+
+    def test_deployed_release_speed_preserves_small_opening(self):
+        path = Path(__file__).resolve().parents[1] / "configs/robots/vega.json"
+        settings = json.loads(path.read_text(encoding="utf-8"))["gripper"]
+        gripper = VegaCanGripper({
+            **self.cfg,
+            "release_max_delta_fraction": settings["release_max_delta_fraction"],
+            "release_speed_dps": settings["release_speed_dps"],
+        })
+        gripper.connect()
+        self.addCleanup(gripper.close)
+        result = gripper.release_small()
+        self.assertAlmostEqual(result["delta_fraction"], 0.05)
+        self.assertEqual(gripper._driver.calls, [
+            ("right", "home"), ("right", "move_to", 0.55, 500.0),
+        ])
 
     def test_config_validation_never_imports_driver(self):
         self.path.write_text("raise RuntimeError('must not import')", encoding="utf-8")
