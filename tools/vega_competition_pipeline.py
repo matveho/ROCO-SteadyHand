@@ -34,7 +34,7 @@ from steadyhand.vega_camera_clear import move_camera_clear_for_image
 from steadyhand.vision.scene import detect_head_task_scene
 from steadyhand.wrist_part_profiles import PART_NAMES, load_profiles
 from tools.vega_board_five_point_calibrate import main as run_five_point_calibration
-from tools.vega_wrist_part_calibrate import main as run_wrist_part_calibration, recover_competition_checkpoint
+from tools.vega_wrist_part_calibrate import main as run_wrist_part_calibration, recover_competition_checkpoint, release_wiggle_settings
 from tools.vega_task_coordinate_reachability import (
     _finite_vector,
     calibrated_surface_z,
@@ -242,6 +242,7 @@ def _load_competition_actions():
             "use_wrist_pick_cv": strict_bool(entry.get("use_wrist_pick_cv"), f"{part}.use_wrist_pick_cv", global_pick_cv),
             "use_place_cv": strict_bool(entry.get("use_place_cv"), f"{part}.use_place_cv", global_place_cv),
             "max_attempts": part_attempts,
+            "release_wiggle": release_wiggle_settings(entry.get("release_wiggle")),
         }
     return {
         "order": order,
@@ -1086,7 +1087,7 @@ def _start_competition_progress(args, mode, actions):
 
 
 def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place_cv=False,
-                            head_reacquire=True, retry_without_cv=True):
+                            head_reacquire=True, retry_without_cv=True, release_wiggle=None):
     """Run one gated action with automatic, bounded recovery.
 
     Competition execution is deliberately non-interactive after launch: a
@@ -1099,11 +1100,15 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place
         raise ValueError("competition retries must be an integer 0..2 (maximum three attempts)")
     if getattr(args, "execution_offsets", None) is None:
         _snapshot_execution_offsets(args)
+    if release_wiggle is None:
+        release_wiggle = _load_competition_actions()["parts"][part].get("release_wiggle")
+    release_wiggle = release_wiggle_settings(release_wiggle)
     command = [
         "--part", part, "--mode", "test", "--action", action,
         "--competition", "--confirm-head-motion", "--confirm-physical-motion",
         "--speed-scale", str(args.speed_scale),
         "--execution-offsets-json", json.dumps(args.execution_offsets.as_dict()),
+        "--release-wiggle-json", json.dumps(release_wiggle),
     ]
     if no_cv:
         command.append("--no-cv")
@@ -1385,6 +1390,7 @@ def _configured_competition_run(args, *, selected_parts=None, action_override=No
             place_cv=use_place_cv,
             head_reacquire=settings["head_reacquire_on_failure"],
             retry_without_cv=settings["retry_without_wrist_cv"],
+            release_wiggle=part_settings.get("release_wiggle"),
         )
         if result == 0:
             completed += 1

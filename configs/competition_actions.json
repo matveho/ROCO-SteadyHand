@@ -23,7 +23,7 @@
   "visual_center_backoff_mm": 15.0,
   "parts": {
     "battery_size1": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": false, "max_attempts": 3, "mode": "pick_place"},
-    "gear_20teeth": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": false, "max_attempts": 3, "mode": "pick_place"},
+    "gear_20teeth": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": false, "max_attempts": 3, "mode": "pick_place", "release_wiggle": {"enabled": true, "angle_deg": 3.0, "cycles": 2}},
     "gear_60teeth": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": false, "max_attempts": 3, "mode": "pick_place"},
     "pin": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": false, "max_attempts": 3, "mode": "pick_place"},
     "bolt_8mm": {"enabled": true, "pick_enabled": true, "place_enabled": true, "use_wrist_pick_cv": true, "use_place_cv": false, "max_attempts": 3, "mode": "pick_place"},
