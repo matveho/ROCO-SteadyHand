@@ -8,6 +8,7 @@ from tools.vega_competition_pipeline import (
     DEFAULT_PIPELINE_SPEED_SCALE,
     DEFAULT_PICK_PRIORITY,
     _load_competition_plan,
+    _load_competition_actions,
     _reload_operator_settings,
     _run_competition_action,
     _priority_competition_actions,
@@ -40,6 +41,13 @@ class CompetitionPipelineTests(unittest.TestCase):
         self.assertEqual(set(plan["pick_priority"]), set(DEFAULT_PICK_PRIORITY))
         self.assertEqual(plan["default_action"], "pick_place")
         self.assertGreaterEqual(plan["max_retries_per_part"], 0)
+
+    def test_competition_actions_has_bounded_attempts_and_place_cv_switch(self):
+        settings = _load_competition_actions()
+        self.assertEqual(settings["max_attempts_per_action"], 3)
+        self.assertEqual(settings["retries_per_action"], 2)
+        self.assertTrue(settings["use_place_cv"])
+        self.assertTrue(all("use_place_cv" in entry for entry in settings["parts"].values()))
 
     def test_malformed_master_plan_is_rejected_before_reload(self):
         with tempfile.TemporaryDirectory() as td:

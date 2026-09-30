@@ -24,7 +24,10 @@ param(
     [string]$UserName = "dexmate",
     [string]$LiveDir = "/home/dexmate/ROCO-SteadyHand-live",
     [switch]$SkipPull,
-    [switch]$SkipPreflight
+    [switch]$SkipPreflight,
+    [switch]$ListVersions,
+    [string]$RestoreVersion,
+    [string]$VersionName
 )
 
 $ErrorActionPreference = "Stop"
@@ -62,6 +65,27 @@ try {
         throw "scp is not available in PATH"
     }
 
+    $CommonSsh = @(
+        "-o", "StrictHostKeyChecking=accept-new",
+        "-o", "ConnectTimeout=8"
+    )
+
+    if ($ListVersions) {
+        Write-Host "Archived Vega versions:"
+        Invoke-Checked ssh ($CommonSsh + @(
+            $Remote,
+            "find /home/dexmate/ROCO-SteadyHand-versions -mindepth 1 -maxdepth 1 -type d -printf '%f\n' 2>/dev/null | sort -r"
+        ))
+        return
+    }
+
+    $Mode = "deploy"
+    $SelectedVersion = ""
+    if ($RestoreVersion) {
+        $Mode = "restore"
+        $SelectedVersion = $RestoreVersion
+    }
+
     if (-not $Password) {
         $Secure = Read-Host "DexMate SSH password (or configure DEXMATE_PASSWORD once)" -AsSecureString
         $Bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($Secure)
@@ -84,6 +108,37 @@ powershell.exe -NoProfile -Command "[Console]::Out.Write($env:ROCO_SSH_PASSWORD)
         $env:SSH_ASKPASS = $AskPassPath
         $env:SSH_ASKPASS_REQUIRE = "force"
         $env:DISPLAY = "roco-deploy"
+    }
+
+    if ($Mode -eq "restore") {
+        if ($SelectedVersion -notmatch '^[A-Za-z0-9._-]+$') {
+            throw "RestoreVersion contains unsupported characters"
+        }
+        Write-Host "Restoring archived Vega version $SelectedVersion..."
+        $RestoreCommand = "set -e; LIVE='$LiveDir'; ROOT=/home/dexmate/ROCO-SteadyHand-versions; V='$SelectedVersion'; " +
+            '[ -d "$ROOT/$V" ] || { echo "Unknown archived version" >&2; exit 5; }; ' +
+            'BACKUP="$ROOT/$(date -u +%Y%m%dT%H%M%SZ)_before_restore"; ' +
+            'cp -a "$LIVE" "$BACKUP"; rm -rf "$LIVE.restore.tmp"; ' +
+            'cp -a "$ROOT/$V" "$LIVE.restore.tmp"; rm -rf "$LIVE"; ' +
+            'mv "$LIVE.restore.tmp" "$LIVE"; echo RESTORED_VERSION=$V; echo CURRENT_LIVE_BACKUP=$BACKUP'
+        Invoke-Checked ssh ($CommonSsh + @(
+            $Remote,
+            $RestoreCommand
+        ))
+        return
+    }
+
+    if (-not $VersionName) {
+        $Choice = Read-Host "Deploy current code: overwrite live [O] or archive a named rollback version [N] (O/N)"
+        if ($Choice -match '^[Nn]$') {
+            $VersionName = Read-Host "Rollback label (old live is always preserved; label is for this archive)"
+        }
+    }
+    if (-not $VersionName) {
+        $VersionName = "deploy"
+    }
+    if ($VersionName -notmatch '^[A-Za-z0-9._-]+$') {
+        throw "VersionName may contain only letters, numbers, dot, underscore, and hyphen"
     }
 
     Push-Location $RepoRoot
@@ -124,6 +179,22 @@ LIVE='__LIVE__'
 BUNDLE="/home/dexmate/__BUNDLE__"
 EXPECTED='__EXPECTED__'
 SKIP_PREFLIGHT='__SKIP_PREFLIGHT__'
+MODE='__MODE__'
+VERSION_LABEL='__VERSION_LABEL__'
+VERSION_ROOT='/home/dexmate/ROCO-SteadyHand-versions'
+
+if [ "$MODE" = "deploy" ]; then
+    mkdir -p "$VERSION_ROOT"
+    ARCHIVE_NAME="$(date -u +%Y%m%dT%H%M%SZ)_${VERSION_LABEL}_${EXPECTED:0:12}"
+    ARCHIVE="$VERSION_ROOT/$ARCHIVE_NAME"
+    while [ -e "$ARCHIVE" ]; do
+        ARCHIVE="${VERSION_ROOT}/${ARCHIVE_NAME}_$RANDOM"
+    done
+    if [ -d "$LIVE" ]; then
+        cp -a "$LIVE" "$ARCHIVE"
+        echo "PRESERVED_LIVE_VERSION=$ARCHIVE"
+    fi
+fi
 
 if [ ! -d "$LIVE/.git" ]; then
     mkdir -p "$LIVE"
@@ -189,6 +260,8 @@ fi
         $RemoteBody = $RemoteBody.Replace("__EXPECTED__", $Head)
         $RemoteBody = $RemoteBody.Replace("__SKIP_PREFLIGHT__", $SkipPreflightValue)
         $RemoteBody = $RemoteBody.Replace("__REMOTE_SCRIPT__", $RemoteScriptName)
+        $RemoteBody = $RemoteBody.Replace("__MODE__", $Mode)
+        $RemoteBody = $RemoteBody.Replace("__VERSION_LABEL__", $VersionName)
 
         # Bash on the Jetson requires Unix LF line endings. Windows PowerShell
         # Set-Content would write CRLF, which makes "set -euo pipefail" parse as
@@ -198,11 +271,6 @@ fi
             $RemoteScriptPath,
             $RemoteBody,
             (New-Object System.Text.UTF8Encoding($false))
-        )
-
-        $CommonSsh = @(
-            "-o", "StrictHostKeyChecking=accept-new",
-            "-o", "ConnectTimeout=8"
         )
 
         Write-Host "Copying bundle to $Remote..."

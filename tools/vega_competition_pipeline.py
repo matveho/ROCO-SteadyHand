@@ -148,8 +148,11 @@ def _load_competition_actions():
     defaults = {
         "order": list(DEFAULT_PICK_PRIORITY),
         "retries_per_action": 1,
+        "max_attempts_per_action": 2,
         "use_wrist_cv": True,
         "retry_without_wrist_cv": True,
+        "use_place_cv": True,
+        "head_reacquire_on_failure": True,
         "pipeline_speed_scale": DEFAULT_PIPELINE_SPEED_SCALE,
         "task_clearance_mm": DEFAULT_TASK_CLEARANCE_MM,
         "visual_center_backoff_mm": 15.0,
@@ -174,9 +177,14 @@ def _load_competition_actions():
         mode = entry.get("mode", "auto")
         if mode not in ("auto", "pick", "pick_place"):
             raise ValueError(f"competition action mode for {part} must be auto, pick, or pick_place")
-        normalized_parts[part] = {"enabled": bool(entry.get("enabled", True)), "mode": mode}
+        normalized_parts[part] = {
+            "enabled": bool(entry.get("enabled", True)),
+            "mode": mode,
+            "use_place_cv": bool(entry.get("use_place_cv", True)),
+        }
     try:
         retries = int(value.get("retries_per_action", defaults["retries_per_action"]))
+        attempts = int(value.get("max_attempts_per_action", retries + 1))
         speed = float(value.get("pipeline_speed_scale", defaults["pipeline_speed_scale"]))
         clearance = float(value.get("task_clearance_mm", defaults["task_clearance_mm"]))
         backoff = float(value.get("visual_center_backoff_mm", defaults["visual_center_backoff_mm"]))
@@ -184,6 +192,9 @@ def _load_competition_actions():
         raise ValueError("competition_actions.json numeric settings are invalid") from exc
     if not 0 <= retries <= 2:
         raise ValueError("retries_per_action must be 0..2")
+    if not 1 <= attempts <= 3:
+        raise ValueError("max_attempts_per_action must be 1..3")
+    retries = min(2, max(0, attempts - 1))
     if not 0.25 <= speed <= 0.70:
         raise ValueError("pipeline_speed_scale must be 0.25..0.70")
     if not 20.0 <= clearance <= 100.0:
@@ -193,8 +204,11 @@ def _load_competition_actions():
     return {
         "order": order,
         "retries_per_action": retries,
+        "max_attempts_per_action": attempts,
         "use_wrist_cv": bool(value.get("use_wrist_cv", True)),
         "retry_without_wrist_cv": bool(value.get("retry_without_wrist_cv", True)),
+        "use_place_cv": bool(value.get("use_place_cv", True)),
+        "head_reacquire_on_failure": bool(value.get("head_reacquire_on_failure", True)),
         "pipeline_speed_scale": speed,
         "task_clearance_mm": clearance,
         "visual_center_backoff_mm": backoff,
@@ -717,13 +731,16 @@ def _run_wrist_calibration_menu(args):
         "WRIST CAMERA CALIBRATION",
     )
     for part in selected:
-        result = run_wrist_part_calibration([
+        command = [
             "--part", part,
             "--mode", "calibrate",
             "--confirm-head-motion",
             "--confirm-physical-motion",
             "--speed-scale", str(args.speed_scale),
-        ])
+        ]
+        if getattr(args, "remote_safe", False):
+            command.append("--remote-safe")
+        result = run_wrist_part_calibration(command)
         if result:
             return result
     return 0
@@ -738,13 +755,58 @@ def _run_drop_calibration_menu(args):
         "DROP-OFF POSITION CALIBRATION",
     )
     for part in selected:
-        result = run_wrist_part_calibration([
+        command = [
             "--part", part,
             "--mode", "drop",
             "--confirm-head-motion",
             "--confirm-physical-motion",
             "--speed-scale", str(args.speed_scale),
-        ])
+        ]
+        if getattr(args, "remote_safe", False):
+            command.append("--remote-safe")
+        result = run_wrist_part_calibration(command)
+        if result:
+            return result
+    return 0
+
+
+def _run_place_cv_menu(args):
+    if args.check_only:
+        print("Placement CV teaching requires physical motion; remove --check-only.")
+        return 2
+    selected = _choose(
+        OrderedDict((part, "teach wrist release feature while holding the verified part") for part in PART_NAMES),
+        "PLACEMENT CV TARGET TEACHING",
+    )
+    for part in selected:
+        command = [
+            "--part", part, "--mode", "place-cv",
+            "--confirm-head-motion", "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ]
+        if getattr(args, "remote_safe", False):
+            command.append("--remote-safe")
+        result = run_wrist_part_calibration(command)
+        if result:
+            return result
+    return 0
+
+
+def _run_head_preview_menu(args):
+    if args.check_only:
+        print("Head target preview requires physical motion; remove --check-only.")
+        return 2
+    selected = _choose(
+        OrderedDict((part, "head-camera target, 40 mm hover, no grip") for part in PART_NAMES),
+        "HEAD-CAMERA TARGET PREVIEW",
+    )
+    from tools.vega_head_target_preview import main as run_head_target_preview
+    for part in selected:
+        result = run_head_target_preview([
+            "--part", part,
+            "--confirm-head-motion", "--confirm-physical-motion",
+            "--hover-clearance-mm", "40",
+        ] + (["--remote-safe"] if getattr(args, "remote_safe", False) else []))
         if result:
             return result
     return 0
@@ -786,7 +848,7 @@ def _sequence_indices(raw, available=None):
     return list(dict.fromkeys(selected))
 
 
-def _run_competition_action(args, part, action, *, retries=0, no_cv=False):
+def _run_competition_action(args, part, action, *, retries=0, no_cv=False, place_cv=False, head_reacquire=True):
     """Run one gated action with automatic, bounded recovery.
 
     Competition execution is deliberately non-interactive after launch: a
@@ -802,6 +864,10 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False):
     ]
     if no_cv:
         command.append("--no-cv")
+    if place_cv and action == "pick_place":
+        command.append("--place-cv")
+    if getattr(args, "remote_safe", False):
+        command.append("--remote-safe")
     attempt = 0
     while True:
         attempt += 1
@@ -809,8 +875,19 @@ def _run_competition_action(args, part, action, *, retries=0, no_cv=False):
             f"{time.time_ns()}_{part}_{action}_attempt{attempt}"
         )
         print(f"\nCOMPETITION ACTION {part}.{action} (attempt {attempt})", flush=True)
+        attempt_command = list(command)
+        if attempt >= 2 and head_reacquire:
+            # A second attempt is deliberately a fresh-head-target attempt;
+            # the wrist profile remains unchanged and the saved hover stays a
+            # bounded fallback if the live target is not reachable.
+            attempt_command.append("--head-reacquire")
+        if attempt >= 3 and not no_cv:
+            # Final bounded attempt uses the saved physical hover and skips
+            # wrist visual feedback; this is the deliberate brute-force
+            # fallback requested for an unreliable remote image stream.
+            attempt_command.append("--no-cv")
         try:
-            result = run_wrist_part_calibration(command + ["--output", str(output)])
+            result = run_wrist_part_calibration(attempt_command + ["--output", str(output)])
         except Exception as exc:
             result = 2
             print(
@@ -938,25 +1015,6 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
             file=sys.stderr, flush=True,
         )
         return result
-    # Revisit cleanly skipped pickup parts after every other part has had a
-    # chance.  The deterministic fallback tries the saved arm hover first and
-    # then the live (12 mm forward-shifted) task target, without wrist CV.
-    if action == "pick" and not no_cv and failed_parts:
-        print("\nNO-CV BRUTE-FORCE RETRIES FOR SKIPPED PICKUPS", flush=True)
-        for part, current_action in failed_parts:
-            result = _run_competition_action(
-                args, part, current_action,
-                retries=plan["max_retries_per_part"], no_cv=True,
-            )
-            if result == 0:
-                completed += 1
-                skipped_run -= 1
-            elif result == 3:
-                print(
-                    f"PLAN STOPPED: {part} may be held after the no-CV attempt.",
-                    file=sys.stderr, flush=True,
-                )
-                return result
     print(
         f"PLAN FINISHED: {completed} completed, {skipped_run} skipped; "
         f"{len(skipped)} parts were not eligible before motion.", flush=True,
@@ -1013,6 +1071,8 @@ def _configured_competition_run(args):
             args, part, action,
             retries=settings["retries_per_action"],
             no_cv=not settings["use_wrist_cv"],
+            place_cv=(settings["use_place_cv"] and settings["parts"][part]["use_place_cv"]),
+            head_reacquire=settings["head_reacquire_on_failure"],
         )
         if result == 0:
             completed += 1
@@ -1021,20 +1081,52 @@ def _configured_competition_run(args):
             return result
         failed.append((part, action))
     if settings["retry_without_wrist_cv"] and failed:
-        print("\nCONFIGURED NO-CV RETRIES", flush=True)
-        for part, action in failed:
-            result = _run_competition_action(
-                args, part, action,
-                retries=settings["retries_per_action"], no_cv=True,
-            )
-            if result == 0:
-                completed += 1
-            elif result == 3:
-                return result
+        print(
+            "NO-CV FALLBACK WAS ALREADY USED ON THE FINAL BOUNDED ATTEMPT; "
+            "failed parts are skipped.", flush=True,
+        )
     print(
         f"CONFIGURED RUN FINISHED: {completed}/{len(actions)} actions completed.",
         flush=True,
     )
+    return 0
+
+
+def _all_calibrated_competition_run(args, *, place_cv=False):
+    """Run every verified pickup, using place CV only where it is available."""
+    settings = _load_competition_actions()
+    cfg = load_bundle("vega")["robot"]
+    profiles = load_profiles(ROOT / "calibration" / "wrist_part_profiles.json", cfg)
+    actions = []
+    for part in settings["order"]:
+        profile = (profiles.get("parts") or {}).get(part)
+        entry = settings["parts"][part]
+        if not entry["enabled"] or not isinstance(profile, dict) or not profile.get("grasp_verified"):
+            continue
+        action = "pick_place" if profile.get("place") and profile.get("place_verified") else "pick"
+        actions.append((part, action, bool(place_cv and action == "pick_place" and profile.get("place_cv"))))
+    print("\nALL CALIBRATED COMPETITION RUN", flush=True)
+    print("Placement CV:", "enabled where taught" if place_cv else "disabled", flush=True)
+    print("Eligible order: " + (", ".join(f"{p}.{a}" for p, a, _ in actions) or "none"), flush=True)
+    if not actions:
+        print("No verified pickup profiles are available.", file=sys.stderr, flush=True)
+        return 2
+    if args.check_only:
+        print("CHECK-ONLY: no robot, camera, or gripper motion will be commanded.", flush=True)
+        return 0
+    completed = 0
+    for part, action, use_cv in actions:
+        result = _run_competition_action(
+            args, part, action,
+            retries=2,
+            no_cv=False,
+            place_cv=use_cv,
+        )
+        if result == 0:
+            completed += 1
+        elif result == 3:
+            return result
+    print(f"ALL-CALIBRATED RUN FINISHED: {completed}/{len(actions)} actions completed.", flush=True)
     return 0
 
 
@@ -1088,6 +1180,10 @@ def main(argv=None):
     p.add_argument("--check-only", action="store_true", help="preflight menu selections without moving")
     p.add_argument("--speed-scale", type=float, default=None)
     p.add_argument(
+        "--remote-safe", action="store_true",
+        help="slow physical teaching and pause at every recorded checkpoint",
+    )
+    p.add_argument(
         "--clearance-mm", type=float, default=None,
         help="TCP clearance above the calibrated board surface (default: configs/competition_plan.json)",
     )
@@ -1104,6 +1200,9 @@ def main(argv=None):
     actions.add_argument("--drop-calibrate", metavar="PART",
                          choices=PART_NAMES,
                          help="teach one physical drop position from its saved pickup profile")
+    actions.add_argument("--place-cv-calibrate", metavar="PART",
+                         choices=PART_NAMES,
+                         help="teach one wrist-camera placement target while holding the part")
     actions.add_argument("--task-test", metavar="ACTION",
                          choices=list(TASK_ACTIONS),
                          help="run one wrist-backed pick or pick-place test directly")
@@ -1112,6 +1211,10 @@ def main(argv=None):
     actions.add_argument(
         "--competition-run", action="store_true",
         help="run the single JSON-configured routine in configs/competition_actions.json",
+    )
+    actions.add_argument(
+        "--competition-all", choices=("place_cv", "no_place_cv"),
+        help="run every verified pickup; optionally use saved placement CV",
     )
     actions.add_argument(
         "--competition-plan",
@@ -1124,6 +1227,8 @@ def main(argv=None):
     operator_plan = _load_competition_plan()
     if args.speed_scale is None:
         args.speed_scale = operator_plan["pipeline_speed_scale"]
+    if args.remote_safe:
+        args.speed_scale = min(float(args.speed_scale), 0.20)
     if args.clearance_mm is None:
         args.clearance_mm = operator_plan["task_clearance_mm"]
     if not args.check_only and (not args.confirm_head_motion or not args.confirm_physical_motion):
@@ -1140,24 +1245,41 @@ def main(argv=None):
     if args.check_only and (
         args.wrist_calibrate is not None
         or args.drop_calibrate is not None
+        or args.place_cv_calibrate is not None
         or args.task_test is not None
         or args.competition_sequence is not None
     ):
         p.error("wrist/task/competition actions cannot be combined with --check-only")
 
     if args.wrist_calibrate is not None:
-        return run_wrist_part_calibration([
+        command = [
             "--part", args.wrist_calibrate, "--mode", "calibrate",
             "--confirm-head-motion", "--confirm-physical-motion",
             "--speed-scale", str(args.speed_scale),
-        ])
+        ]
+        if args.remote_safe:
+            command.append("--remote-safe")
+        return run_wrist_part_calibration(command)
 
     if args.drop_calibrate is not None:
-        return run_wrist_part_calibration([
+        command = [
             "--part", args.drop_calibrate, "--mode", "drop",
             "--confirm-head-motion", "--confirm-physical-motion",
             "--speed-scale", str(args.speed_scale),
-        ])
+        ]
+        if args.remote_safe:
+            command.append("--remote-safe")
+        return run_wrist_part_calibration(command)
+
+    if args.place_cv_calibrate is not None:
+        command = [
+            "--part", args.place_cv_calibrate, "--mode", "place-cv",
+            "--confirm-head-motion", "--confirm-physical-motion",
+            "--speed-scale", str(args.speed_scale),
+        ]
+        if args.remote_safe:
+            command.append("--remote-safe")
+        return run_wrist_part_calibration(command)
 
     if args.task_test is not None:
         part, action = args.task_test.split(".", 1)
@@ -1179,6 +1301,11 @@ def main(argv=None):
 
     if args.competition_run:
         return _configured_competition_run(args)
+
+    if args.competition_all is not None:
+        return _all_calibrated_competition_run(
+            args, place_cv=args.competition_all == "place_cv"
+        )
 
     if args.test_positions is not None or args.competition_task is not None:
         try:
@@ -1219,8 +1346,15 @@ def main(argv=None):
         print("  3. Wrist camera calibration (per-part feature / yaw / grasp depth)")
         print("  4. Task tests (all part pick and pick-place actions)")
         print("  5. Run configured competition routine (configs/competition_actions.json)")
+        print("  6. Run all calibrated (with placement CV where taught)")
+        print("  7. Run all calibrated (without placement CV)")
         print("  8. Reload operator settings / show readiness")
+        print("  9. Legacy competition task versions")
         print(" 10. Calibrate drop-off position (saved pickup -> 40 mm descent -> release/save)")
+        print(" 11. Remote-safe pickup calibration (slow + pause at every stage)")
+        print(" 12. Remote-safe drop calibration (slow + pause at every stage)")
+        print(" 13. Head-camera target preview (40 mm hover, never grabs)")
+        print(" 14. Teach placement CV target (held part; no automatic release)")
         print("  0. Exit")
         choice = input("Select an option: ").strip()
         if choice in ("0", "q", "quit", "exit"):
@@ -1301,6 +1435,22 @@ def main(argv=None):
             except Exception as exc:
                 print(f"Competition sequence failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
+        if choice == "6":
+            try:
+                _all_calibrated_competition_run(args, place_cv=True)
+            except (KeyboardInterrupt, EOFError):
+                print("All-calibrated competition run cancelled.")
+            except Exception as exc:
+                print(f"All-calibrated competition run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "7":
+            try:
+                _all_calibrated_competition_run(args, place_cv=False)
+            except (KeyboardInterrupt, EOFError):
+                print("All-calibrated no-place-CV run cancelled.")
+            except Exception as exc:
+                print(f"All-calibrated no-place-CV run failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
         if choice == "10":
             try:
                 _run_drop_calibration_menu(args)
@@ -1309,7 +1459,41 @@ def main(argv=None):
             except Exception as exc:
                 print(f"Drop calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
             continue
-        if choice == "7":
+        if choice == "11":
+            args.remote_safe = True
+            try:
+                _run_wrist_calibration_menu(args)
+            except (KeyboardInterrupt, EOFError):
+                print("Remote-safe pickup calibration cancelled.")
+            except Exception as exc:
+                print(f"Remote-safe pickup calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "12":
+            args.remote_safe = True
+            try:
+                _run_drop_calibration_menu(args)
+            except (KeyboardInterrupt, EOFError):
+                print("Remote-safe drop calibration cancelled.")
+            except Exception as exc:
+                print(f"Remote-safe drop calibration failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "13":
+            try:
+                _run_head_preview_menu(args)
+            except (KeyboardInterrupt, EOFError):
+                print("Head target preview cancelled.")
+            except Exception as exc:
+                print(f"Head target preview failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "14":
+            try:
+                _run_place_cv_menu(args)
+            except (KeyboardInterrupt, EOFError):
+                print("Placement CV teaching cancelled.")
+            except Exception as exc:
+                print(f"Placement CV teaching failed: {type(exc).__name__}: {exc}", file=sys.stderr)
+            continue
+        if choice == "9":
             selected = _choose(COMPETITION_TASKS, "COMPETITION TASK VERSIONS")
             if selected:
                 for name in selected:

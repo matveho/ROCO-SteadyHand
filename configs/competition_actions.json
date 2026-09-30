@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "description": "Single operator-editable competition routine. Set enabled=false to skip a part.",
+  "description": "Single operator-editable competition routine. Set enabled=false to skip a part; edit this file on the laptop before deployment.",
   "order": [
     "battery_size1",
     "gear_20teeth",
@@ -12,21 +12,24 @@
     "usb_a",
     "hdmi"
   ],
-  "retries_per_action": 1,
+  "retries_per_action": 2,
+  "max_attempts_per_action": 3,
   "use_wrist_cv": true,
   "retry_without_wrist_cv": true,
+  "use_place_cv": true,
+  "head_reacquire_on_failure": true,
   "pipeline_speed_scale": 0.38,
   "task_clearance_mm": 100.0,
   "visual_center_backoff_mm": 15.0,
   "parts": {
-    "battery_size1": {"enabled": true, "mode": "auto"},
-    "gear_20teeth": {"enabled": true, "mode": "auto"},
-    "gear_60teeth": {"enabled": true, "mode": "auto"},
-    "pin": {"enabled": true, "mode": "auto"},
-    "bolt_8mm": {"enabled": true, "mode": "auto"},
-    "battery_size5": {"enabled": true, "mode": "auto"},
-    "rod_16mm": {"enabled": true, "mode": "auto"},
-    "usb_a": {"enabled": true, "mode": "auto"},
-    "hdmi": {"enabled": true, "mode": "auto"}
+    "battery_size1": {"enabled": true, "mode": "auto", "use_place_cv": true},
+    "gear_20teeth": {"enabled": true, "mode": "auto", "use_place_cv": true},
+    "gear_60teeth": {"enabled": true, "mode": "auto", "use_place_cv": true},
+    "pin": {"enabled": true, "mode": "auto", "use_place_cv": true},
+    "bolt_8mm": {"enabled": true, "mode": "auto", "use_place_cv": true},
+    "battery_size5": {"enabled": true, "mode": "auto", "use_place_cv": true},
+    "rod_16mm": {"enabled": true, "mode": "auto", "use_place_cv": true},
+    "usb_a": {"enabled": true, "mode": "auto", "use_place_cv": true},
+    "hdmi": {"enabled": true, "mode": "auto", "use_place_cv": true}
   }
 }
