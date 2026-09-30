@@ -206,7 +206,7 @@ if [ -d "$CALIBRATION_PRESERVE" ]; then
     [ -n "$PATHNAME" ] || continue
     mkdir -p "$STAGE/$(dirname "$PATHNAME")"
     cp -a "$CALIBRATION_PRESERVE/$PATHNAME" "$STAGE/$PATHNAME"
-  done < <(find "$CALIBRATION_PRESERVE/calibration" -type f -printf '%P\n' 2>/dev/null)
+  done < <(find "$CALIBRATION_PRESERVE" -type f -path "$CALIBRATION_PRESERVE/calibration/*" -printf '%P\n' 2>/dev/null)
   echo 'RESTORED onsite calibration edits into the deployed checkout.'
 fi
 ACTUAL="$(git -C "$STAGE" rev-parse HEAD)"
