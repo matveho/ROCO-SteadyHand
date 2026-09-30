@@ -992,28 +992,18 @@ def _run_task_tests_menu(args):
     if args.check_only:
         print("Task tests require physical motion; remove --check-only.")
         return 2
-    part = _choose_pickup_calibrated_part("TEST ONE PART")
-    if part is None:
+    profiles = _menu_profiles().get("parts", {})
+    available = OrderedDict((part, "pickup verified") for part in PART_NAMES
+                            if profiles.get(part, {}).get("grasp_verified") is True)
+    if not available:
+        print("No parts have verified pickup calibration. Use Calibrate pickup first.", flush=True)
         return 0
-    profile = _menu_profiles()["parts"][part]
-    placement_ready = bool(profile.get("place") and profile.get("place_verified") is True)
-    while True:
-        print(f"\nTEST {part}")
-        print("  1. Pickup only")
-        print("  2. Pickup and placement" + ("" if placement_ready else
-              " — UNAVAILABLE: placement must be present and verified"))
-        print("  0. Back")
-        choice = clean_choice(input("Choose action: "))
-        if choice in ("0", "back", ""):
-            return 0
-        if choice == "2" and not placement_ready:
-            print("Placement unavailable; teach and verify physical placement first.", flush=True)
-            continue
-        if choice not in ("1", "2"):
-            print("Choose 1, 2, or 0.", flush=True)
-            continue
-        action = "pick" if choice == "1" else "pick_place"
-        return run_wrist_part_calibration(_task_test_command(args, part, action))
+    print("Select one or more parts to run automatically using competition settings.")
+    print("Selection enables these parts for this test only; no grasp/centering prompts.")
+    selected = _choose(available, "TEST SELECTED PARTS — AUTOMATIC COMPETITION")
+    if not selected:
+        return 0
+    return _configured_competition_run(args, selected_parts=selected)
 
 
 def _run_placement_calibration_menu(args):
@@ -1337,10 +1327,14 @@ def _priority_competition_actions(args, *, action=None, no_cv=False):
     return 0
 
 
-def _configured_competition_run(args):
+def _configured_competition_run(args, *, selected_parts=None):
     """Run the single JSON-configured, calibration-gated competition routine."""
     _snapshot_execution_offsets(args)
     settings = _load_competition_actions()
+    if selected_parts is not None:
+        selected_parts = set(selected_parts)
+        if not selected_parts or not selected_parts <= set(PART_NAMES):
+            raise ValueError("Select at least one known part for the competition test")
     if not getattr(args, "speed_scale_cli", False):
         args.speed_scale = settings["pipeline_speed_scale"]
     if not getattr(args, "clearance_mm_cli", False):
@@ -1352,7 +1346,9 @@ def _configured_competition_run(args):
     skipped = []
     for part in settings["order"]:
         entry = settings["parts"][part]
-        if not entry["enabled"] or not entry["pick_enabled"]:
+        if selected_parts is not None and part not in selected_parts:
+            continue
+        if selected_parts is None and (not entry["enabled"] or not entry["pick_enabled"]):
             skipped.append((part, "disabled in competition_actions.json"))
             continue
         profile = (profiles.get("parts") or {}).get(part)
@@ -1372,7 +1368,8 @@ def _configured_competition_run(args):
             print(f"{part}: place calibration missing; using pickup action", flush=True)
             mode = "pick"
         actions.append((part, mode))
-    print("\nCONFIGURED COMPETITION RUN", flush=True)
+    print("\nCONFIGURED COMPETITION RUN" if selected_parts is None else
+          "\nSELECTED PARTS — AUTOMATIC COMPETITION TEST", flush=True)
     print(f"Actions JSON: {COMPETITION_ACTIONS}", flush=True)
     print("Attempts per part: " + ", ".join(
         f"{part}={settings['parts'][part]['max_attempts']}"
@@ -1387,7 +1384,8 @@ def _configured_competition_run(args):
     if args.check_only:
         print("CHECK-ONLY: no robot, camera, or gripper motion will be commanded.", flush=True)
         return 0
-    if not _start_competition_progress(args, "configured", actions):
+    if not _start_competition_progress(args, "configured" if selected_parts is None else
+                                       "selected_parts", actions):
         return 2
     completed = 0
     failed = []

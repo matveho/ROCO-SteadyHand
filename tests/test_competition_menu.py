@@ -1,5 +1,8 @@
 import copy
 import io
+import json
+from pathlib import Path
+import tempfile
 from contextlib import redirect_stdout
 from types import SimpleNamespace
 import unittest
@@ -62,29 +65,90 @@ class CompetitionMenuTests(unittest.TestCase):
         self.assertTrue(run.call_args.kwargs['interactive_next'])
         self.assertTrue(run.call_args.kwargs['prompt_after_capture'])
 
-    def test_part_tests_use_existing_action_builder_for_both_actions(self):
-        for choice, action in (('1', 'pick'), ('2', 'pick_place')):
-            with self.subTest(action=action), mock.patch.object(pipeline, '_task_test_command', return_value=['unchanged']) as command, \
-                    mock.patch.object(pipeline, 'run_wrist_part_calibration', return_value=0) as run:
-                self.assertEqual(self.run_menu(['2', 'battery_size1', choice, '0']), 0)
-                self.assertEqual(command.call_args.args[1:], ('battery_size1', action))
-                run.assert_called_once_with(['unchanged'])
+    def test_part_tests_dispatch_selected_parts_to_competition_without_action_prompt(self):
+        with mock.patch.object(pipeline, '_configured_competition_run', return_value=0) as run:
+            self.assertEqual(self.run_menu(['2', 'battery_size1,bolt_8mm', '0']), 0)
+            run.assert_called_once()
+            self.assertEqual(run.call_args.kwargs, {'selected_parts': ['battery_size1', 'bolt_8mm']})
 
-    def test_only_verified_pickups_listed_and_missing_placement_never_launched(self):
-        with mock.patch.object(pipeline, 'run_wrist_part_calibration') as run:
-            self.assertEqual(self.run_menu(['2', 'bolt_8mm', '2', '0', '0']), 0)
-            run.assert_not_called()
-        self.assertIn('UNAVAILABLE', self.output.getvalue())
+    def test_only_verified_pickups_listed(self):
+        with mock.patch.object(pipeline, '_configured_competition_run', return_value=0):
+            self.assertEqual(self.run_menu(['2', 'bolt_8mm', '0']), 0)
         self.assertNotIn('usb_a', self.output.getvalue())
         self.assertNotIn('gear_60teeth', self.output.getvalue())
-        with mock.patch.object(pipeline, 'run_wrist_part_calibration') as run:
+        with mock.patch.object(pipeline, '_configured_competition_run') as run:
             self.assertEqual(self.run_menu(['2', 'usb_a', '0']), 0)
             run.assert_not_called()
 
-    def test_place_verified_flag_without_place_data_is_unavailable(self):
+    def test_selected_competition_uses_config_and_no_prompts_or_unselected_parts(self):
+        settings = pipeline._load_competition_actions()
+        settings['pipeline_speed_scale'] = .31
+        settings['parts']['battery_size1'].update(enabled=False, pick_enabled=False)
+        settings['parts']['bolt_8mm'].update(mode='pick_place', use_wrist_pick_cv=False)
         self.profiles['parts']['bolt_8mm']['place_verified'] = True
-        with mock.patch.object(pipeline, 'run_wrist_part_calibration') as run:
-            self.assertEqual(self.run_menu(['2', 'bolt_8mm', '2', '0', '0']), 0)
+        before = copy.deepcopy(settings)
+        commands = []
+        def action(command):
+            commands.append(command)
+            output = Path(command[command.index('--output') + 1])
+            output.mkdir(parents=True)
+            mode = command[command.index('--action') + 1]
+            (output / 'run_summary.json').write_text(json.dumps({
+                'status': 'completed' if mode == 'pick_place' else 'pick_complete_returned',
+                'holding_may_be_true': False,
+            }))
+            return 0
+        with tempfile.TemporaryDirectory() as td, \
+                mock.patch.object(pipeline, 'ROOT', Path(td)), \
+                mock.patch.object(pipeline, 'load_profiles', return_value=self.profiles), \
+                mock.patch.object(pipeline, '_load_competition_actions', return_value=settings), \
+                mock.patch('builtins.input', side_effect=AssertionError('execution prompted')), \
+                mock.patch.object(pipeline, 'run_wrist_part_calibration', side_effect=action):
+            # Full runner, command builder, and durable progress path are real.
+            self.assertEqual(pipeline._configured_competition_run(
+                self.args, selected_parts=['bolt_8mm', 'battery_size1']), 0)
+            self.assertEqual([(c[c.index('--part') + 1], c[c.index('--action') + 1])
+                             for c in commands], [('battery_size1', 'pick_place'), ('bolt_8mm', 'pick')])
+            for command in commands:
+                self.assertIn('--competition', command)
+                self.assertEqual(command[command.index('--speed-scale') + 1], '0.31')
+                self.assertIn('--execution-offsets-json', command)
+            self.assertIn('--place-cv', commands[0])
+            self.assertIn('--no-cv', commands[1])
+            self.assertNotIn('--place-cv', commands[1])
+            progress = json.loads((Path(td) / 'runs/competition_progress.json').read_text())
+            self.assertEqual(progress['status'], 'finished')
+        self.assertEqual(settings, before)
+
+    def test_selected_competition_preserves_retry_settings_and_hard_stops(self):
+        settings = pipeline._load_competition_actions()
+        settings['parts']['battery_size1']['max_attempts'] = 2
+        settings['head_reacquire_on_failure'] = False
+        settings['retry_without_wrist_cv'] = False
+        for result, count in ((-1, 2), (2, 1), (3, 1)):
+            with self.subTest(result=result), \
+                    mock.patch.object(pipeline, 'load_profiles', return_value=self.profiles), \
+                    mock.patch.object(pipeline, '_load_competition_actions', return_value=settings), \
+                    mock.patch.object(pipeline, '_start_competition_progress', return_value=True), \
+                    mock.patch('builtins.input', side_effect=AssertionError('execution prompted')), \
+                    mock.patch.object(pipeline, '_run_competition_action', side_effect=[result, 0]) as run:
+                code = pipeline._configured_competition_run(
+                    self.args, selected_parts=['battery_size1', 'bolt_8mm'])
+                self.assertEqual(code, 0 if result == -1 else result)
+                self.assertEqual(run.call_count, count)
+                self.assertEqual(run.call_args_list[0].kwargs, {
+                    'retries': 1, 'no_cv': False, 'place_cv': True,
+                    'head_reacquire': False, 'retry_without_cv': False,
+                })
+
+    def test_full_competition_still_respects_disabled_parts(self):
+        settings = pipeline._load_competition_actions()
+        for entry in settings['parts'].values():
+            entry['enabled'] = False
+        with mock.patch.object(pipeline, 'load_profiles', return_value=self.profiles), \
+                mock.patch.object(pipeline, '_load_competition_actions', return_value=settings), \
+                mock.patch.object(pipeline, '_run_competition_action') as run:
+            self.assertEqual(pipeline._configured_competition_run(self.args), 2)
             run.assert_not_called()
 
     def test_placement_submenu_calls_separate_existing_workflows(self):
