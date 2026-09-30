@@ -1679,11 +1679,20 @@ class PartSession:
     def _placement_corner_frame(self):
         rgb, path = self.frame("placement board corners")
         self.place_corner_image_path = path
+        self.event("place_corner_frame", {"image": str(path)})
         return rgb
 
     def _move_place_corner(self, pose):
         from steadyhand.vision.board_corners import CornerVisualError
+        kin_cfg = self.robot._kinematics.config
+        precision = {"position_tolerance_m": .0007, "orientation_tolerance_rad": .01}
+        previous = {key: kin_cfg.get(key) for key in precision}
         try:
+            # Coarse-navigation IK tolerances consume much of a small visual
+            # correction. Match the existing wrist fine-centering solver only
+            # for this optional hover movement, including its preflight.
+            for key, value in precision.items():
+                kin_cfg[key] = min(value, float(kin_cfg.get(key, value)))
             self.move(pose, slow=True)
         except IKError as exc:
             # move() preflights before commanding anything and latches faults
@@ -1691,13 +1700,19 @@ class PartSession:
             if self.motion_faulted:
                 raise
             raise CornerVisualError(f"Optional corner correction is unreachable: {exc}") from exc
+        finally:
+            for key, value in previous.items():
+                if value is None:
+                    kin_cfg.pop(key, None)
+                else:
+                    kin_cfg[key] = value
 
     def _teach_board_corner_reference(self, settings, selected_uvs=None):
         """Learn at the actual release XY, at 100 mm, without changing the pose record."""
-        from steadyhand.vision.board_corners import CornerServo, draw_corners
+        from steadyhand.vision.board_corners import CornerServo, draw_corners, TEACH_PROBE_M
         from steadyhand.vision.placement import placement_digest
         import cv2
-        print("BOARD CORNER TEACHING: two 6 mm XY measurements at this hover, then return; no grip/release.", flush=True)
+        print(f"BOARD CORNER TEACHING: two {TEACH_PROBE_M * 1000:g} mm XY measurements at this hover, then return; no grip/release.", flush=True)
         servo = CornerServo(self.robot, self._move_place_corner,
                             self._placement_corner_frame, self.surface, self.event)
         anchor = self.profile_pose(self.profiles["parts"][self.part], "place")
@@ -1908,7 +1923,9 @@ class PartSession:
         print(
             "Commands: forward/back/left/right N (mm) | step N | yaw N (deg) | "
             "down N (mm) | up N | undo | target | image | status | release | return | abort\n"
-            "release saves the physical position immediately, then lifts vertically and learns board corners automatically.",
+            "release saves the physical position immediately, then lifts vertically. "
+            + ("Placement CV teaching is disabled for this part." if getattr(self.args, "skip_place_cv_teaching", False)
+               else "Board corners are learned automatically at the hover."),
             flush=True,
         )
         while True:
@@ -1961,7 +1978,8 @@ class PartSession:
                     self._execute_drop_retreat(retreat_plan)
                     self.remote_checkpoint("drop_retreat_complete")
                     self._capture_drop_evidence("retreat_after_release")
-                    self._finish_place_corner_teaching(settings, retreat)
+                    if not getattr(self.args, "skip_place_cv_teaching", False):
+                        self._finish_place_corner_teaching(settings, retreat)
                     return 0
                 except (RuntimeError, ValueError) as exc:
                     if not self.holding or self.motion_faulted:
@@ -2771,6 +2789,7 @@ def main(argv=None):
         "--place-cv", action="store_true",
         help="use a saved wrist release-target template during pick-place",
     )
+    parser.add_argument("--skip-place-cv-teaching", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument(
         "--head-reacquire", action="store_true",
         help="prefer the fresh head-camera task target before the saved hover",

@@ -23,7 +23,11 @@ class Robot:
         self.pose, self.trace = pose, []
         self.opening = .2
         self.result = {"gripped": True}
-        self._kinematics = SimpleNamespace(solve=lambda target, seed: seed)
+        # Encode poses in seven fake joints so cached retreat IK can execute
+        # without hardware and still verify the actual requested path.
+        self._kinematics = SimpleNamespace(solve=lambda target, seed: (
+            *target.position_m, *target.quaternion_wxyz),
+            config={"position_tolerance_m": .002, "orientation_tolerance_rad": .02})
         self._gripper = SimpleNamespace(move_fraction=self.jaws, last_grip_result=lambda: self.result)
 
     def get_tcp_pose(self):
@@ -33,7 +37,13 @@ class Robot:
         return self.pose
 
     def _read_joint_positions(self):
-        return [0.] * 7
+        return [*self.pose.position_m, *self.pose.quaternion_wxyz]
+
+    def _check_joint_limits(self, joints):
+        assert len(joints) == 7 and np.isfinite(joints).all()
+
+    def move_joints(self, joints, *, speed_scale):
+        self.move_tcp(Pose(tuple(joints[:3]), tuple(joints[3:])), speed_scale=speed_scale)
 
     def move_tcp(self, pose, *, speed_scale):
         self.trace.append(("move", pose, speed_scale))
@@ -432,6 +442,40 @@ class FinalWorkflowTests(unittest.TestCase):
         self.assertNotIn("grip", [v[0] for v in s.robot.trace])
         self.assertNotIn("release", [v[0] for v in s.robot.trace])
         np.testing.assert_allclose(s.robot.pose.position_m, s.profile_pose(profile, "place").position_m)
+
+    def test_disabled_corner_teaching_keeps_physical_release_without_probes(self):
+        s, profile = self.session(mode="drop", part="rod_16mm")
+        s.args.skip_place_cv_teaching = True
+        s._capture_drop_evidence.return_value = None
+        s._finish_place_corner_teaching = mock.Mock(side_effect=AssertionError("CV was disabled"))
+        with mock.patch("builtins.input", side_effect=["release"]):
+            self.assertEqual(s.teach_drop(s.part, profile), 0)
+        self.assertFalse(s.holding)
+        self.assertEqual(s.status, "drop_profile_saved")
+        saved = load_profiles(s.args.profiles, s.cfg)["parts"][s.part]
+        self.assertTrue(saved["place_verified"])
+        s._finish_place_corner_teaching.assert_not_called()
+
+    def test_corner_ik_precision_is_local_and_restored_even_on_failure(self):
+        from steadyhand.vision.board_corners import CornerVisualError
+        s, profile = self.session(competition=True)
+        hover = s.profile_pose(profile, "place")
+        config = s.robot._kinematics.config
+        before = copy.deepcopy(config)
+        for failure in (None, wrist.IKError("preflight failed"), RuntimeError("motion failed")):
+            def move(pose, **kwargs):
+                self.assertEqual(config["position_tolerance_m"], .0007)
+                self.assertEqual(config["orientation_tolerance_rad"], .01)
+                if failure:
+                    raise failure
+            s.move = mock.Mock(side_effect=move)
+            if failure:
+                expected = CornerVisualError if isinstance(failure, wrist.IKError) else RuntimeError
+                with self.assertRaises(expected):
+                    s._move_place_corner(hover)
+            else:
+                s._move_place_corner(hover)
+            self.assertEqual(config, before)
 
     def test_release_corner_rejection_retries_in_place_without_another_pickup(self):
         s, profile = self.session(mode="drop")

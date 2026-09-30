@@ -882,6 +882,7 @@ def _run_drop_calibration_menu(args, part=None):
         OrderedDict((part, "pick with saved calibration, teach drop hover/depth, release and save") for part in PART_NAMES),
         "DROP-OFF POSITION CALIBRATION",
     )
+    settings = _load_competition_actions()
     for part in selected:
         command = [
             "--part", part,
@@ -890,6 +891,8 @@ def _run_drop_calibration_menu(args, part=None):
             "--confirm-physical-motion",
             "--speed-scale", str(args.speed_scale),
         ]
+        if not (settings["use_place_cv"] and settings["parts"][part]["use_place_cv"]):
+            command.append("--skip-place-cv-teaching")
         if getattr(args, "remote_safe", False):
             command.append("--remote-safe")
         result = run_wrist_part_calibration(command)
@@ -1014,7 +1017,7 @@ def _run_placement_calibration_menu(args):
     part = _choose_pickup_calibrated_part("CALIBRATE PLACEMENT")
     if part is None:
         return 0
-    print(f"\nCALIBRATE PLACEMENT: {part} — teach release, then learn board corners automatically.")
+    print(f"\nCALIBRATE PLACEMENT: {part} — teach release; corner teaching follows its placement-CV setting.")
     return _run_drop_calibration_menu(args, part=part)
 
 
@@ -1662,14 +1665,7 @@ def main(argv=None):
         return run_wrist_part_calibration(command)
 
     if args.drop_calibrate is not None:
-        command = [
-            "--part", args.drop_calibrate, "--mode", "drop",
-            "--confirm-head-motion", "--confirm-physical-motion",
-            "--speed-scale", str(args.speed_scale),
-        ]
-        if args.remote_safe:
-            command.append("--remote-safe")
-        return run_wrist_part_calibration(command)
+        return _run_drop_calibration_menu(args, part=args.drop_calibrate)
 
     if args.place_cv_calibrate is not None:
         command = [

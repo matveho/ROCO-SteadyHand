@@ -17,6 +17,7 @@ from .wrist_servo import PixelJacobian, jacobian_from_measured_probes
 
 
 METHOD = "white_board_corners_v1"
+TEACH_PROBE_M = .010
 
 
 class CornerVisualError(RuntimeError):
@@ -276,10 +277,16 @@ class CornerServo:
     def go(self, xy):
         if math.dist(xy, self.origin.position_m[:2]) > .030001:
             raise CornerVisualError("Board corner alignment reached its 30 mm travel limit")
-        self.pose()
+        before = self.pose()
         target = Pose((*xy, self.surface(*xy) + self.clearance), self.origin.quaternion_wxyz)
         self.move(target)
         actual = self.pose()
+        self.event("place_corner_motion", {
+            "requested_tcp_m": list(target.position_m), "measured_tcp_m": list(actual.position_m),
+            "measured_delta_xy_m": (np.asarray(actual.position_m[:2]) - before.position_m[:2]).tolist(),
+            "position_error_m": math.dist(target.position_m, actual.position_m),
+            "orientation_error_rad": quaternion_angle(target.quaternion_wxyz, actual.quaternion_wxyz),
+        })
         if math.dist(target.position_m, actual.position_m) > .008:
             raise RuntimeError("TCP missed board-corner waypoint by more than 8 mm")
         return actual
@@ -298,37 +305,59 @@ class CornerServo:
         rgb = self.capture()
         reference = make_reference(rgb, selected_uvs)
         initial, actual = self.observe(reference)
+        def record(label, matches, pose):
+            self.event("place_corner_measurement", {
+                "stage": label, "tcp_position_m": list(pose.position_m),
+                "quaternion_wxyz": list(pose.quaternion_wxyz), "matched_corners": matches,
+            })
+        record("reference", initial, actual)
         # Reference pixel and pose describe the same fresh, stationary view.
         reference["corners"] = [dict(c, uv=initial[c["id"]]["uv"])
                                 for c in reference["corners"] if c["id"] in initial]
         self.origin = actual
         probe_matches, probe_poses, returns = [], [], []
-        for delta in ((.006, 0.), (0., .006)):
+        # Six-millimetre probes produced <1 px of scene movement onsite.
+        # Use the established 10 mm wrist probe size, but learn from measured
+        # displacement and retain the same conditioning/return checks.
+        for axis, delta in zip(("x", "y"), ((TEACH_PROBE_M, 0.), (0., TEACH_PROBE_M))):
             self.go(tuple(a+b for a, b in zip(actual.position_m[:2], delta)))
             observation, pose = self.observe(reference)
+            record(f"probe_{axis}", observation, pose)
             probe_matches.append(observation)
             probe_poses.append(pose.position_m[:2])
             self.go(actual.position_m[:2])
             returned, pose = self.observe(reference)
+            record(f"return_{axis}", returned, pose)
             returns.append((returned, pose))
-        valid = []
+        valid, rejected = [], []
+        def reject(key, reason, **details):
+            rejected.append(f"{key}: {reason}")
+            self.event("place_corner_rejected", {"corner_id": key, "reason": reason, **details})
         for corner in reference["corners"]:
             key = corner["id"]
             if any(key not in obs for obs in probe_matches + [item[0] for item in returns]):
+                reject(key, "corner missing from a probe or return")
                 continue
             try:
                 jacobian = jacobian_from_measured_probes(corner["uv"],
                     [obs[key]["uv"] for obs in probe_matches], actual.position_m[:2], probe_poses)
-            except ValueError:
+            except ValueError as exc:
+                reject(key, str(exc),
+                       probe_xy_deltas_m=(np.asarray(probe_poses) - actual.position_m[:2]).tolist(),
+                       probe_pixel_deltas=(np.asarray([obs[key]["uv"] for obs in probe_matches]) - corner["uv"]).tolist())
                 continue
             matrix = np.asarray(jacobian.matrix())
-            if any(np.linalg.norm(np.asarray(obs[key]["uv"]) - corner["uv"] -
-                                  matrix @ (np.asarray(pose.position_m[:2]) - actual.position_m[:2])) > 4.
-                   for obs, pose in returns):
+            residuals = [float(np.linalg.norm(np.asarray(obs[key]["uv"]) - corner["uv"] -
+                         matrix @ (np.asarray(pose.position_m[:2]) - actual.position_m[:2])))
+                         for obs, pose in returns]
+            if any(error > 4. for error in residuals):
+                reject(key, f"return residual {max(residuals):.2f} px exceeds 4 px",
+                       return_residuals_px=residuals, jacobian_px_per_m=matrix.tolist())
                 continue
             valid.append(dict(corner, jacobian_px_per_m=matrix.tolist()))
         if not valid:
-            raise CornerVisualError("Corner motion/return measurements disagree; physical placement remains saved")
+            raise CornerVisualError("Corner motion/return measurements disagree; "
+                                    + "; ".join(rejected) + ". Physical placement remains saved")
         if anchor_xy is not None:
             offset = np.asarray(anchor_xy) - actual.position_m[:2]
             if np.linalg.norm(offset) > .008:

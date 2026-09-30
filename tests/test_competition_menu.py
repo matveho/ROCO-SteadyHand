@@ -152,6 +152,7 @@ class CompetitionMenuTests(unittest.TestCase):
                 self.assertEqual(run.call_args_list[0].kwargs, {
                     'retries': 1, 'no_cv': False, 'place_cv': True,
                     'head_reacquire': False, 'retry_without_cv': False,
+                    'release_wiggle': settings['parts']['battery_size1']['release_wiggle'],
                 })
 
     def test_full_competition_still_respects_disabled_parts(self):
@@ -180,10 +181,20 @@ class CompetitionMenuTests(unittest.TestCase):
                     mock.patch.object(pipeline, 'run_wrist_part_calibration', return_value=0) as run:
                 function(self.args, part='battery_size1')
                 run.assert_called_once_with(['--part', 'battery_size1', '--mode', mode,
-                    '--confirm-head-motion', '--confirm-physical-motion', '--speed-scale', '0.38'])
+                    '--confirm-head-motion', '--confirm-physical-motion', '--speed-scale', '0.38']
+                    + (['--skip-place-cv-teaching'] if mode == 'drop' else []))
         with mock.patch.object(pipeline, 'run_wrist_part_calibration', return_value=0) as run:
             self.assertEqual(self.run_menu(['3', 'bolt_8mm', '0']), 0)
             self.assertEqual(run.call_args.args[0][:4], ['--part', 'bolt_8mm', '--mode', 'calibrate'])
+
+    def test_drop_calibration_only_teaches_corners_for_parts_with_cv_enabled(self):
+        settings = pipeline._load_competition_actions()
+        for part in settings['order']:
+            with self.subTest(part=part), \
+                    mock.patch.object(pipeline, 'run_wrist_part_calibration', return_value=0) as run:
+                pipeline._run_drop_calibration_menu(self.args, part=part)
+                self.assertEqual('--skip-place-cv-teaching' in run.call_args.args[0],
+                                 part not in ('usb_a', 'hdmi'))
 
     def test_readiness_is_read_only_without_robot_or_board_initialization(self):
         before = copy.deepcopy(self.profiles)

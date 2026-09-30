@@ -151,6 +151,47 @@ class BoardCornerTests(unittest.TestCase):
         for corner in reference["corners"]:
             np.testing.assert_allclose(corner["jacobian_px_per_m"], [[0, 2000], [1800, 0]], atol=70)
 
+    def test_teaching_probes_exceed_small_motion_deadband_without_expanding_radius(self):
+        robot, motion, capture = self.simulated()
+        def move(pose):
+            # Reproduce a controller accepting a small target without moving:
+            # the old 6 mm probes could never learn an image Jacobian here.
+            if math.dist(pose.position_m, robot.pose.position_m) > .007:
+                robot.pose = pose
+        motion.side_effect = move
+        events = mock.Mock()
+        reference, _ = CornerServo(robot, motion, capture, lambda x, y: .5, events).teach()
+        self.assertEqual(len(reference["corners"]), 4)
+        self.assertEqual(motion.call_count, 4)
+        self.assertAlmostEqual(max(math.dist(c.args[0].position_m[:2], [.4, -.1])
+                                   for c in motion.call_args_list), .010)
+        measurements = [c.args[1] for c in events.call_args_list if c.args[0] == "place_corner_measurement"]
+        self.assertEqual([m["stage"] for m in measurements],
+                         ["reference", "probe_x", "return_x", "probe_y", "return_y"])
+
+    def test_static_corner_images_cannot_teach_a_mapping_and_report_pixel_deltas(self):
+        robot, motion, _ = self.simulated()
+        events = mock.Mock()
+        with self.assertRaisesRegex(CornerVisualError, "Feature barely moved"):
+            CornerServo(robot, motion, lambda: self.rgb, lambda x, y: .5, events).teach()
+        rejected = [c.args[1] for c in events.call_args_list if c.args[0] == "place_corner_rejected"]
+        self.assertEqual(len(rejected), 4)
+        for r in rejected:
+            np.testing.assert_allclose(r["probe_pixel_deltas"], 0)
+            np.testing.assert_allclose(r["probe_xy_deltas_m"], [[.01, 0], [0, .01]], atol=1e-12)
+        self.assertFalse(any(c.args[0] == "place_corner_calibrated" for c in events.call_args_list))
+
+    def test_material_probe_miss_still_stops_with_measured_diagnostics(self):
+        robot, motion, capture = self.simulated()
+        motion.side_effect = lambda pose: None
+        events = mock.Mock()
+        with self.assertRaisesRegex(RuntimeError, "missed board-corner waypoint"):
+            CornerServo(robot, motion, capture, lambda x, y: .5, events).teach()
+        self.assertEqual(motion.call_count, 1)
+        record = next(c.args[1] for c in events.call_args_list if c.args[0] == "place_corner_motion")
+        np.testing.assert_allclose(record["measured_delta_xy_m"], [0, 0])
+        self.assertAlmostEqual(record["position_error_m"], .01)
+
     def test_hover_arrival_error_is_not_baked_into_new_goal(self):
         robot, motion, capture = self.simulated()
         robot.pose = Pose((.403, -.1, .6), (1, 0, 0, 0))
