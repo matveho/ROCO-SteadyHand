@@ -43,17 +43,9 @@ class JacobianTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 jac.base_delta_for_pixel_error((1, 1), **settings)
 
-    def test_execute_gate_precedes_hardware_import(self):
+    def test_fine_tool_requires_explicit_coarse_xy(self):
         with self.assertRaises(SystemExit) as cm:
-            main(['--execute'])
-        self.assertEqual(cm.exception.code, 2)
-
-    def test_fine_tool_requires_confirmation_and_explicit_coarse_xy(self):
-        with self.assertRaises(SystemExit) as cm:
-            fine_main(['--coarse-xy', '.56', '0'])
-        self.assertEqual(cm.exception.code, 2)
-        with self.assertRaises(SystemExit) as cm:
-            fine_main(['--confirm-physical-motion'])
+            fine_main([])
         self.assertEqual(cm.exception.code, 2)
 
 
@@ -402,7 +394,7 @@ class ImageServoTests(unittest.TestCase):
                 patch('tools.vega_wrist_servo.VegaAdapter', return_value=self.robot), \
                 patch('tools.vega_wrist_servo.time.sleep'):
             output = Path(directory) / 'servo'
-            code = main(['--output', str(output), '--execute', '--confirm-physical-motion',
+            code = main(['--output', str(output), '--execute',
                          '--camera', 'wrist_a', '--move-to-board', '--board-xy', '.56', '0',
                          '--feature', '270', '165'])
             self.assertEqual(code, 0)

@@ -2625,16 +2625,14 @@ def main(argv=None):
     parser.add_argument("--profiles", default="calibration/wrist_part_profiles.json")
     parser.add_argument("--output")
     parser.add_argument("--no-viewer", action="store_true", help="Enter image pixels in terminal instead of Tk viewer")
-    parser.add_argument("--confirm-head-motion", action="store_true")
-    parser.add_argument("--confirm-physical-motion", action="store_true")
+    parser.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
+    parser.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     parser.add_argument("--speed-scale", type=float, default=.60)
     parser.add_argument(
         "--remote-safe", action="store_true",
         help="normal motion settings; confirm below 40 mm and capture once before lowering",
     )
     args = parser.parse_args(argv)
-    if not args.confirm_physical_motion:
-        parser.error("requires --confirm-physical-motion")
     minimum_speed = .10 if args.remote_safe else .25
     if not minimum_speed <= args.speed_scale <= .70:
         parser.error("--speed-scale must be .10..70 in remote-safe mode, otherwise .25..70")

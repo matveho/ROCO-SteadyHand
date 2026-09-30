@@ -115,7 +115,7 @@ class HeadPreviewTests(unittest.TestCase):
                 mock.patch.object(preview, 'run_xy_servo', side_effect=preview.ServoWaypointError('TCP missed servo waypoint by >8 mm')) as servo, \
                 mock.patch('builtins.input', side_effect=['abort' if abort else '1'] if review else
                            AssertionError('High preview must not ask for confirmation')) as prompt:
-                code = preview.main(['--part', 'battery_size1', '--remote-safe', '--confirm-physical-motion',
+                code = preview.main(['--part', 'battery_size1', '--remote-safe',
                                      '--output', str(root / 'out')] +
                                     (['--center', '--feature', '130', '120', '--goal-pixel', '140', '120'] if servo_failure else []))
             report = json.loads((root / 'out' / 'preview.json').read_text())
@@ -150,12 +150,6 @@ class HeadPreviewTests(unittest.TestCase):
 
     def test_servo_miss_preserves_head_success_without_claiming_center_success(self):
         self.run_preview(servo_failure=True)
-
-    def test_physical_motion_flag_required_before_hardware(self):
-        with mock.patch.object(preview, 'VegaAdapter') as adapter:
-            with self.assertRaises(SystemExit):
-                preview.main(['--part', 'battery_size1'])
-            adapter.assert_not_called()
 
 
 if __name__ == '__main__':

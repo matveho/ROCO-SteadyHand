@@ -223,11 +223,9 @@ def main(argv=None):
     p.add_argument("--interval-s", type=float, default=0.5)
     p.add_argument("--output")
     p.add_argument("--publisher-log", default="~/head_camera.log")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
 
-    if not args.confirm_physical_motion:
-        p.error("--confirm-physical-motion is required because board imaging now moves the configured right arm to camera-clear")
     if args.frames < 0:
         p.error("--frames must be >=0")
     if args.interval_s < 0:

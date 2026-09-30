@@ -95,7 +95,7 @@ def main(argv=None):
     p.add_argument("--camera", choices=("wrist_a", "wrist_b"), default="wrist_a",
                    help="camera used for servo; competition-unit default wrist_a=RIGHT")
     p.add_argument("--execute", action="store_true")
-    p.add_argument("--confirm-physical-motion", action="store_true", help="also acknowledges Robot() head homing")
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     p.add_argument("--move-to-board", action="store_true", help="first move to saved coarse board center")
     p.add_argument("--registration", default="calibration/vega_board_live.json")
     p.add_argument("--board-xy", nargs=2, type=float, metavar=("X", "Y"), help="override coarse board XY in base metres")
@@ -113,8 +113,6 @@ def main(argv=None):
     p.add_argument("--speed-scale", type=float, default=0.66)
     p.add_argument("--output", help="new run directory; default runs/wrist_servo_<UTC>")
     args = p.parse_args(argv)
-    if args.execute and not args.confirm_physical_motion:
-        p.error("--execute requires --confirm-physical-motion")
     if args.board_xy and not args.move_to_board:
         p.error("--board-xy requires --move-to-board")
     # Validate all motion options before Robot() can home its head.

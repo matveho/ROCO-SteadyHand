@@ -85,11 +85,7 @@ def main(argv=None):
         action="store_true",
         help="after exercise, run one current-limited right-jaw grip test",
     )
-    parser.add_argument(
-        "--confirm-physical-motion",
-        action="store_true",
-        help="required for homing, exercise, or grip",
-    )
+    parser.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     parser.add_argument("--low-fraction", type=float, default=0.20)
     parser.add_argument("--high-fraction", type=float, default=0.80)
     parser.add_argument("--open-speed", type=int, default=None)
@@ -106,9 +102,6 @@ def main(argv=None):
         parser.error("--status-only cannot be combined with --exercise or --grip")
     if args.grip and not args.exercise:
         parser.error("--grip requires --exercise")
-    needs_motion = args.exercise or args.grip
-    if needs_motion and not args.confirm_physical_motion:
-        parser.error("--exercise/--grip require --confirm-physical-motion")
     if not 0.02 <= args.low_fraction <= 0.98:
         parser.error("--low-fraction must be 0.02..0.98")
     if not 0.02 <= args.high_fraction <= 0.98:

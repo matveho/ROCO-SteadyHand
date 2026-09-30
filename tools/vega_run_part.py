@@ -42,8 +42,8 @@ def add_hardware_arguments(p):
     p.add_argument("--grip-current", type=float)
     p.add_argument("--force-delta-limit", type=float)
     p.add_argument("--check-only", action="store_true")
-    p.add_argument("--confirm-head-motion", action="store_true")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
 
 
 def configured_bundle(args):
@@ -81,8 +81,6 @@ def configured_bundle(args):
     if args.grip_current is not None:
         gripper["grip_current_a"] = args.grip_current
     if not args.check_only:
-        if not args.confirm_head_motion or not args.confirm_physical_motion:
-            raise ValueError("Hardware run requires --confirm-head-motion and --confirm-physical-motion")
         if not sys.stdin.isatty():
             raise ValueError("Physical runner needs an interactive terminal for grasp/placement verification")
     cfg["allow_robot_init_head_motion"] = bool(args.confirm_head_motion)

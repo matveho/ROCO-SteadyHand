@@ -21,14 +21,10 @@ def main(argv=None):
     p.add_argument("--dy", type=float, default=0.0)
     p.add_argument("--dz", type=float, default=0.0)
     p.add_argument("--speed-scale", type=float, default=0.10)
-    p.add_argument("--confirm-head-motion", action="store_true")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
 
-    if not args.confirm_head_motion or not args.confirm_physical_motion:
-        raise SystemExit(
-            "Jog requires --confirm-head-motion and --confirm-physical-motion"
-        )
     delta = (float(args.dx), float(args.dy), float(args.dz))
     if not all(math.isfinite(v) for v in delta):
         raise SystemExit("Jog delta must be finite")

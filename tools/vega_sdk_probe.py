@@ -23,14 +23,9 @@ def finite_list(values):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--confirm-head-motion", action="store_true")
+    p.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
 
-    if not args.confirm_head_motion:
-        raise SystemExit(
-            "Refusing Robot(): clear the head workspace, have the physical e-stop "
-            "ready, then pass --confirm-head-motion."
-        )
 
     print("python =", sys.executable)
     print("python_version =", sys.version.split()[0])

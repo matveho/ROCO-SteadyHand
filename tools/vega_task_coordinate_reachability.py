@@ -175,10 +175,8 @@ def main(argv=None):
         help="TCP clearance above the fitted board surface (default: 100 mm)",
     )
     p.add_argument("--check-only", action="store_true", help="connect and preflight IK, but do not move")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
-    if not args.check_only and not args.confirm_physical_motion:
-        p.error("--confirm-physical-motion is required unless --check-only is used")
     if not 0.15 <= args.speed_scale <= 0.6:
         p.error("--speed-scale must be 0.15..0.6")
     if not 20.0 <= args.hover_clearance_mm <= 100.0:

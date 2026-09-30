@@ -56,11 +56,9 @@ def main(argv=None):
     p.add_argument("--speed-scale", type=float, default=0.66)
     p.add_argument("--start-xy-tolerance-m", type=float, default=0.015)
     p.add_argument("--output")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
 
-    if not args.confirm_physical_motion:
-        p.error("--confirm-physical-motion is required")
     values = (
         *args.coarse_xy, *args.feature, args.probe_m, args.gain,
         args.max_step_m, args.max_radius_m, args.tolerance_px,

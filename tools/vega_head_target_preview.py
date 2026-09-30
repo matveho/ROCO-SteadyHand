@@ -88,12 +88,10 @@ def main(argv=None):
     parser.add_argument("--hover-clearance-mm", type=float, default=100.0)
     parser.add_argument("--remote-safe", action="store_true")
     parser.add_argument("--speed-scale", type=float, default=.60)
-    parser.add_argument("--confirm-head-motion", action="store_true")
-    parser.add_argument("--confirm-physical-motion", action="store_true")
+    parser.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
+    parser.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     parser.add_argument("--output")
     args = parser.parse_args(argv)
-    if not args.confirm_physical_motion:
-        parser.error("requires --confirm-physical-motion")
     if not 20.0 <= args.hover_clearance_mm <= 100.0:
         parser.error("--hover-clearance-mm must be 20..100")
     if not .10 <= args.speed_scale <= .70:

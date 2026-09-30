@@ -38,10 +38,10 @@ def plan_step(kin, seed, delta, floor):
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--delta-rad', type=float, default=0.10)
-    p.add_argument('--confirm-physical-motion', action='store_true')
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args()
-    if not args.confirm_physical_motion or not sys.stdin.isatty():
-        p.error('Requires interactive terminal and --confirm-physical-motion; connection may home HEAD')
+    if not sys.stdin.isatty():
+        p.error('Requires interactive terminal; connection may home HEAD')
     if not math.isfinite(args.delta_rad) or not 0 < args.delta_rad <= 0.5:
         p.error('--delta-rad must be positive and <= 0.5')
     cfg = load_bundle('vega')['robot']

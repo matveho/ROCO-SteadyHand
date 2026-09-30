@@ -121,10 +121,8 @@ def main(argv=None):
     p.add_argument("--measurement-kind", choices=("board_surface_z_mm", "claw_clearance_mm"), default="board_surface_z_mm")
     p.add_argument("--speed-scale", type=float, default=0.45)
     p.add_argument("--output", default="calibration/vega_board_corner_heights.json")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
-    if not args.confirm_physical_motion:
-        p.error("--confirm-physical-motion is required")
     if not 0.2 <= args.speed_scale <= 0.8:
         p.error("--speed-scale must be 0.2..0.8")
 

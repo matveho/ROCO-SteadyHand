@@ -58,11 +58,18 @@ class ProgressTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 self.start(new_run=True)
 
-    def test_completed_run_archived_next_launch_and_safe_plan_changes_are_explicit(self):
+    def test_changed_plan_starts_automatically_and_archives_previous_progress(self):
         p = self.start()
         p.finish(*self.plan[0], 0)
-        with self.assertRaisesRegex(ValueError, 'differs'):
-            CompetitionProgress(self.path, 'all', self.plan)
+        changed = CompetitionProgress(self.path, 'all', [self.plan[1]])
+        self.assertEqual(list(changed.data['actions']), ['gear_20teeth.pick'])
+        self.assertEqual(changed.entry(*self.plan[1])['status'], 'pending')
+        archive = next(self.path.parent.glob('competition_progress_*.json'))
+        self.assertEqual(json.loads(archive.read_text())['actions']['battery_size1.pick_place']['status'], 'completed')
+
+    def test_completed_run_starts_again_on_next_launch(self):
+        p = self.start()
+        p.finish(*self.plan[0], 0)
         p.finish(*self.plan[1], -1)
         p = self.start()
         self.assertEqual(p.entry(*self.plan[0])['attempts'], 0)
@@ -154,13 +161,15 @@ class ProgressTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.start()
 
-    def test_changed_plan_does_not_start_any_recovery_motion(self):
+    def test_changed_plan_recovers_interrupted_part_even_if_removed_from_new_plan(self):
         p = self.start()
         p.begin_attempt(*self.plan[0], self.path.parent / 'failed')
-        recover = mock.Mock()
-        with self.assertRaisesRegex(ValueError, 'differs'):
-            CompetitionProgress(self.path, 'other', self.plan, recover=recover)
-        recover.assert_not_called()
+        recover = mock.Mock(side_effect=self.verified_recovery)
+        resumed = CompetitionProgress(self.path, 'other', [self.plan[1]], recover=recover)
+        recover.assert_called_once()
+        self.assertEqual(recover.call_args.args[0], 'battery_size1.pick_place')
+        self.assertEqual(list(resumed.data['actions']), ['gear_20teeth.pick'])
+        self.assertEqual(resumed.entry(*self.plan[1])['status'], 'pending')
 
     def test_crash_during_recovery_keeps_new_output_not_old_holding_assumptions(self):
         p = self.start()

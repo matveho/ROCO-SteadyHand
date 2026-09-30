@@ -185,7 +185,7 @@ def main(argv=None):
     p.add_argument("--execute", action="store_true")
     p.add_argument("--center-only", action="store_true",
                    help="move only to board center; skip all corner planning")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
 
     bundle = load_bundle("vega")
@@ -292,10 +292,8 @@ def main(argv=None):
         print("WROTE", output)
 
     if not args.execute:
-        print("Registration complete. Re-run with --execute --confirm-physical-motion for benchmark.")
+        print("Registration complete. Re-run with --execute for benchmark.")
         return 0
-    if not args.confirm_physical_motion:
-        raise SystemExit("--execute requires --confirm-physical-motion")
 
     # Restore the complete pose which produced this registration. Robot() may
     # change any head joint; retaining its J2/J3 can point the camera sideways.

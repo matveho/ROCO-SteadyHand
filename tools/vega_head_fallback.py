@@ -526,11 +526,9 @@ def main(argv=None):
     parser.add_argument("--part", choices=PART_NAMES)
     parser.add_argument("--profiles", default=str(DEFAULT_PROFILES.relative_to(ROOT)))
     parser.add_argument("--expected-only", action="store_true")
-    parser.add_argument("--confirm-head-motion", action="store_true")
-    parser.add_argument("--confirm-physical-motion", action="store_true")
+    parser.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
+    parser.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
-    if not args.confirm_head_motion or not args.confirm_physical_motion:
-        parser.error("requires --confirm-head-motion and --confirm-physical-motion")
     session = HeadFallbackSession(args)
     try:
         session.start()

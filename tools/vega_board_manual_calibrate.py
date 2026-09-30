@@ -504,11 +504,9 @@ def main(argv=None):
     p.add_argument("--settle-s", type=float, default=0.5)
     p.add_argument("--publisher-log", default="~/head_camera.log")
     p.add_argument("--output", default="calibration/vega_board_manual.json")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
 
-    if not args.confirm_physical_motion:
-        p.error("--confirm-physical-motion is required")
     if args.use_current_right_ready and args.use_configured_right_ready:
         p.error("choose only one RIGHT_READY mode")
     if not 0.05 <= float(args.offset_m) <= 0.12:

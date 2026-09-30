@@ -222,15 +222,24 @@ class CompetitionMenuTests(unittest.TestCase):
     def test_direct_cli_calibration_test_competition_flags_still_dispatch(self):
         for flag, mode in (('--wrist-calibrate', 'calibrate'), ('--drop-calibrate', 'drop'), ('--place-cv-calibrate', 'place-cv')):
             with self.subTest(flag=flag), mock.patch.object(pipeline, 'run_wrist_part_calibration', return_value=0) as run:
-                self.assertEqual(pipeline.main([flag, 'battery_size1', '--confirm-physical-motion']), 0)
+                self.assertEqual(pipeline.main([flag, 'battery_size1']), 0)
                 self.assertEqual(run.call_args.args[0][:4], ['--part', 'battery_size1', '--mode', mode])
         with mock.patch.object(pipeline, '_configured_competition_run', return_value=0) as run:
             self.assertEqual(pipeline.main(['--competition-run', '--check-only']), 0)
             run.assert_called_once()
         with mock.patch.object(pipeline, '_configured_competition_run', return_value=0) as run:
-            self.assertEqual(pipeline.main(['--task-test', 'battery_size1.pick', '--confirm-physical-motion']), 0)
+            self.assertEqual(pipeline.main(['--task-test', 'battery_size1.pick']), 0)
             self.assertEqual(run.call_args.kwargs,
                              {'selected_parts': ['battery_size1'], 'action_override': 'pick'})
+
+    def test_competition_needs_no_confirmation_flags_and_accepts_old_commands(self):
+        for flags in ([], ['--confirm-head-motion', '--confirm-physical-motion']):
+            with self.subTest(flags=flags), mock.patch.object(pipeline, '_configured_competition_run', return_value=0) as run:
+                self.assertEqual(pipeline.main(['--competition-run', *flags]), 0)
+                args = run.call_args.args[0]
+                self.assertTrue(args.confirm_physical_motion)
+                self.assertTrue(args.confirm_head_motion)
+                self.assertFalse(args.check_only)
 
 
 if __name__ == '__main__':

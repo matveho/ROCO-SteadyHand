@@ -1578,8 +1578,8 @@ def _run_advanced_tools_menu(args):
 
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--confirm-head-motion", action="store_true")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     p.add_argument("--check-only", action="store_true", help="preflight menu selections without moving")
     p.add_argument("--speed-scale", type=float, default=None)
     p.add_argument(
@@ -1645,8 +1645,6 @@ def main(argv=None):
     if args.versions or args.list_versions:
         from tools.vega_version_menu import main as run_version_menu
         return run_version_menu(["--list"] if args.list_versions else [])
-    if not args.check_only and not args.confirm_physical_motion:
-        p.error("physical pipeline requires --confirm-physical-motion")
     if not 20.0 <= args.clearance_mm <= 100.0:
         p.error("--clearance-mm must be 20..100")
     args.clearance_m = float(args.clearance_mm) / 1000.0

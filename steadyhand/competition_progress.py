@@ -15,8 +15,9 @@ class CompetitionProgress:
         if old and old.get("status") != "finished":
             self.data = old
             if not new_run and (old["mode"] != mode or list(old["actions"]) != keys):
-                raise ValueError("Unfinished competition plan differs. Resume the original menu/config, "
-                                 "or use --new-competition-run for a deliberately new plan.")
+                new_run = True
+                print("COMPETITION PLAN UPDATED: applying the selected actions after automatic state recovery.",
+                      flush=True)
             # A process may have stopped after its child saved a terminal
             # summary but before the outer loop recorded the result.
             for entry in old["actions"].values():

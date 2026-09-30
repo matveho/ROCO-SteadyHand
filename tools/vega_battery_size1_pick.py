@@ -51,14 +51,14 @@ def main(argv=None):
     p.add_argument("--pregrasp-offset-m", type=float, default=0.025)
     p.add_argument("--free-speed", type=float, default=0.70)
     p.add_argument("--descent-speed", type=float, default=0.12)
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     p.add_argument("--confirm-battery-ready", action="store_true")
     p.add_argument("--output")
     args = p.parse_args(argv)
 
-    if not args.confirm_physical_motion or not args.confirm_battery_ready:
+    if not args.confirm_battery_ready:
         p.error(
-            "requires --confirm-physical-motion and --confirm-battery-ready"
+            "requires --confirm-battery-ready"
         )
     values = (args.pregrasp_offset_m, args.free_speed, args.descent_speed)
     if not all(math.isfinite(float(v)) for v in values):

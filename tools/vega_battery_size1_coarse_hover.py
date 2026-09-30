@@ -77,17 +77,13 @@ def main(argv=None):
         "--confirm-board-unchanged-since-localization",
         action="store_true",
     )
-    p.add_argument("--confirm-head-motion", action="store_true")
-    p.add_argument("--confirm-physical-motion", action="store_true")
+    p.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
+    p.add_argument('--confirm-physical-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
 
     if not args.confirm_board_unchanged_since_localization:
         p.error(
             "--confirm-board-unchanged-since-localization is required"
-        )
-    if not args.confirm_head_motion or not args.confirm_physical_motion:
-        p.error(
-            "--confirm-head-motion and --confirm-physical-motion are required"
         )
 
     numeric = (

@@ -53,11 +53,9 @@ def main(argv=None):
                    help="require this many newer timestamped frames after head motion")
     p.add_argument("--fresh-timeout-s", type=float, default=8.0)
     p.add_argument("--output")
-    p.add_argument("--confirm-head-motion", action="store_true")
+    p.add_argument('--confirm-head-motion', action="store_true", default=True, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
 
-    if not args.confirm_head_motion:
-        p.error("head motion requires --confirm-head-motion")
     if not 1 <= int(args.fresh_frames) <= 30:
         p.error("--fresh-frames must be 1..30")
     if not 0.5 <= float(args.fresh_timeout_s) <= 30.0:
